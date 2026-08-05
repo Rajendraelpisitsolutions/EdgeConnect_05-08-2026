@@ -1,0 +1,522 @@
+@*
+    License page — shows the current license state and (when there is no valid
+    license) both operator features:
+      * Activate License — upload a signed edgelicense.json (validate -> save -> reload)
+      * Buy License      — dialog with Elpis contact details + an enquiry form that
+                           emails Elpis on submit
+    Owner rule: when a valid license is present, BOTH features are hidden
+    (LicenseActivationService.GetStatus sets ShowActivate/ShowBuy = !isValid).
+*@
+@page "/license"
+@using System.Globalization
+@using System.Net.Http.Json
+@using System.Timers
+@implements IDisposable
+@inject HttpClient HttpClient
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<PageTitle>License — Connectivity Studio</PageTitle>
+
+@* MaxWidth.False, not Medium. MainLayout already wraps every page in a
+   full-width container with its own px-6 py-4 gutters; nesting a 960px
+   capped container inside it made License the only page whose content
+   stopped two-thirds of the way across the screen. The mt-6 went with it —
+   no other page adds a second top margin on top of the layout's padding. *@
+<MudContainer MaxWidth="MaxWidth.False">
+    @* Matches the heading pattern every other page uses: icon, then title, at
+       Typo.h5. License was the only page with no icon and the only one at h4,
+       so it read a size larger than Overview/Sources/Routes and sat flush to
+       the left margin where the others are indented by their icon. The icon is
+       the same Key used for this page in NavMenu. *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+        <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Medium" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h5">License</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Which edition this gateway runs, the protocols it unlocks, and how
+                long it stays valid.
+            </MudText>
+        </div>
+    </MudStack>
+
+    @if (_status is null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mb-4" Elevation="2" data-testid="license-status">
+            <div class="d-flex align-center" style="gap:16px;">
+                <MudIcon Icon="@(_status.IsValid ? Icons.Material.Filled.VerifiedUser : Icons.Material.Filled.GppMaybe)"
+                         Color="@(_status.IsValid ? Color.Success : Color.Warning)"
+                         Size="Size.Large" />
+                <div>
+                    <MudText Typo="Typo.h6">@StatusHeadline()</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@StatusDetail()</MudText>
+                    @if (!string.IsNullOrEmpty(_status.GatewayIdentity))
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" data-testid="gateway-identity">
+                            This gateway's ID: <b>@_status.GatewayIdentity</b>
+                            &nbsp;<span class="mud-text-secondary">(licenses are issued for this id)</span>
+                        </MudText>
+                    }
+                </div>
+                <MudSpacer />
+                <MudChip T="string"
+                         Color="@(_status.IsValid ? Color.Success : Color.Warning)"
+                         Variant="Variant.Filled">@_status.Status</MudChip>
+            </div>
+        </MudPaper>
+
+        @* Clock-tamper shows here on the License page (the global top banner is
+           suppressed on this page, so there is no duplicate). *@
+        @if (_status.ClockTampered)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" data-testid="clock-tampered-alert">
+                <MudText Typo="Typo.subtitle1"><strong>System date/time tampering detected</strong></MudText>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    The system clock is set earlier than a time this gateway has already observed, so the
+                    license cannot be trusted and the gateway is running in <strong>demo mode</strong>.
+                    Correct the system date/time to the current time to restore licensed operation.
+                </MudText>
+            </MudAlert>
+        }
+
+        @if (_status.VersionRestricted || _status.Status is "Expired" or "InGracePeriod" || _status.ExpiringSoon)
+        {
+            <MudAlert Severity="@UpgradeSeverity()" Variant="Variant.Filled" Class="mb-4" data-testid="upgrade-panel">
+                <div class="d-flex align-center" style="gap:16px; width:100%;">
+                    <div>
+                        @if (_status.VersionRestricted)
+                        {
+                            <MudText Typo="Typo.subtitle1"><strong>Upgrade license</strong></MudText>
+                            <MudText Typo="Typo.body2">
+                                @($"Your current license expired on {FormatFriendlyDate(_status.ExpiresAtUtc)} and does not cover Version {_status.ProductVersion} (released on {FormatFriendlyDate(_status.ProductBuildDate)}).")
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mt-2">
+                                Data collection is unavailable until your license is renewed or upgraded.
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mt-2">
+                                Select a valid license file below, or contact Elpis to request a renewed one.
+                            </MudText>
+                        }
+                        else if (_status.Status is "Expired" or "InGracePeriod")
+                        {
+                            <MudText Typo="Typo.subtitle1"><strong>Your license has expired.</strong></MudText>
+                            <MudText Typo="Typo.body2">
+                                @($"Licensed to {_status.Customer} · {_status.Edition} edition · expired {_status.ExpiresAtUtc}.")
+                                Renew or upgrade to restore full access — select a renewed license file below,
+                                or request one from Elpis.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.subtitle1"><strong>Your license is expiring soon.</strong></MudText>
+                            <MudText Typo="Typo.body2">
+                                @($"Licensed to {_status.Customer} · {_status.Edition} edition · expires {_status.ExpiresAtUtc} ({_status.DaysRemaining} day(s) left). You have full access until then — renew now to avoid interruption.")
+                            </MudText>
+                        }
+                    </div>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Upgrade"
+                               OnClick="OpenUpgradeDialog" data-testid="btn-upgrade">
+                        Upgrade / Renew
+                    </MudButton>
+                </div>
+            </MudAlert>
+        }
+
+        <MudGrid>
+            @if (_status.ShowActivate)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudPaper Class="pa-4" Elevation="1" Style="height:100%;" data-testid="feature-activate">
+                        <MudText Typo="Typo.h6" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2" />Activate License
+                        </MudText>
+                        @* The filename is the operator's problem to find, not a
+                           fact the screen needs to teach them — the file picker
+                           below already filters to the right type. Describe what
+                           activating does instead. *@
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                            Select the license file Elpis sent you. It is checked and applied
+                            straight away — no restart, and data keeps flowing while it happens.
+                        </MudText>
+                        <MudFileUpload T="IBrowserFile" FilesChanged="OnFileSelected"
+                                       Accept=".json" MaximumFileCount="1">
+                            <ActivatorContent>
+                                @* text-transform:none matches every other button in
+                                   the Studio; without it MudBlazor upper-cases the
+                                   label and it rendered as CHOOSE EDGELICENSE.JSON. *@
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.UploadFile"
+                                           Disabled="_busy"
+                                           Style="text-transform:none;"
+                                           data-testid="btn-activate">
+                                    Choose License
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                        @if (_busy)
+                        {
+                            <MudProgressLinear Indeterminate="true" Class="mt-4" />
+                        }
+                        @if (_activateError is not null)
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-4">@_activateError</MudAlert>
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (_status.ShowBuy)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudPaper Class="pa-4" Elevation="1" Style="height:100%;" data-testid="feature-buy">
+                        <MudText Typo="Typo.h6" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Class="mr-2" />Buy License
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                            Send Elpis your details and we'll get in touch about licensing.
+                        </MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.ContactMail"
+                                   OnClick="OpenBuyDialog"
+                                   data-testid="btn-buy">
+                            Buy License
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+<MudDialog @bind-Visible="_buyOpen" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(_upgradeMode ? Icons.Material.Filled.Upgrade : Icons.Material.Filled.ShoppingCart)" Class="mr-2" />
+            @(_upgradeMode ? "Upgrade / Renew License" : "Buy Elpis EdgeConnect License")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @* Elpis contact details *@
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Style="background:#F1F5F9;" data-testid="buy-contact">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Contact Elpis IT Solutions</MudText>
+            <div class="d-flex align-center mb-1" style="gap:8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
+                <MudLink Href="@($"mailto:{_contact?.Email}")">@_contact?.Email</MudLink>
+            </div>
+            <div class="d-flex align-center mb-1" style="gap:8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" />
+                <MudLink Href="@($"tel:{_contact?.Phone}")">@_contact?.Phone</MudLink>
+            </div>
+            <div class="d-flex align-center" style="gap:8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />
+                <MudLink Href="@_contact?.Website" Target="_blank">@_contact?.Website</MudLink>
+            </div>
+        </MudPaper>
+
+        @* Customer enquiry form *@
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Your details</MudText>
+        <MudTextField @bind-Value="_name" Label="Name" Required="true" Class="mb-2" data-testid="buy-name" />
+        <MudTextField @bind-Value="_company" Label="Company" Class="mb-2" data-testid="buy-company" />
+        <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email" Required="true" Class="mb-2" data-testid="buy-email" />
+        <MudTextField @bind-Value="_phone" Label="Phone" Class="mb-2" data-testid="buy-phone" />
+        <MudSelect @bind-Value="_licenseType" Label="Type of license (optional)" Clearable="true"
+                   Class="mb-2" data-testid="buy-license-type">
+            <MudSelectItem Value="@("Starter")">Starter</MudSelectItem>
+            <MudSelectItem Value="@("Professional")">Professional</MudSelectItem>
+            <MudSelectItem Value="@("Enterprise")">Enterprise</MudSelectItem>
+        </MudSelect>
+        <MudTextField @bind-Value="_message" Label="Message" Lines="3" Class="mb-2" data-testid="buy-message" />
+
+        @if (_buyError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@_buyError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _buyOpen = false)" Disabled="_buyBusy">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="SubmitBuy" Disabled="_buyBusy"
+                   data-testid="buy-submit">
+            @if (_buyBusy)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Submit
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private LicenseStatusDto? _status;
+    private LicenseContactDto? _contact;
+    private bool _busy;
+    private string? _activateError;
+
+    // Buy dialog state
+    private bool _buyOpen;
+    private bool _buyBusy;
+    private bool _upgradeMode;
+    private string? _buyError;
+    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    // Enquiry form fields
+    private string? _name;
+    private string? _company;
+    private string? _email;
+    private string? _phone;
+    private string? _licenseType;
+    private string? _message;
+
+    private System.Timers.Timer? _statusTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusAsync();
+        await LoadContactAsync();
+
+        // Poll the status so live changes (e.g. a clock-tamper detection or its
+        // correction) surface on this page without a manual refresh. Matches the
+        // 5s cadence of the global demo banner.
+        _statusTimer = new System.Timers.Timer(5000) { AutoReset = true };
+        _statusTimer.Elapsed += OnStatusTick;
+        _statusTimer.Start();
+    }
+
+    private async void OnStatusTick(object? sender, ElapsedEventArgs e)
+    {
+        try
+        {
+            await RefreshStatusQuietAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // Never let the timer callback throw.
+        }
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        try
+        {
+            _status = await HttpClient.GetFromJsonAsync<LicenseStatusDto>("/api/license/status");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load license status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>Periodic-refresh variant: keep the last state on error, no snackbar spam.</summary>
+    private async Task RefreshStatusQuietAsync()
+    {
+        try
+        {
+            _status = await HttpClient.GetFromJsonAsync<LicenseStatusDto>("/api/license/status");
+        }
+        catch (Exception)
+        {
+            // Transient — keep the last known status.
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_statusTimer is not null)
+        {
+            _statusTimer.Elapsed -= OnStatusTick;
+            _statusTimer.Stop();
+            _statusTimer.Dispose();
+        }
+    }
+
+    private async Task LoadContactAsync()
+    {
+        try
+        {
+            _contact = await HttpClient.GetFromJsonAsync<LicenseContactDto>("/api/license/contact");
+        }
+        catch (Exception)
+        {
+            // Non-fatal — the dialog still shows the form.
+        }
+    }
+
+    private void OpenBuyDialog()
+    {
+        _buyError = null;
+        _upgradeMode = false;
+        _buyOpen = true;
+    }
+
+    private void OpenUpgradeDialog()
+    {
+        _buyError = null;
+        _upgradeMode = true;
+        // Pre-fill from the expired license so it reads as a renewal/upgrade.
+        _name = string.IsNullOrWhiteSpace(_name) ? _status?.Customer : _name;
+        _licenseType ??= _status?.Edition;
+        _buyOpen = true;
+    }
+
+    private async Task SubmitBuy()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_email))
+        {
+            _buyError = "Name and email are required.";
+            return;
+        }
+
+        _buyError = null;
+        _buyBusy = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new LicensePurchaseRequest
+            {
+                CustomerName = _name,
+                Company = _company,
+                Email = _email,
+                Phone = _phone,
+                LicenseType = _licenseType,
+                IsUpgrade = _upgradeMode,
+                Message = _message,
+            };
+            var response = await HttpClient.PostAsJsonAsync("/api/license/buy-request", request);
+            var result = await response.Content.ReadFromJsonAsync<LicensePurchaseResult>();
+
+            if (result?.Sent == true)
+            {
+                // Centre this one success toast in the middle of the page
+                // (site.css .snackbar-center-middle). Per-message override only —
+                // other Studio notifications keep their default position.
+                Snackbar.Add("Thank you — your enquiry was sent to Elpis.", Severity.Success,
+                    config => config.SnackbarTypeClass = "snackbar-center-middle");
+                _buyOpen = false;
+            }
+            else if (!string.IsNullOrWhiteSpace(result?.MailtoUrl))
+            {
+                // SMTP/Outlook not available (e.g. running as a Windows service
+                // with no mail profile) — open the operator's mail client
+                // pre-addressed to Elpis so the enquiry still reaches them.
+                // Uses a same-tab anchor click (licenseMail.open) instead of
+                // window.open('_blank'), which Chrome blocks via Permissions-Policy
+                // ("unload is not allowed in this document").
+                await JS.InvokeVoidAsync("licenseMail.open", result!.MailtoUrl);
+                Snackbar.Add("Opening your mail client to send the enquiry to Elpis.", Severity.Info);
+                _buyOpen = false;
+            }
+            else
+            {
+                _buyError = result?.Error ?? "Could not submit the enquiry.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _buyError = ex.Message;
+        }
+        finally
+        {
+            _buyBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnFileSelected(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        _activateError = null;
+        _busy = true;
+        StateHasChanged();
+
+        try
+        {
+            string json;
+            using (var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024))
+            using (var reader = new StreamReader(stream))
+            {
+                json = await reader.ReadToEndAsync();
+            }
+
+            var response = await HttpClient.PostAsJsonAsync(
+                "/api/license/activate", new LicenseActivateRequest { LicenseJson = json });
+            var result = await response.Content.ReadFromJsonAsync<LicenseActivationResult>();
+
+            if (response.IsSuccessStatusCode && result?.Success == true)
+            {
+                _status = result.Status ?? _status;
+                var msg = "License activated."
+                    + (result.RestartRecommended
+                        ? " Restart the EdgeConnect service to start newly-licensed protocols."
+                        : string.Empty);
+                Snackbar.Add(msg, Severity.Success);
+            }
+            else
+            {
+                _activateError = result?.Error ?? "Activation failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _activateError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatFriendlyDate(string? isoDate)
+    {
+        if (DateTime.TryParse(isoDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+        {
+            return d.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        }
+        return isoDate ?? string.Empty;
+    }
+
+    private Severity UpgradeSeverity()
+    {
+        if (_status is null)
+        {
+            return Severity.Warning;
+        }
+        if (_status.VersionRestricted)
+        {
+            return Severity.Error;
+        }
+        return _status.ExpiringSoon && _status.IsValid ? Severity.Info : Severity.Warning;
+    }
+
+    private string StatusHeadline() =>
+        _status!.IsValid ? $"Licensed — {_status.Edition} edition" : "No valid license";
+
+    private string StatusDetail()
+    {
+        if (_status!.IsValid)
+        {
+            return $"{_status.Customer} · gateway {_status.GatewayId} · expires {_status.ExpiresAtUtc} ({_status.DaysRemaining} days left)";
+        }
+
+        return _status.Status switch
+        {
+            "NotLoaded" => "Running in demo mode. Activate a license to continue beyond the trial window.",
+            "Expired" => "The license has expired. Activate a renewed license.",
+            "InGracePeriod" => "The license has expired (grace period). Activate a renewed license.",
+            "Invalid" => "The installed license failed validation. Activate a valid license.",
+            _ => "Activate a license to unlock EdgeConnect.",
+        };
+    }
+}

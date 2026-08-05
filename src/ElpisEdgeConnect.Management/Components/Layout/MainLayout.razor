@@ -1,0 +1,163 @@
+@*
+    Connectivity Studio main layout. Three-zone shell:
+       * top app bar (white; brand + product name + top-level nav)
+       * content (page body on a faint neutral background)
+       * status footer (white; live gateway state)
+
+    Visual language: clean white chrome with subtle borders — the
+    Linear / Stripe / Vercel / Notion enterprise-SaaS aesthetic.
+    Blue (#1976D2) is reserved for accents (buttons, links, focus
+    rings, status-green sibling colors) rather than chrome fills.
+    Semantic green/yellow/red preserved for state indicators.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a
+               (commissioning-first design philosophy)
+*@
+@inherits LayoutComponentBase
+@inject ManagementOptions Options
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@* nav-collapsed narrows the fixed rail to icons and pulls the content and
+   status bar across with it — all in site.css, keyed off this one class. *@
+<MudLayout Class="@(_navCollapsed ? "nav-collapsed" : null)">
+    @* First focusable element on the page, so Tab-then-Enter reaches content
+       without traversing the whole nav rail. Styled in site.css (.op-skip-link):
+       off-screen until focused. *@
+    <a href="#main-content" class="op-skip-link">Skip to main content</a>
+
+    @* No header. The logo and product name sit together at the top of the rail
+       instead, and each page renders its own heading in its body — a top bar
+       repeating that heading was a second copy of the same words across the
+       full width of every screen.
+
+       NavMenu is a direct child of the layout, so the rail runs the full height
+       of the viewport. --shell-appbar-h is 0 in site.css to match. The rail owns
+       its collapse control, but the state lives here because the content area
+       and status bar are offset by the rail's width and all three must move
+       together. *@
+    <NavMenu Collapsed="@_navCollapsed" OnToggleCollapsed="@ToggleNav" />
+
+    @* pt-12/pb-8 = 48px/32px, which is what the chrome actually measures: the
+       AppBar carries mud-appbar-dense, so MudBlazor sizes it at three-quarters
+       of the 64px base. The previous pt-16 (64px) was a 16px overshoot. This
+       only shows through if site.css is absent — the app shell there zeroes
+       both — but a fallback that is wrong is worse than no fallback. *@
+    <MudMainContent Class="pt-12 pb-8">
+        @* ───── FOCAS2 demo-mode banner (M.2b.3.1) ─────
+           top:0, not top:64px. The sticky offset resolves against
+           .mud-main-content, which the app shell in site.css positions to
+           start below the AppBar already — an extra 64px here would push the
+           banner down twice. z-index 1000 keeps the banner above page
+           content but BELOW the AppBar (which uses z-index 1100).
+           Sits in the normal document flow at page load so content
+           is pushed below it — never overlaps page chrome.
+        *@
+        @{
+            var chrome = new LayoutChromeModel(Options);
+        }
+        @if (chrome.Focas2FakeModeBannerVisible)
+        {
+            <div style="position:sticky; top:0; z-index:1000;">
+                <MudAlert Severity="Severity.Warning"
+                          Variant="Variant.Filled"
+                          Dense="true"
+                          NoIcon="false"
+                          Square="true"
+                          Class="mb-0">
+                    <MudText Typo="Typo.body2">
+                        <strong>@LayoutChromeModel.Focas2FakeModeBannerTitle</strong>
+                        @LayoutChromeModel.Focas2FakeModeBannerMessage
+                    </MudText>
+                </MudAlert>
+            </div>
+        }
+        @if (chrome.S7FakeModeBannerVisible)
+        {
+            <div style="position:sticky; top:0; z-index:1000;">
+                <MudAlert Severity="Severity.Warning"
+                          Variant="Variant.Filled"
+                          Dense="true"
+                          NoIcon="false"
+                          Square="true"
+                          Class="mb-0"
+                          data-testid="s7-demo-banner">
+                    <MudText Typo="Typo.body2">
+                        <strong>@LayoutChromeModel.S7FakeModeBannerTitle</strong>
+                        @LayoutChromeModel.S7FakeModeBannerMessage
+                    </MudText>
+                </MudAlert>
+            </div>
+        }
+
+        @* Unlicensed demo-mode countdown / data-stopped banner (ADR-0035). *@
+        <DemoModeBanner />
+
+        @* One-time popup after a version upgrade — surfaces demo-mode / expired
+           license status so an upgraded, unlicensed gateway is not silent. *@
+        <PostUpgradeNotice />
+
+        @* tabindex="-1" so the skip link can actually move focus here; without
+           it the browser scrolls but focus stays stranded in the nav. *@
+        <MudContainer MaxWidth="MaxWidth.False" Class="px-6 py-4"
+                      id="main-content" tabindex="-1">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+    <StatusFooter />
+</MudLayout>
+
+@code {
+    // ─── Nav rail collapse ──────────────────────────────────────────────
+    // Kept in the layout rather than NavMenu because the content and status
+    // bar are offset by the rail's width — one flag has to drive all three,
+    // and site.css keys every one of them off the .nav-collapsed class.
+    private bool _navCollapsed;
+
+    private void ToggleNav() => _navCollapsed = !_navCollapsed;
+
+    // The route->title map that fed the header heading is gone with the header.
+    // Each page renders its own heading, and NavMenu derives the active tab
+    // from the URL itself, so the layout no longer tracks location.
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            // Blue reserved for accents / interactive elements / status —
+            // never for chrome fills under the new white aesthetic.
+            Primary = "#1976D2",
+            Secondary = "#455A64",
+            // AppBar theme values are overridden by the inline Style on
+            // MudAppBar above; kept here so any MudBlazor component that
+            // peeks at the palette gets coherent values.
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#1F2937",
+            Background = "#F8FAFC",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            Success = "#16A34A",
+            Warning = "#F59E0B",
+            Error = "#DC2626",
+            Info = "#2563EB",
+            // Lines + borders — soft neutral grey for chrome separators.
+            LinesDefault = "#E5E7EB",
+            LinesInputs = "#D1D5DB",
+            TextPrimary = "#1F2937",
+            TextSecondary = "#6B7280",
+            ActionDefault = "#6B7280",
+            ActionDisabled = "#D1D5DB",
+        },
+        Typography = new Typography
+        {
+            Default = new Default
+            {
+                FontFamily = new[] { "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif" },
+            }
+        }
+    };
+}

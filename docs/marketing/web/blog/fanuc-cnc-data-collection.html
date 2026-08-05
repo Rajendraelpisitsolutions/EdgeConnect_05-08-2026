@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Collect Data from FANUC CNCs Without Writing Custom Scripts &middot; Elpis</title>
+  <meta name="description" content="A practical guide to collecting machine data from FANUC CNCs over FOCAS2 - the real challenges, why custom scripts break down, and a maintainable alternative.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/blog/fanuc-cnc-data-collection">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="How to Collect Data from FANUC CNCs Without Writing Custom Scripts &middot; Elpis">
+  <meta property="og:description" content="A practical guide to collecting machine data from FANUC CNCs over FOCAS2 - the real challenges, why custom scripts break down, and a maintainable alternative.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/blog/fanuc-cnc-data-collection">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Collect Data from FANUC CNCs Without Writing Custom Scripts &middot; Elpis">
+  <meta name="twitter:description" content="A practical guide to collecting machine data from FANUC CNCs over FOCAS2 - the real challenges, why custom scripts break down, and a maintainable alternative.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How to Collect Data from FANUC CNCs Without Writing Custom Scripts",
+    "description": "A practical guide to collecting machine data from FANUC CNCs over FOCAS2.",
+    "datePublished": "2026-06-07",
+    "dateModified": "2026-06-07",
+    "author": { "@type": "Organization", "name": "Elpis IT Solutions" },
+    "publisher": { "@type": "Organization", "name": "Elpis IT Solutions", "logo": { "@type": "ImageObject", "url": "https://www.elpisitsolutions.com/assets/brand/favicon-512.png" } },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.elpisitsolutions.com/blog/fanuc-cnc-data-collection" },
+    "image": "https://www.elpisitsolutions.com/assets/og-default.png"
+  }
+  </script>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="/assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="/platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="/eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="/architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="/security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="/capabilities" class="nav__item">Capabilities</a>
+          <a href="/solutions" class="nav__item">Solutions</a>
+          <a href="/industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="/mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="/mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="/vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="/e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="/services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="/services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="/services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="/services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main">
+
+    <section class="section article-hero" data-mode="dark-deep">
+      <div class="container container--narrow">
+        <p class="eyebrow"><a href="/blog/" class="article-hero__crumb">Blog</a> &middot; Connectivity &amp; Edge</p>
+        <h1 class="article-hero__title">How to Collect Data from FANUC CNCs Without Writing Custom Scripts</h1>
+        <p class="article-hero__meta">7 June 2026 &middot; 5 min read</p>
+      </div>
+    </section>
+
+    <section class="section" data-mode="light">
+      <div class="container container--narrow article">
+        <img class="article__hero-img" src="/assets/blog/fanuc-cnc-data-collection-hero.png" alt="Diagram: collecting data from a FANUC CNC at the edge" width="1600" height="900">
+
+        <p class="article__lead">If you run a shop with FANUC controls, you already know the data is <em>in there</em> &mdash; spindle speed, feed rate, cycle counts, alarms, run state. The hard part isn't that the data doesn't exist. It's getting it out reliably, from every machine, in a form your team can actually use.</p>
+
+        <p>Most teams start by writing a script. It works on one machine, in a demo, on a good day. Then it meets the floor. This article is about why that happens &mdash; and what a maintainable approach looks like instead.</p>
+
+        <h2>First, the basics: what FOCAS2 actually is</h2>
+        <p>FANUC machines expose their data through <strong>FOCAS2</strong> &mdash; FANUC's official Open CNC API. It's the supported, documented way to read live values from a FANUC control over Ethernet: positions, speeds, modal states, part counts, diagnostic and alarm data.</p>
+        <p>That's the good news: you don't need to tap PLC I/O or scrape an HMI. There's a real API.</p>
+        <p>The catch is that FOCAS2 is a low-level C library, not a friendly data feed. You connect, you acquire a handle, you call specific functions for specific data, you interpret raw return values, and you manage the connection lifecycle yourself. Done once, for one machine, it's a weekend project. Done for a <em>floor</em>, every day, forever &mdash; it's a different story.</p>
+
+        <h2>Why custom FANUC scripts break down on a real floor</h2>
+        <p>Four things turn a working script into a maintenance burden:</p>
+        <ol class="article__list">
+          <li><strong>Handles are a limited resource.</strong> A FANUC control allows only a small number of concurrent FOCAS2 connections. If your script doesn't acquire, reuse, and release handles carefully &mdash; and recover when one is lost &mdash; you'll eventually exhaust them and the machine stops answering. This is the single most common reason home-grown FANUC collectors silently die.</li>
+          <li><strong>Every FANUC generation is a little different.</strong> A 0i, a 16i/18i/21i, and a 30i/31i/32i don't all expose the same data the same way. A script tuned to your newest machine often returns garbage &mdash; or nothing &mdash; on your oldest one. The fix is per-model handling, and that logic has to live <em>somewhere</em> and be maintained by <em>someone</em>.</li>
+          <li><strong>Raw values aren't insights.</strong> FOCAS2 hands you machine-specific numbers. Turning "register X on this model" into a clean, consistently-named <code>spindle_rpm</code> or <code>cycle_time</code> &mdash; the same name on every machine, regardless of generation &mdash; is work. Skip it, and your dashboard ends up with twelve different names for the same thing.</li>
+          <li><strong>The floor is hostile.</strong> Networks blip. Machines power off mid-cycle. Firmware gets updated. A collector that doesn't reconnect cleanly, buffer through an outage, and pick up where it left off will quietly lose data exactly when you need it most.</li>
+        </ol>
+        <p>None of these are unsolvable. But solving all four, for every machine, and <em>keeping</em> them solved as the floor changes &mdash; that's not a script. That's a product nobody on your team signed up to own.</p>
+
+        <h2>A more maintainable approach: a protocol-agnostic runtime</h2>
+        <p>The alternative is to let purpose-built software own the protocol, so your team owns the configuration instead of the code.</p>
+        <p>That's what <a href="/edgeconnect">EdgeConnect</a> does. It's a protocol-agnostic edge runtime that connects to FANUC controls over FOCAS2 &mdash; across every generation from 0i to 30i/31i/32i &mdash; manages the handle lifecycle and reconnection for you, and normalizes every reading into one <strong>canonical vocabulary</strong> at the edge. A spindle reading from a 2009 machine and a 2024 cell become the same canonical signal, so everything downstream stops caring which machine produced it.</p>
+        <p>And FANUC is just one of the controllers it speaks. The same runtime collects over <strong>MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and Siemens S7</strong> today &mdash; so a mixed-vendor floor lands in one consistent data model instead of six integration projects. (FANUC MT-LINKi REST integration is on our roadmap.)</p>
+        <p>You can read more about how that normalization works in our <a href="/capabilities-connectivity-edge">Connectivity &amp; Edge capability overview</a>.</p>
+
+        <h2>What you do with the data once it flows</h2>
+        <p>Clean, consistently-named machine signals are the foundation for the things people actually want:</p>
+        <ul class="article__list">
+          <li><strong>OEE</strong> computed against <em>your</em> definition of running, planned stop, and unplanned stop &mdash; not a vendor preset.</li>
+          <li><strong>Alarm and downtime visibility</strong> across the whole floor, in one place.</li>
+          <li><strong>Operational reporting</strong> that replaces the manual spreadsheet.</li>
+        </ul>
+        <p>In the Elpis stack, EdgeConnect handles the collection and <a href="/eremos-v2">EREMOS V2</a> turns the canonical stream into OEE, alarms, and reports. The point is that the math is built on real, traceable signals &mdash; the number an audit asks about traces back to a named value from a specific machine.</p>
+
+        <h2>What this is <em>not</em></h2>
+        <ul class="article__list">
+          <li><strong>It's not a rip-and-replace.</strong> This sits <em>beside</em> your existing SCADA, historian, and MES, feeding them clean signals. It doesn't take over control logic, operator HMIs, or alarm acknowledgment.</li>
+          <li><strong>It's not a claim that every protocol ships today.</strong> The supported set is explicit and grows by shipping collectors, not by marketing. FANUC, MTConnect, Brother, Modbus, OPC UA, and S7 are live now.</li>
+          <li><strong>It's not magic.</strong> Collecting data is the first step. Good OEE still depends on you defining what "running" means for your process &mdash; software can't decide that for you.</li>
+        </ul>
+
+        <h2>Where to start</h2>
+        <p>If you have FANUC machines and you're tired of either flying blind or babysitting a fragile script, the practical next step is to scope your actual controller mix &mdash; which FANUC generations, plus whatever else is on the floor &mdash; and confirm what each one can expose.</p>
+
+        <div class="article__cta">
+          <h3>See it on your own floor</h3>
+          <p>Explore the platform, or get in touch to walk through your controller mix.</p>
+          <div class="article__cta-actions">
+            <a href="/platform" class="btn btn--primary">Explore the platform</a>
+            <a href="/contact" class="btn btn--secondary">Contact us</a>
+          </div>
+        </div>
+
+        <p class="article__sig">Elpis IT Solutions builds an Industrial Intelligence Ecosystem &mdash; from shop-floor signal to enterprise decision. Operating across India and the Middle East.</p>
+
+      </div>
+    </section>
+
+  </main>  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="/assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="/edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="/eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="/edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="/mdaq" class="footer__link">mDAQ</a>
+          <a href="/mtracker" class="footer__link">mTracker</a>
+          <a href="/vas" class="footer__link">VAS</a>
+          <a href="/e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="/platform" class="footer__link">Platform</a>
+          <a href="/capabilities" class="footer__link">Capabilities</a>
+          <a href="/solutions" class="footer__link">Solutions</a>
+          <a href="/industries" class="footer__link">Industries</a>
+          <a href="/services" class="footer__link">Services</a>
+          <a href="/architecture" class="footer__link">Architecture</a>
+          <a href="/security" class="footer__link">Security</a>
+          <a href="/blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="/resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="/roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="/resources-brochures" class="footer__link">Brochures</a>
+          <a href="/resources" class="footer__link">Pitch deck</a>
+          <a href="/resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="/customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="/privacy" class="footer__link">Privacy</a>
+          <a href="/terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

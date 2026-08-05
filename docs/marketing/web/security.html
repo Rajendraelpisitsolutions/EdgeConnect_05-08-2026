@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/security.html
+  Purpose:     Static HTML mockup of the /security page (Security & Operational
+               Trust, content v3) — for visual sign-off. Faithful to the LOCKED
+               page-security-spec-v1.md; reuses styles.css + the standardized
+               nav/footer used by the product-page mockups.
+  Companion:   ./styles.css
+               ../page-security-spec-v1.md (LOCKED — verbatim copy source)
+               ../buyer-taxonomy-v1.md §2.7 (procurement / compliance reviewer)
+  Honesty:     NO compliance-framework claims or logos; NO cyber-vendor language;
+               NO roadmap leakage (Cert Trust Center / last-known-good rollback
+               excluded); secret-redaction scoped precisely to config backups +
+               diagnostic support bundles (ADR-0020). Imagery restrained — no
+               padlocks / shields / hooded hackers / glowing networks.
+  Version:     v1 (mockup for sign-off)
+  Date:        2026-06-05
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security &amp; Operational Trust — Elpis Industrial Platform</title>
+  <meta name="description" content="Offline-first, air-gap-ready OT platform: signed offline licensing that never cuts data, hash-chained audit, secrets redacted by construction, AI that proposes — never alters.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/security">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Security &amp;amp; Operational Trust">
+  <meta property="og:description" content="Offline-first, air-gap-ready OT platform: signed offline licensing that never cuts data, hash-chained audit, secrets redacted by construction, AI that proposes — never alters.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/security">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Security &amp;amp; Operational Trust">
+  <meta name="twitter:description" content="Offline-first, air-gap-ready OT platform: signed offline licensing that never cuts data, hash-chained audit, secrets redacted by construction, AI that proposes — never alters.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=8">
+
+  <!-- /security-specific layout. Token-only; no new colors. -->
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display: block; margin-bottom: var(--space-3); }
+    .section-title {
+      font-size: var(--size-xl); font-weight: var(--weight-semibold);
+      line-height: var(--line-snug); letter-spacing: var(--tracking-tight);
+    }
+
+    /* §2 challenge narrative + pull-quote */
+    .challenge p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 70ch; }
+    .challenge p + p { margin-top: var(--space-5); }
+    .pullquote { border-left: 3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); max-width: 60ch; line-height: var(--line-snug); }
+
+    /* §3 commitments — bolded-lead paragraphs */
+    .commits { margin-top: var(--space-8); max-width: 80ch; }
+    .commit { padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border-subtle); }
+    .commit:last-child { border-bottom: none; }
+    .commit h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .commit p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .commit .accent { display:block; width:28px; height:3px; background:var(--color-brand-teal); margin-bottom:var(--space-3); }
+
+    /* §4 property checklist (2-col) */
+    .prop-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: var(--space-4) var(--space-8); margin-top: var(--space-8); list-style:none; padding:0; }
+    .prop-grid li { padding-left: var(--space-6); position: relative; }
+    .prop-grid li::before { content: "✓"; position:absolute; left:0; top:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .prop-grid strong { display:block; color: var(--color-text-heading-light); font-size: var(--size-sm); margin-bottom: 2px; }
+    .prop-grid p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    [data-mode="dark"] .prop-grid strong { color: #FFFFFF; }
+    [data-mode="dark"] .prop-grid p { color: var(--color-text-muted-dark); }
+
+    /* §5 negative-space list */
+    .neg-list { margin-top: var(--space-8); max-width: 80ch; list-style:none; padding:0; }
+    .neg-list li { padding: var(--space-3) 0 var(--space-3) var(--space-6); border-bottom: 1px solid var(--color-border-light-subtle); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .neg-list li::before { content: "—"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .neg-list strong { color: var(--color-text-heading-light); }
+
+    /* §6 compliance + verify list */
+    .verify-list { margin-top: var(--space-6); max-width: 76ch; list-style:none; padding:0; }
+    .verify-list li { padding: var(--space-3) 0 var(--space-3) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .verify-list li::before { content: "✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+
+    /* §7 FAQ */
+    .faq { margin-top: var(--space-8); max-width: 82ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style: italic; max-width: 76ch; }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration: none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner {
+      background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center;
+      font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2);
+    }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <!-- NAV (standardized) -->
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero__inner">
+          <div class="hero__copy">
+          <span class="eyebrow eyebrow--teal">SECURITY &amp; OPERATIONAL TRUST</span>
+          <h1 id="hero-heading" class="hero__headline">Built for the security posture your plant actually has.</h1>
+          <p class="hero__subhead">
+            Offline operation. Air-gapped readiness. Signed offline licensing that never cuts your data. Secrets redacted by construction. AI-assisted workflows that propose — never silently alter. Trust architecture engineered for OT, not adapted from IT.
+          </p>
+          <div class="cta-group">
+            <a href="#cta" class="btn btn--primary btn--lg">Request a security review <span class="arrow" aria-hidden="true">→</span></a>
+            <a href="#cta" class="btn btn--secondary btn--lg">Talk to our security lead</a>
+          </div>
+          <p class="trust-strip">
+            Offline by default · RSA-signed local licensing · hash-chained audit · secrets redacted in backups &amp; support bundles · no phone-home.
+          </p>
+          </div><!-- /hero__copy -->
+
+          <div class="hero__composite" aria-hidden="true">
+            <div class="hero__composite-dashboard">
+              <!-- Restrained OT imagery: a closed control cabinet. No padlocks / shields / hackers. -->
+              <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A closed industrial control cabinet — isolation and calm reliability">
+                <defs>
+                  <linearGradient id="secBg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#1E2937" stop-opacity="0.96"/>
+                    <stop offset="100%" stop-color="#151B23" stop-opacity="0.96"/>
+                  </linearGradient>
+                </defs>
+                <rect x="1" y="1" width="398" height="298" rx="10" fill="url(#secBg)" stroke="#00A0E0" stroke-width="1"/>
+                <line x1="12" y1="2" x2="388" y2="2" stroke="#00A0E0" stroke-width="0.5" opacity="0.4"/>
+                <rect x="20" y="22" width="32" height="3" fill="#00A0E0"/>
+                <text x="20" y="44" font-size="9" font-weight="600" fill="#00A0E0" letter-spacing="2.5" font-family="Inter, sans-serif">TRUST IS THE ARCHITECTURE</text>
+
+                <!-- Cabinet body -->
+                <rect x="96" y="66" width="208" height="196" rx="6" fill="#252D36" stroke="#3A4049" stroke-width="1.5"/>
+                <!-- Door seam -->
+                <line x1="200" y1="72" x2="200" y2="256" stroke="#1E2937" stroke-width="2"/>
+                <!-- Hinges -->
+                <rect x="98" y="86" width="4" height="16" rx="1" fill="#3A4049"/>
+                <rect x="98" y="226" width="4" height="16" rx="1" fill="#3A4049"/>
+                <rect x="298" y="86" width="4" height="16" rx="1" fill="#3A4049"/>
+                <rect x="298" y="226" width="4" height="16" rx="1" fill="#3A4049"/>
+                <!-- Handle -->
+                <rect x="188" y="150" width="6" height="34" rx="3" fill="#00A0E0"/>
+                <rect x="206" y="150" width="6" height="34" rx="3" fill="#00A0E0"/>
+                <!-- Status LEDs (calm: one teal, steady) -->
+                <circle cx="120" cy="90" r="3.5" fill="#4FBBC9"/>
+                <circle cx="134" cy="90" r="3.5" fill="#00A0E0"/>
+                <circle cx="148" cy="90" r="3.5" fill="#2C3540"/>
+                <!-- Ventilation lines (left + right doors) -->
+                <g stroke="#3A4049" stroke-width="1">
+                  <line x1="116" y1="120" x2="180" y2="120"/>
+                  <line x1="116" y1="132" x2="180" y2="132"/>
+                  <line x1="116" y1="144" x2="180" y2="144"/>
+                  <line x1="220" y1="120" x2="284" y2="120"/>
+                  <line x1="220" y1="132" x2="284" y2="132"/>
+                  <line x1="220" y1="144" x2="284" y2="144"/>
+                </g>
+                <!-- Caption strip -->
+                <text x="200" y="288" text-anchor="middle" font-size="8.5" font-weight="600" fill="#8A94A0" letter-spacing="1.5" font-family="Inter, sans-serif">CLOSED PERIMETER · OFFLINE BY DEFAULT</text>
+              </svg>
+            </div>
+            <p class="hero__composite-caption" style="text-align:center; color: var(--color-text-muted-dark); font-size: var(--size-xs); margin-top: var(--space-3);">Isolation, not theater — illustrative.</p>
+          </div>
+        </div><!-- /hero__inner -->
+      </div>
+    </section>
+
+    <!-- §2 THE CHALLENGE -->
+    <section class="section" data-mode="light" aria-labelledby="challenge-heading">
+      <div class="container prose challenge">
+        <div class="section-head">
+          <span class="eyebrow">THE CHALLENGE</span>
+          <h2 id="challenge-heading" class="section-title">Why OT software fails security review</h2>
+        </div>
+        <p>Most industrial software was designed in an IT world and patched for an OT one. The architecture assumed a live internet connection for licensing, a cloud back-end for telemetry, a third-party AI service for "intelligence," and a refresh cycle measured in days. Then the software met a real factory.</p>
+        <p>Real factories don't have any of that. They have isolated control networks. They have plants that cannot be patched mid-shift. They have customers with strict no-cloud policies, export-control regimes, defense contracts, regulated data, or simply a CISO who reads vendor contracts carefully. The IT-shaped software starts requiring exceptions: a special license-server arrangement here, a cloud-bypass mode there, an air-gap workaround over there. Each exception is a compliance bill in waiting.</p>
+        <p>The right answer isn't to ship the same IT-shaped software with a longer security-questionnaire response. It's to design the trust architecture into the platform from the first commit. That's what Elpis did.</p>
+        <p class="pullquote">"Each exception is a compliance bill in waiting."</p>
+      </div>
+    </section>
+
+    <!-- §3 THE APPROACH -->
+    <section class="section" data-mode="dark" aria-labelledby="approach-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">THE APPROACH</span>
+          <h2 id="approach-heading" class="section-title">Operational trust, not cybersecurity theater</h2>
+        </div>
+        <div class="commits">
+          <div class="commit"><span class="accent"></span><h3>Production continuity is non-negotiable.</h3><p>A platform that stops a production line because its license server is unreachable, its cloud back-end is down, or its AI service is externally unavailable has failed its core operational responsibility. EdgeConnect runs offline by default, validates its license locally, and never depends on a remote service to keep machine data flowing.</p></div>
+          <div class="commit"><span class="accent"></span><h3>Air-gapped operation is the default, not a fallback.</h3><p>EdgeConnect does not require an internet connection at any point in its lifecycle — installation, licensing, configuration, telemetry, or update. Plants on isolated OT VLANs install and run the platform exactly the same way as plants with internet access. There is no "offline mode" because there is no "online mode" — there is just operation.</p></div>
+          <div class="commit"><span class="accent"></span><h3>AI-assisted workflows are constrained by design.</h3><p>Where AI-assisted workflows are enabled, they generate proposals for an operator to confirm. They do not silently alter routing, transform data, or change configuration. Local-LLM support is mandatory for AI-assisted deployments; cloud LLMs are optional. No plant data is sent to a third-party AI service by default.</p></div>
+          <div class="commit"><span class="accent"></span><h3>Audit trail as a system property, not a feature.</h3><p>Every configuration change to the gateway is recorded in a hash-chained log with actor identity and timestamp. The log is tamper-evident and replay-ready — not bolted on for regulated-industry sales, but built into the configuration plane itself.</p></div>
+          <div class="commit"><span class="accent"></span><h3>Licensing that never cuts customer data.</h3><p>A lapsed license blocks configuration changes; it never stops production data from flowing. Your machines keep talking even if your renewal email got stuck in someone's spam folder. The license enforces the commercial relationship — it does not hold operations hostage.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 PROPERTIES TO EVALUATE -->
+    <section class="section" data-mode="light" aria-labelledby="props-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">EVALUATE THE PLATFORM</span>
+          <h2 id="props-heading" class="section-title">Specific properties to evaluate</h2>
+          <p class="deploy-note" style="font-style:normal;">Use this as a checklist against any other OT vendor you're considering. Each item is an architectural property of the platform, not an aspirational claim.</p>
+        </div>
+        <ul class="prop-grid">
+          <li><strong>Offline-first by design.</strong><p>EdgeConnect does not require an internet connection to run, validate its license, or deliver data.</p></li>
+          <li><strong>Air-gapped factories are first-class.</strong><p>RSA-signed JSON license files validate locally. No phone-home. No cloud licensing dependency. Updates ship on physical media or internal mirrors.</p></li>
+          <li><strong>No forced cloud dependency.</strong><p>The platform can be entirely on-premise. Cloud destinations are optional, not required.</p></li>
+          <li><strong>Licensing never cuts data.</strong><p>A lapsed license blocks configuration changes only; production data keeps flowing.</p></li>
+          <li><strong>AI never alters the data path.</strong><p>AI-assisted workflows propose; humans confirm. No silent state changes. Local-LLM support is mandatory; cloud LLMs are optional.</p></li>
+          <li><strong>Hash-chained configuration audit log.</strong><p>Every change recorded with actor and timestamp. Tamper-evident, exportable for review.</p></li>
+          <li><strong>Reversible configuration changes.</strong><p>A draft → validate → apply → rollback flow means untested configuration never reaches the data path, and any applied change can be rolled back.</p></li>
+          <li><strong>Secrets redacted by construction.</strong><p>Configuration backups and the diagnostic support bundle run through a field-level redaction engine: adapter passwords, certificate private keys, and API tokens are stripped; the signed license file is excluded entirely; any field not explicitly classified fails closed to stripped. A support bundle is designed to be shareable in a support workflow after customer review.</p></li>
+          <li><strong>Per-tag quality codes.</strong><p>Every data point carries a quality state (Good / Uncertain / Bad / Stale), so downstream systems can distinguish a real value from a stale or unreliable one.</p></li>
+          <li><strong>Fault isolation.</strong><p>A failing adapter never affects another adapter, route, or sink; a misbehaving sink never blocks a healthy one. Store-and-forward preserves queued data across outages and replays in source order.</p></li>
+          <li><strong>Role separation supported.</strong><p>Configuration editing, audit review, and data consumption can be assigned to distinct roles. No single operator holds every privilege by default.</p></li>
+          <li><strong>Per-gateway identity.</strong><p>Each EdgeConnect instance carries a stable UUID and customer/site binding established at first start. Fleet identity is clean and traceable.</p></li>
+          <li><strong>OPC UA Server security modes.</strong><p>Anonymous + SecurityMode=None is available for commissioning on trusted OT VLANs; production deployments can use Sign / SignAndEncrypt with X.509 certificate-based authentication.</p></li>
+          <li><strong>Application certificate management.</strong><p>The OPC UA Server auto-generates a self-signed X.509 application certificate on first start; client trust is operator-controlled via standard trust folders.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §5 WHAT IT DOES NOT DO -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="neg-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">THE NEGATIVE SPACE</span>
+          <h2 id="neg-heading" class="section-title">What the platform refuses to do</h2>
+          <p class="deploy-note" style="font-style:normal;">Honest framing of what the platform refuses to do is sometimes more useful than what it does:</p>
+        </div>
+        <ul class="neg-list">
+          <li><strong>Does not phone home for telemetry or licensing.</strong> Period.</li>
+          <li><strong>Does not require cloud connectivity.</strong> Cloud is opt-in. The platform runs identically with no external network access.</li>
+          <li><strong>Does not send plant data to third-party AI services by default.</strong> Local-LLM-capable is the default posture.</li>
+          <li><strong>Does not bypass operator confirmation for AI-proposed actions.</strong> AI-assisted workflows never silently alter state.</li>
+          <li><strong>Does not export secrets in plaintext in configuration backups or diagnostic bundles.</strong> Both are redacted by construction; the license file is never bundled.</li>
+          <li><strong>Does not auto-update.</strong> Updates are operator-controlled. Plants schedule them against their own shift calendar.</li>
+          <li><strong>Does not allow a single shared credential.</strong> Role separation is supported from day one.</li>
+          <li><strong>Does not depend on a vendor cloud service for any production-critical path.</strong> Buffering, replay, alarm capture, and data acquisition all work with the cloud entirely unreachable.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §6 COMPLIANCE POSTURE -->
+    <section class="section" data-mode="light" aria-labelledby="compliance-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">COMPLIANCE POSTURE</span>
+          <h2 id="compliance-heading" class="section-title">Honest framing on certifications</h2>
+        </div>
+        <p style="font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light);">Elpis does not currently claim ISO 27001, SOC 2, IEC 62443, 21 CFR Part 11, or equivalent framework certification on this page. What we can provide today is evidence of the operational primitives those reviews often ask about: audit trails, role separation, signed local licensing, offline-first behavior, secret redaction, and a deterministic data path.</p>
+        <p style="margin-top: var(--space-5); color: var(--color-text-muted-light); line-height: var(--line-body);">If your industry requires a specific certification or audit posture, talk to us about your timeline and we will be transparent about where the platform stands today. We will not claim a certification we have not earned, and we will not stage one mid-sales-cycle to win a deal.</p>
+        <p style="margin-top: var(--space-6); font-weight: var(--weight-semibold); color: var(--color-text-heading-light);">What you can verify today — without us claiming any specific framework:</p>
+        <ul class="verify-list">
+          <li>The configuration audit log produces a hash-chained, tamper-evident record suitable for regulated-industry change-control review.</li>
+          <li>The offline-first architecture supports air-gapped deployments and export-control-sensitive environments.</li>
+          <li>The AI constraint architecture (proposals + human confirmation + local-LLM support) supports environments where data sovereignty is non-negotiable.</li>
+          <li>The secret-redaction engine lets you produce a support bundle that is safe to share without leaking credentials, keys, or the license file.</li>
+          <li>The per-tag quality codes and three-way diagnostics support investigations into data provenance and integrity.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 FAQ -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">SECURITY REVIEW</span>
+          <h2 id="faq-heading" class="section-title">Questions your security team is about to ask</h2>
+        </div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">"Where does our plant data go?"</p><p class="faq__a">Wherever you route it. EdgeConnect publishes to the destinations you configure — MQTT brokers and an OPC UA Server today. Required destinations and protocol scope are confirmed during the security review. Nothing is sent to Elpis by the platform automatically, and no telemetry is collected for our visibility.</p></div>
+          <div class="faq__item"><p class="faq__q">"What happens if the license expires?"</p><p class="faq__a">Configuration changes are blocked; data keeps flowing. Production continuity is not affected by a licensing event.</p></div>
+          <div class="faq__item"><p class="faq__q">"Can your software run completely offline?"</p><p class="faq__a">Yes. Installation, licensing, configuration, runtime, and updates can all happen with no internet access.</p></div>
+          <div class="faq__item"><p class="faq__q">"How do you handle credentials and secrets at the edge?"</p><p class="faq__a">Source and sink credentials are stored encrypted at rest on the edge node. Operator credentials for the Connectivity Studio UI follow standard role-based access control. And exports are redacted before they are written: configuration backups and diagnostic bundles run through a field-level redaction engine that strips passwords, certificate private keys, and tokens, and excludes the license file entirely.</p></div>
+          <div class="faq__item"><p class="faq__q">"If we send you a diagnostic bundle for support, what's in it?"</p><p class="faq__a">A redacted-by-construction snapshot: status codes, route/source/sink IDs, health metrics, and recent diagnostic events — with adapter passwords, certificate private keys, API tokens, and the license file removed before the bundle is written. Any field not explicitly classified as safe fails closed to stripped. The bundle is designed to be shareable in a support workflow after customer review.</p></div>
+          <div class="faq__item"><p class="faq__q">"What happens if a config change breaks the gateway?"</p><p class="faq__a">The draft → validate → apply → rollback flow makes every config change reversible. Untested configuration never reaches the data path.</p></div>
+          <div class="faq__item"><p class="faq__q">"Can a single operator do everything, or do you support role separation?"</p><p class="faq__a">Role separation is supported. Configuration editing, audit review, and data consumption can be assigned to distinct roles.</p></div>
+          <div class="faq__item"><p class="faq__q">"What's the audit trail for configuration changes?"</p><p class="faq__a">A hash-chained log with actor identity and timestamp for every change. Tamper-evident, exportable for review.</p></div>
+          <div class="faq__item"><p class="faq__q">"How does your AI work — does it need our data?"</p><p class="faq__a">AI-assisted workflows propose actions for human confirmation. Local-LLM support is mandatory; cloud LLMs are optional. By default, no plant data leaves your environment for AI purposes.</p></div>
+          <div class="faq__item"><p class="faq__q">"What network access does the platform require?"</p><p class="faq__a">It can run with no internet access at all. Where you do connect it, the required inbound / outbound ports, egress endpoints, and DNS / NTP assumptions are documented and confirmed during the security review against your network policy.</p></div>
+          <div class="faq__item"><p class="faq__q">"How are updates delivered and controlled?"</p><p class="faq__a">Updates are operator-controlled — never automatic. They can be applied from physical media or an internal mirror, on your own shift calendar. Package-integrity details are confirmed during the security review.</p></div>
+          <div class="faq__item"><p class="faq__q">"Does Elpis have remote access to our deployment?"</p><p class="faq__a">No vendor remote access is required or enabled by default. Any support access is customer-approved and deployment-specific.</p></div>
+          <div class="faq__item"><p class="faq__q">"How are certificates and keys managed?"</p><p class="faq__a">The OPC UA Server auto-generates a self-signed X.509 application certificate on first start; client trust is operator-controlled via standard trust folders. Generation, import, and rotation / expiry responsibility for the production trust model are confirmed during the security review.</p></div>
+          <div class="faq__item"><p class="faq__q">"What audit logs can we export, and what's the retention model?"</p><p class="faq__a">The configuration audit log is a hash-chained, tamper-evident, exportable record with actor identity and timestamp. Retention window, export format, and time source are confirmed during the security review against your change-control requirements.</p></div>
+          <div class="faq__item"><p class="faq__q">"Do you provide an SBOM or third-party dependency information?"</p><p class="faq__a">No public SBOM program is claimed on this page. Dependency and SBOM information for a specific release is provided during the security review.</p></div>
+          <div class="faq__item"><p class="faq__q">"Do you have a public vulnerability-disclosure or incident-response policy?"</p><p class="faq__a">No public program is claimed on this page. Deployment-specific security contacts and escalation are established during the security review.</p></div>
+          <div class="faq__item"><p class="faq__q">"Can we run a security review against the platform before purchase?"</p><p class="faq__a">Yes. We support a pre-purchase security review against a representative deployment.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 ARCHITECTURE FOR TRUST -->
+    <section class="section" data-mode="dark" id="architecture" aria-labelledby="arch-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">WHERE TRUST LIVES</span>
+          <h2 id="arch-heading" class="section-title">Where trust lives in the platform</h2>
+        </div>
+        <figure style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 230" width="100%" role="img"
+               aria-label="Trust-annotated architecture: floor controllers feed EdgeConnect (license validates locally, secrets redacted in backups and support bundles), through a hash-chained configuration plane and human-confirmed AI boundary, publishing per-tag-quality-coded data to EREMOS V2.">
+            <defs>
+              <marker id="sec-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/>
+              </marker>
+            </defs>
+            <!-- Floor -->
+            <rect x="8" y="70" width="170" height="90" rx="10" fill="#1E2937" stroke="#3A4049"/>
+            <text x="93" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#FFFFFF">Floor controllers</text>
+            <text x="93" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#8A94A0">per-tag quality codes</text>
+            <line x1="182" y1="115" x2="236" y2="115" stroke="#5E6B78" stroke-width="2" marker-end="url(#sec-arrow)"/>
+            <!-- EdgeConnect (highlighted) -->
+            <rect x="240" y="56" width="220" height="118" rx="12" fill="#11202B" stroke="#00A0E0" stroke-width="2"/>
+            <text x="350" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#FFFFFF">EdgeConnect</text>
+            <text x="350" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#4FBBC9">License validates locally</text>
+            <text x="350" y="132" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#4FBBC9">Hash-chained audit</text>
+            <text x="350" y="150" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#4FBBC9">Secrets redacted in backups + bundles</text>
+            <line x1="464" y1="115" x2="518" y2="115" stroke="#5E6B78" stroke-width="2" marker-end="url(#sec-arrow)"/>
+            <!-- AI boundary -->
+            <rect x="522" y="70" width="170" height="90" rx="10" fill="#1E2937" stroke="#3A4049"/>
+            <text x="607" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13" fill="#FFFFFF">AI boundary</text>
+            <text x="607" y="126" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#8A94A0">proposals require</text>
+            <text x="607" y="142" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#8A94A0">human confirmation</text>
+            <line x1="696" y1="115" x2="750" y2="115" stroke="#5E6B78" stroke-width="2" marker-end="url(#sec-arrow)"/>
+            <!-- Consumer -->
+            <rect x="754" y="70" width="198" height="90" rx="10" fill="#1E2937" stroke="#3A4049"/>
+            <text x="853" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#FFFFFF">EREMOS V2</text>
+            <text x="853" y="134" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#8A94A0">+ SCADA / historian</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center; color: var(--color-text-muted-dark);">
+            Static product-annotated subset. The final page uses a trust-annotated variant of the master architecture diagram (architecture-diagram-spec-v3).
+          </figcaption>
+        </figure>
+        <p style="margin-top: var(--space-6); font-style: italic; color: var(--color-text-muted-dark); line-height: var(--line-body); max-width: 76ch;">
+          Each critical layer of the platform has a named trust property. Offline operation at the edge. Signed local licensing. Hash-chained configuration audit. Secrets redacted in backups and support bundles. AI proposals at the intelligence layer require human confirmation. Per-tag quality codes propagate end-to-end. There is no "trust feature" because trust is not a feature — it's the architecture.
+        </p>
+      </div>
+    </section>
+
+    <!-- §9 CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size: var(--size-2xl); margin-top: var(--space-3);">Talk to our security lead.</h2>
+        <p class="hero__subhead" style="margin-left:auto; margin-right:auto;">
+          Bring us your security-review questionnaire. Bring us your air-gap requirement. Bring us your regulated-industry constraint. We will tell you exactly what the platform does today, what it does not do, and what we are willing to commit to for your deployment.
+        </p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Security%20review%20request" class="btn btn--primary btn--lg">Request a security review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Talk%20to%20your%20security%20lead" class="btn btn--secondary btn--lg">Talk to our security lead</a>
+        </div>
+        <p style="margin-top: var(--space-5);">
+          <a class="pillar-link" href="mailto:contact@elpisitsolutions.com?subject=Security%20posture%20documentation">Download our security posture documentation (PDF)</a>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER (standardized — links every product page + this page) -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

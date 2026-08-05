@@ -1,0 +1,701 @@
+@*
+    Add / Edit MQTT destination wizard (M.2b.6 / M.2d.3 / M.2d.4).
+
+    Add mode: sections 1-5 + routing wiring + draft summary → POST draft.
+    Edit mode (M.2d.3 v2 §3): rendered by SinkEditRouter.
+       * EditMode + HydratedConfig parameters accepted; model hydrated
+         from existing sink via MqttSinkWizardModel.HydrateFromExisting.
+       * Routing section hidden (Edit never mutates routes).
+       * InstanceId field disabled (immutable in Edit).
+       * Save → PUT /api/v1/sinks/{instanceId} (direct-apply).
+       * 409 VersionMismatch → StaleEditWarningBanner.
+
+    M.2d.4 adoption of ADR-0015 wizard contract:
+       * Structural — WizardShell + WizardSection (replaces pre-M.2d.1
+         manual MudStack + MudPaper layout).
+       * WizardValidationBanner wired on _model.Validate() output.
+       * Field-anchor ids per Rule 3 — kebab-case CSS selectors, e.g.
+         #field-connection.broker-host, click banner message → JS
+         scrollIntoView + focus.
+       * Test Connection moved to WizardActions footer button; probe
+         result rendered inline in Connection section (Rule 6).
+
+    Reference: docs/decisions/0015-wizard-contract.md
+               docs/sessions/2026-05-27-m2d4-cross-wizard-sweep-plan-v2.1.md
+*@
+@page "/destinations/new/mqtt"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@using ElpisEdgeConnect.Sinks.Mqtt
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") MQTT destination · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Cloud"
+             Title="@(_isEdit ? $"Edit MQTT destination — {_model.InstanceId}" : "Add MQTT destination")"
+             Subtitle="Publish canonical data to an MQTT broker. Use Test Connection to verify reachability before saving."
+             BackHref="@(_isEdit ? $"/sinks/{Uri.EscapeDataString(_model.InstanceId)}" : "/destinations/new")"
+             IsLoading="@(_currentConfig is null && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+        @* ADR-0015 Rule 5 — cumulative validation surface. Renders zero
+           DOM when Messages is empty (no green success state). *@
+        <WizardValidationBanner Messages="@_model.Validate()" />
+
+        <WizardSection Index="1" Title="Identity">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                                  Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                                  HelperText="@(_isEdit ? "Instance id is immutable once the destination exists." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                                  Variant="Variant.Outlined" Immediate="true"
+                                  Disabled="@_isEdit"
+                                  Error="@(!string.IsNullOrEmpty(_instanceIdError))"
+                                  ErrorText="@_instanceIdError"
+                                  UserAttributes="@AttrsFor("field-instance-id")" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudCheckBox @bind-Value="_model.Enabled" Color="Color.Primary" Dense="true">
+                        <MudText Typo="Typo.body2">
+                            Enabled
+                            <span style="opacity:0.6;"> — uncheck to create the destination stopped.</span>
+                        </MudText>
+                    </MudCheckBox>
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        <WizardSection Index="2" Title="Connection">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.BrokerHost"
+                                  Label="Broker host *"
+                                  HelperText="Hostname or IP (e.g. broker.example.com)"
+                                  Variant="Variant.Outlined" Immediate="true"
+                                  UserAttributes="@AttrsFor("field-connection.broker-host")" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField @bind-Value="_model.BrokerPort" Label="Port"
+                                     Min="1" Max="65535"
+                                     HelperText="1883 plain · 8883 TLS"
+                                     Variant="Variant.Outlined"
+                                     UserAttributes="@AttrsFor("field-connection.broker-port")" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField @bind-Value="_model.KeepAliveSeconds" Label="Keep-alive (s)"
+                                     Min="5" Max="3600"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudCheckBox @bind-Value="_model.UseTls" Color="Color.Primary" Dense="true" Class="mt-3">
+                        <MudText Typo="Typo.body2">Use TLS</MudText>
+                    </MudCheckBox>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.ClientId"
+                                  Label="Client id (optional)"
+                                  HelperText="Auto-generates 'edgeconnect-{InstanceId}' if blank."
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+
+            @* ADR-0015 Rule 6 — Test Connection result surfaces as inline
+               panel, never snackbar. Test button moved to WizardActions
+               footer. *@
+            @if (_testResult is not null)
+            {
+                var success = _testResult.Success;
+                <MudAlert Severity="@(success ? Severity.Success : Severity.Error)"
+                          Variant="Variant.Outlined" Class="mt-3"
+                          data-testid="mqtt-test-connection-result">
+                    <MudStack Spacing="1">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small"
+                                     Color="@(success ? Color.Success : Color.Error)" />
+                            <MudText Typo="Typo.body2" Style="font-weight:500;">
+                                @(success ? "Broker reachable" : "Probe failed")
+                            </MudText>
+                            <MudSpacer />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@_testResult.ElapsedMs ms</MudText>
+                        </MudStack>
+                        @if (!success && _testResult.ErrorCode is not null)
+                        {
+                            <MudText Typo="Typo.caption"><strong>Error:</strong> @_testResult.ErrorCode</MudText>
+                            @if (_testResult.ErrorMessage is not null)
+                            {
+                                <MudText Typo="Typo.caption">@_testResult.ErrorMessage</MudText>
+                            }
+                            @if (_testResult.RemediationHint is not null)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    <em>Hint:</em> @_testResult.RemediationHint
+                                </MudText>
+                            }
+                        }
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ProbeId: @_testResult.ProbeId</MudText>
+                    </MudStack>
+                </MudAlert>
+            }
+        </WizardSection>
+
+        <WizardSection Index="3" Title="Authentication">
+            <MudRadioGroup T="MqttAuthenticationMode" @bind-Value="_model.Authentication">
+                <MudRadio T="MqttAuthenticationMode" Value="@MqttAuthenticationMode.None" Color="Color.Primary" Dense="true">
+                    None
+                    <span style="opacity:0.6;"> · anonymous connection (acceptable on a trusted OT VLAN)</span>
+                </MudRadio>
+                <MudRadio T="MqttAuthenticationMode" Value="@MqttAuthenticationMode.UsernamePassword" Color="Color.Primary" Dense="true">
+                    Username + password
+                </MudRadio>
+            </MudRadioGroup>
+            @if (_model.Authentication == MqttAuthenticationMode.UsernamePassword)
+            {
+                <MudGrid Spacing="2" Class="mt-2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.Username" Label="Username *"
+                                      Variant="Variant.Outlined"
+                                      UserAttributes="@AttrsFor("field-authentication.username")" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_model.Password" Label="Password *"
+                                      InputType="InputType.Password" Variant="Variant.Outlined"
+                                      UserAttributes="@AttrsFor("field-authentication.password")" />
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+
+        <WizardSection Index="4" Title="Topic policy">
+            <MudRadioGroup T="MqttPublishMode" @bind-Value="_model.PublishMode">
+                <MudRadio T="MqttPublishMode" Value="@MqttPublishMode.PerTag" Color="Color.Primary" Dense="true">
+                    Per tag
+                    <span style="opacity:0.6;"> · one MQTT message per data point — EREMOS V2 compatible</span>
+                </MudRadio>
+                <MudRadio T="MqttPublishMode" Value="@MqttPublishMode.Batch" Color="Color.Primary" Dense="true">
+                    Batch
+                    <span style="opacity:0.6;"> · JSON array per publish window</span>
+                </MudRadio>
+            </MudRadioGroup>
+            <MudGrid Spacing="2" Class="mt-2">
+                @if (_model.PublishMode == MqttPublishMode.PerTag)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_model.PerTagTopicTemplate"
+                                      Label="Per-tag topic template"
+                                      Variant="Variant.Outlined" Immediate="true"
+                                      UserAttributes="@AttrsFor("field-topic.per-tag-template")" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Live preview: <code>@RenderTopicPreview(_model.PerTagTopicTemplate, perTag: true)</code>
+                        </MudText>
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_model.BatchTopicTemplate"
+                                      Label="Batch topic template"
+                                      Variant="Variant.Outlined" Immediate="true"
+                                      UserAttributes="@AttrsFor("field-topic.batch-template")" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Live preview: <code>@RenderTopicPreview(_model.BatchTopicTemplate, perTag: false)</code>
+                        </MudText>
+                    </MudItem>
+                }
+                <MudItem xs="6" md="3">
+                    <MudNumericField @bind-Value="_model.QosLevel" Label="QoS"
+                                     Min="0" Max="1"
+                                     HelperText="0 = at most once, 1 = at least once. QoS 2 is not supported."
+                                     Variant="Variant.Outlined"
+                                     UserAttributes="@AttrsFor("field-topic.qos-level")" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudCheckBox @bind-Value="_model.RetainDefault" Color="Color.Primary" Dense="true" Class="mt-3">
+                        <MudText Typo="Typo.body2">Retain by default</MudText>
+                    </MudCheckBox>
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        @* Section 5: Routing — hidden in Edit mode (Edit never mutates routes). *@
+        @if (!_isEdit)
+        {
+            <WizardSection Index="5" Title="Routing">
+                <MudRadioGroup T="string" @bind-Value="_wiringChoice">
+                    <MudRadio T="string" Value="@("none")" Color="Color.Primary" Dense="true">
+                        Do not wire yet
+                        <span style="opacity:0.6;"> · destination is created disabled — wire it later</span>
+                    </MudRadio>
+                    <MudRadio T="string" Value="@("newRoute")" Color="Color.Primary" Dense="true">
+                        Create a new route now
+                    </MudRadio>
+                </MudRadioGroup>
+                @if (_wiringChoice == "newRoute")
+                {
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_routeId" Label="Route id *"
+                                          Variant="Variant.Outlined" Immediate="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_routeName" Label="Route name (optional)"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudSelect T="string" Label="Source *" @bind-Value="_routeSourceInstanceId"
+                                       Variant="Variant.Outlined"
+                                       HelperText="The new route pulls data from this source.">
+                                @foreach (var src in _currentConfig!.Sources)
+                                {
+                                    <MudSelectItem T="string" Value="@src.InstanceId">
+                                        @src.InstanceId · @src.ProtocolName
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        @if (_currentConfig!.Sources.Count == 0)
+                        {
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                                    No sources configured.
+                                    <MudLink Href="/sources/new" Underline="Underline.Always">Add a source →</MudLink>
+                                    before wiring a route.
+                                </MudAlert>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </WizardSection>
+        }
+
+        @* Draft / Edit summary — kept as outside-section MudPaper to differentiate it
+           visually from the numbered sections (this is the "review before save" surface). *@
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-2">@(_isEdit ? "Edit summary" : "Summary of changes")</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@(_isEdit ? "This will update:" : "When you save, EdgeConnect will:")</MudText>
+            <ul style="margin:0; padding-left:1.2rem;">
+                <li>
+                    <MudText Typo="Typo.body2">
+                        @(_isEdit ? "Update" : "Add") MQTT destination <strong>@(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not set)" : _model.InstanceId)</strong>
+                        @if (!string.IsNullOrWhiteSpace(_model.BrokerHost))
+                        {
+                            <span> — @_model.BrokerHost:@_model.BrokerPort @(_model.UseTls ? "(TLS)" : "")</span>
+                        }
+                    </MudText>
+                </li>
+                <li>
+                    <MudText Typo="Typo.body2">
+                        Publish mode: @_model.PublishMode, QoS @_model.QosLevel
+                    </MudText>
+                </li>
+                @if (!_isEdit)
+                {
+                    @if (_wiringChoice == "newRoute")
+                    {
+                        <li>
+                            <MudText Typo="Typo.body2">
+                                Create route <strong>@(string.IsNullOrWhiteSpace(_routeId) ? "(not set)" : _routeId)</strong>
+                                @if (!string.IsNullOrWhiteSpace(_routeSourceInstanceId))
+                                {
+                                    <span> — @_routeSourceInstanceId → @_model.InstanceId</span>
+                                }
+                            </MudText>
+                        </li>
+                    }
+                    else
+                    {
+                        <li>
+                            <MudText Typo="Typo.body2">
+                                Destination is created <strong>disabled</strong> (no route wired).
+                            </MudText>
+                        </li>
+                    }
+                }
+            </ul>
+        </MudPaper>
+    </ChildContent>
+    <Footer>
+        @* ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode. *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="TestConnectionAsync"
+                           SaveLabel="@(_isEdit ? "Save changes" : "Save changes")"
+                           TestConnectionLabel="@(_testBusy ? "Testing…" : "Test Connection")"
+                           CanSave="@CanSave()"
+                           Busy="@(_busy || _testBusy)" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode from SinkEditRouter.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Sink instance loaded by the router in Edit mode. Ignored in Add mode.</summary>
+    [Parameter] public SinkInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SinkInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    // Non-readonly — OnParametersSet reassigns in Edit mode.
+    private MqttSinkWizardModel _model = new();
+    private bool _hydrated;
+    private bool? _lastNotifiedValid;
+
+    private GatewayConfiguration? _currentConfig;
+    private string? _loadError;
+
+    // Identity validation
+    private string? _instanceIdError;
+    private HashSet<string> _existingSinkIds = new(StringComparer.Ordinal);
+
+    // Test Connection state
+    private bool _testBusy;
+    private MqttTestConnectionResultDto? _testResult;
+
+    // Routing
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _routeSourceInstanceId = string.Empty;
+
+    private bool _busy;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    /// <summary>
+    /// Build a MudBlazor UserAttributes dictionary that emits
+    /// <c>id="{idValue}"</c> on the underlying HTML input. ADR-0015 Rule 3
+    /// — field-anchor convention requires every validatable field to
+    /// carry a stable DOM id matching its FieldAnchor selector.
+    /// </summary>
+    private static Dictionary<string, object?> AttrsFor(string idValue) =>
+        new() { ["id"] = idValue };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            // Edit mode: router already loaded config; no need to load again.
+            // Routing section is hidden so available-sinks list unneeded.
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSinkIds = new HashSet<string>(
+                    _currentConfig.Sinks.Select(s => s.InstanceId), StringComparer.Ordinal);
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = MqttSinkWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnReloadAfterStale()
+    {
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Cancel.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sinks/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/destinations/new");
+    }
+
+    /// <summary>ADR-0016 Rule 4 — fire OnInstanceBuilt on validity transitions.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        if (_lastNotifiedValid == isValid) return;
+        _lastNotifiedValid = isValid;
+        SinkInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSinkInstance(); }
+            catch { instance = null; _lastNotifiedValid = false; }
+        }
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return; // immutable in edit mode
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSinkIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Sink '{_model.InstanceId}' already exists. Choose a different instance id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+    }
+
+    private string RenderTopicPreview(string template, bool perTag)
+    {
+        if (_currentConfig is null) return template;
+        var gatewayId = _currentConfig.Gateway?.GatewayId ?? "{gatewayId}";
+        var rendered = template
+            .Replace("{gatewayId}", gatewayId, StringComparison.Ordinal)
+            .Replace("{sourceId}", "demo-source", StringComparison.Ordinal)
+            .Replace("{routeId}", "demo-route", StringComparison.Ordinal)
+            .Replace("{deviceClass}", "cnc", StringComparison.Ordinal);
+        if (perTag)
+        {
+            rendered = rendered.Replace("{tagName}", "axes/x/absolute", StringComparison.Ordinal);
+        }
+        return rendered;
+    }
+
+    private bool CanTest()
+    {
+        if (string.IsNullOrWhiteSpace(_model.BrokerHost)) return false;
+        if (_model.BrokerPort < 1 || _model.BrokerPort > 65535) return false;
+        if (_model.ValidateAuthentication() is not null) return false;
+        return true;
+    }
+
+    private async Task TestConnectionAsync()
+    {
+        if (!CanTest()) return;
+        _testBusy = true;
+        _testResult = null;
+        try
+        {
+            var request = new MqttTestConnectionRequest
+            {
+                BrokerHost = _model.BrokerHost,
+                BrokerPort = _model.BrokerPort,
+                UseTls = _model.UseTls,
+                Username = _model.Authentication == MqttAuthenticationMode.UsernamePassword ? _model.Username : null,
+                Password = _model.Authentication == MqttAuthenticationMode.UsernamePassword ? _model.Password : null,
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sinks/test-connection/mqtt", request);
+            try
+            {
+                _testResult = await resp.Content.ReadFromJsonAsync<MqttTestConnectionResultDto>();
+            }
+            catch
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                // ADR-0016 Rule 3 — Snackbar suppressed in EmbeddedMode.
+                if (!EmbeddedMode) Snackbar.Add($"Test Connection failed: {raw}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test Connection failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testBusy = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (_model.ValidateBrokerHost() is not null) return false;
+        if (_model.ValidateBrokerPort() is not null) return false;
+        if (_model.ValidateAuthentication() is not null) return false;
+        if (_model.ValidateTopicTemplate() is not null) return false;
+        if (_model.ValidateQosLevel() is not null) return false;
+        if (_isEdit) return true; // Edit: no routing or dup-id check
+        if (_currentConfig is null) return false;
+        if (_instanceIdError is not null) return false;
+        if (_wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (string.IsNullOrWhiteSpace(_routeSourceInstanceId)) return false;
+        }
+        return true;
+    }
+
+    private Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save.
+        if (EmbeddedMode) return Task.CompletedTask;
+        return _isEdit ? SaveEditAsync() : SaveAsDraftAsync();
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSink = _model.BuildSinkInstance();
+            var body = new UpdateSinkRequestDto
+            {
+                SinkConfig = updatedSink,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sinks/{Uri.EscapeDataString(updatedSink.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add($"Destination '{updatedSink.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sinks/{Uri.EscapeDataString(updatedSink.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            SinkInstanceConfig newSink;
+            try
+            {
+                newSink = _model.BuildSinkInstance();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Snackbar.Add($"Cannot build destination: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            // "Do not wire yet" → force Enabled=false so the merger
+            // (and Core's startup validator) doesn't fault on an enabled-
+            // but-unrouted sink.
+            if (_wiringChoice == "none")
+            {
+                newSink = newSink with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig(),
+                    SinkInstanceIds: new[] { newSink.InstanceId },
+                    SourceInstanceId: _routeSourceInstanceId),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSinkDraft(_currentConfig, newSink, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            var body = new { configuration = newDraft, actor = "system" };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/config/drafts", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Draft creation rejected: {err}", Severity.Error);
+                return;
+            }
+
+            var created = await resp.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, string>>();
+            var newDraftId = created is { } d && d.TryGetValue("draftId", out var id) ? id : null;
+
+            Snackbar.Configuration.VisibleStateDuration = 10_000;
+            Snackbar.Add("Saved. Review and activate it on the Configuration page.", Severity.Success);
+
+            var target = newDraftId is not null
+                ? $"/config?new={Uri.EscapeDataString(newDraftId)}"
+                : "/config";
+            Nav.NavigateTo(target);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

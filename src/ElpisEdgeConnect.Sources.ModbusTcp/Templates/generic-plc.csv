@@ -1,0 +1,26 @@
+# generic-plc.csv
+#
+# Shape: plant-floor PLC (Schneider / AB / Siemens / Omron) exposed over
+# Modbus TCP. Tag semantics match what EREMOS V2 line-level monitoring
+# modules expect from a gatewayed PLC.
+#
+# Addresses start at 0 (zero-based logical). Vendor docs that show 40001 /
+# 30001 / 10001 notation must be converted before using this template.
+#
+# Copy this file, adjust addresses to match your specific PLC, and run:
+#   ModbusCsvImport --csv plc-line1.csv --output plc-line1.tags.json
+#
+name,unitId,registerClass,address,datatype,byteOrder,scanRateMs,scale,offset,unit,description
+running,1,Coil,0,bool,,250,,,,Line is in cycle
+fault_active,1,Coil,1,bool,,250,,,,Any active fault
+ready,1,Coil,2,bool,,250,,,,Ready-to-run interlock
+maintenance_mode,1,Coil,3,bool,,1000,,,,Operator in maintenance mode
+estop_active,1,DiscreteInput,0,bool,,250,,,,Emergency stop physically pressed
+guard_closed,1,DiscreteInput,1,bool,,250,,,,Main guard door is closed
+parts_count,1,HoldingRegister,100,uint32,CDAB,500,,,,Cumulative production counter
+shift_count,1,HoldingRegister,102,uint32,CDAB,1000,,,,Per-shift production counter
+cycle_time,1,HoldingRegister,110,float32,ABCD,500,,,s,Last cycle duration in seconds
+energy_kwh,1,HoldingRegister,120,float32,ABCD,5000,,,kWh,Energy consumed since boot
+motor_temperature,1,InputRegister,0,int16,,500,0.1,,C,Main motor winding temperature
+alarm_code,1,HoldingRegister,200,int16,,500,,,,Current top-priority alarm number
+part_id,1,HoldingRegister,300,string16,,2000,,,,Current part or job identifier

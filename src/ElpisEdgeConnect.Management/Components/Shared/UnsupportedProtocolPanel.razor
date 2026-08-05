@@ -1,0 +1,68 @@
+@*
+    UnsupportedProtocolPanel — read-only "this Studio build does not know
+    this protocol" panel for the M.2d.2 SourceEditRouter.
+
+    Rendered when the config carries a SourceInstanceConfig with a
+    ProtocolName that doesn't match any registered source adapter in
+    this Studio build (e.g. config authored by a newer Studio version
+    targeting a future protocol module).
+
+    Provides a raw JSON view + escape hatch to /config so the operator
+    can still inspect (and, via raw editor, modify) the source even
+    without a typed wizard.
+
+    Reference: docs/sessions/2026-05-22-m2d2-source-wizards-plan-v2.md §5.2
+*@
+
+<MudPaper Class="pa-6 my-4" Outlined="true" data-testid="unsupported-protocol-panel">
+    <MudStack Spacing="3">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Info" Size="Size.Large" />
+            <MudText Typo="Typo.h5">Unsupported protocol: <code>@ProtocolName</code></MudText>
+        </MudStack>
+
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            <strong>Source <code>@InstanceId</code> uses protocol <code>@ProtocolName</code>,
+            which this Studio build does not recognise.</strong>
+            This typically means the configuration was authored by a newer Studio
+            version that supports additional protocol modules. The source can still
+            run on a compatible gateway; you just can't edit it through a typed
+            wizard here.
+        </MudAlert>
+
+        @if (!string.IsNullOrEmpty(RawJson))
+        {
+            <MudText Typo="Typo.subtitle2">Raw configuration:</MudText>
+            <MudPaper Class="pa-3" Style="background: #f5f5f5;" Outlined="true">
+                <pre data-testid="unsupported-protocol-raw-json"
+                     style="margin:0; white-space:pre-wrap; word-break:break-all; font-family:monospace; font-size:0.85em;">@RawJson</pre>
+            </MudPaper>
+        }
+
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Href="/config"
+                       data-testid="unsupported-protocol-config-link">
+                Open raw config
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Href="/sources"
+                       data-testid="unsupported-protocol-back-link">
+                Back to sources
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>The unrecognised protocol name from the config.</summary>
+    [Parameter, EditorRequired] public string ProtocolName { get; set; } = string.Empty;
+
+    /// <summary>The source instance id.</summary>
+    [Parameter, EditorRequired] public string InstanceId { get; set; } = string.Empty;
+
+    /// <summary>Optional pre-formatted raw JSON view of the source.</summary>
+    [Parameter] public string? RawJson { get; set; }
+}

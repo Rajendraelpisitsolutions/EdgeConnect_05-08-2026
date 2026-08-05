@@ -1,0 +1,30 @@
+{
+  "csv": "./samples/sample-brother.csv",
+  "csvFingerprint": "5da1eb2d8b37d8506b16dcbe699ad3fb24af95ddf2aa272747bffcb29aa7b9bf",
+  "gatewayProvisioningId": "22222222-2222-2222-2222-222222222222",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "generatorVersion": "0.1.0",
+  "outputs": [
+    {
+      "configFingerprint": "bae6e2ad38005dacbd471130362d8c8727f53cf69760b012c4be9e7adc65b2e5",
+      "deviceId": "brother-001",
+      "file": "brother-001.gateway.json",
+      "sha256": "a819cbd2fdd739d0aae3bca2c8906b6efab18f4b42d5bdd9926377df62613fc4"
+    },
+    {
+      "configFingerprint": "1b34c4e62e14125820feda6c805d96946e8eda77ddd017417e53967098e85ce1",
+      "deviceId": "brother-002",
+      "file": "brother-002.gateway.json",
+      "sha256": "b4bd3c0cdcebe710704f153a5a75cd26de2303ff00cd03705a72493607eac88c"
+    },
+    {
+      "configFingerprint": "356afa9585b43d216bcc792e4a6e274e5b20f94c5a266e0ffa4a7c2136fa76b3",
+      "deviceId": "brother-003",
+      "file": "brother-003.gateway.json",
+      "sha256": "65821bb0dcde34c1e436f2c66f368387989dfdd9b2344107ae711553c96cd5f1"
+    }
+  ],
+  "sidecar": "./samples/sample-brother.gateway.yml",
+  "templateId": "template-brother",
+  "templateSchemaVersion": 1
+}

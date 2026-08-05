@@ -1,0 +1,43 @@
+<!--
+  ValidateConfig. Internal tool - validates a gateway.json against the
+  canonical configuration schema via NJsonSchemaConfigurationValidator.
+
+  Consumed by:
+    * tools/bulk-provision/generate.ps1 (Chip 3 generator) - invokes
+      this CLI inline via `dotnet run` (project flag pointing at
+      this csproj) during the validate stage. No PowerShell wrapper
+      layer; generate.ps1 calls directly.
+    * Operators invoking it directly during commissioning.
+
+  Reference: docs/sessions/2026-05-21-chip3-provisioning-subsystem-v3-reality-check.md §1.2
+             docs/decisions/0030-reserved-underscore-namespace.md
+
+  Usage (replace [DD] with two dashes; XML comment rules forbid the
+  literal sequence):
+    dotnet run [DD]project tools/ValidateConfig [DD] [path-to-gateway.json]
+
+  Exit codes:
+    0  Valid - no schema errors, no suspect roots
+    1  Schema-validation errors (printed to stderr)
+    2  File not found / unreadable
+    3  Unexpected internal error
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.ValidateConfig</RootNamespace>
+    <AssemblyName>ValidateConfig</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.SchemaValidation\ElpisEdgeConnect.SchemaValidation.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,1125 @@
+@*
+    Add / Edit Mitsubishi MELSEC source wizard (Slice 1 UI).
+
+    Two modes:
+      * Add  — @page "/sources/new/melsec" entry. BuildNewSourceDraft + drafts API.
+      * Edit — rendered from SourceEditRouter. PUT /api/v1/sources/{instanceId}.
+
+    MELSEC cannot self-describe, so this is a MANUAL tag-address editor (S7 / Modbus
+    playbook), not a browse flow. Per-tag scan rates drive polling. Address /
+    datatype validation goes through the REAL backend parser (MelsecSourceWizardModel
+    .ValidateTag → MelsecAddressParser / MelsecDatatypeParser) so a config the wizard
+    accepts never fails adapter Initialize for a deterministic reason.
+
+    Slice-1 locked scope (do NOT add UI for any of these):
+      * Protocol is FIXED: MC 3E binary over TCP, read-only. No protocol / frame /
+        transport dropdowns. A hand-edited unsupported mode (hydrated from an older
+        config) surfaces CONFIG_MODE_NOT_IMPLEMENTED in the banner and BLOCKS Save;
+        the operator resets it explicitly via "Reset to supported mode".
+      * Read-only: no writes, no UDP, no 4E / 1E, no ASCII, no browse, no demo mode,
+        no CSV import.
+      * Probes are the two real MELSEC endpoints (test-connection / test-read). Read
+        selected by default; "Read all valid" plans through the scan planner — invalid
+        tags are skipped and never sent. Raw word payload only behind Advanced.
+
+    Reference: docs/sessions/2026-07-01-melsec-wizard-ui-plan-v2.md
+*@
+@page "/sources/new/melsec"
+@using System.Linq
+@using System.Net
+@using ElpisEdgeConnect.Core.Adapters
+@using ElpisEdgeConnect.Sources.Melsec
+@using Microsoft.AspNetCore.Components.Web
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") Mitsubishi MELSEC source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.DeveloperBoard"
+             Title="@(_isEdit ? $"Edit Mitsubishi MELSEC source — {_model.InstanceId}" : "Add Mitsubishi MELSEC source")"
+             Subtitle="Enter the PLC connection details and the MELSEC device addresses to read. Examples: D100, D100.3, W1A, M20, ZR16384 — each address validates as you type."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Source">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Source id (immutable in Edit)" : "Source id *")"
+                              HelperText="@(_isEdit ? "Source id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Source name"
+                              HelperText="Shown across the Studio; defaults to the source id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="_model.Description" Label="Description (optional)"
+                              HelperText="e.g. iQ-R press controller on line 2."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="4">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("plc")">plc</MudSelectItem>
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("meter")">meter</MudSelectItem>
+                    <MudSelectItem Value="@("rtu")">rtu</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="PLC connection">
+        @* Fixed protocol summary — Slice 1 has no mode selectors by design. *@
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3"
+                  data-testid="melsec-protocol-summary">
+            <strong>MC 3E binary over TCP, read-only.</strong>
+            This release speaks a single, fixed protocol mode — there are no protocol,
+            frame, or transport options to choose.
+        </MudAlert>
+
+        @if (ModeUnsupported())
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-3"
+                      data-testid="melsec-mode-unsupported">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <div>
+                        <strong>This source was configured for a mode this release does not implement.</strong>
+                        <MudText Typo="Typo.body2">
+                            Transport <code>@_model.TransportProtocol</code>,
+                            frame <code>@_model.FrameMode</code>,
+                            profile <code>@_model.DeviceProfile</code>.
+                            Save is blocked until it is reset to the supported mode
+                            (TCP · MC 3E binary · Modern).
+                        </MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="text-transform:none;"
+                               OnClick="ResetMode" data-testid="melsec-reset-mode-btn">
+                        Reset to supported mode
+                    </MudButton>
+                </MudStack>
+            </MudAlert>
+        }
+
+        @* A-2O — PLC family profile radio tiles (approved mockup). Tiles iterate
+           the registry's operator-selectable set, so a profile appears here only
+           when its IsOperatorSelectable gate bit is flipped. *@
+        <MudText Typo="Typo.subtitle2" Style="font-weight:600;" Class="mb-2">PLC family profile</MudText>
+        <MudStack Row="true" Spacing="2" Class="mb-2" AlignItems="AlignItems.Stretch"
+                  role="radiogroup" aria-label="PLC family profile">
+            @foreach (var prof in MelsecSourceWizardModel.SelectableProfiles)
+            {
+                var key = prof.Key.ToString();
+                var selected = string.Equals(_model.DeviceProfile, key, StringComparison.OrdinalIgnoreCase);
+                @* Radio icon, radio behaviour — was click-only with no announced state. *@
+                <MudPaper Elevation="0" Class="pa-3" Style="@(TileStyle(selected))"
+                          data-testid="@($"melsec-profile-tile-{key}")"
+                          role="radio"
+                          tabindex="0"
+                          aria-checked="@(selected ? "true" : "false")"
+                          @onclick="@(() => SelectProfile(key))"
+                          @onkeydown="@((KeyboardEventArgs e) => { if (e.Key is "Enter" or " ") SelectProfile(key); })">
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@(selected ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)"
+                                 Size="Size.Small" Color="@(selected ? Color.Primary : Color.Default)" />
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@ProfileTileTitle(key)</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block; margin-top:4px;">
+                        @ProfileTileCopy(key)
+                    </MudText>
+                </MudPaper>
+            }
+        </MudStack>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;"
+                 data-testid="melsec-profile-helper">
+            @ProfileHelper()
+        </MudText>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="7">
+                <MudTextField @bind-Value="_model.Host" Label="PLC host / IP *"
+                              HelperText="IP address or hostname (e.g. 192.168.0.10)"
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.Port" Label="Port *" Min="1" Max="65535"
+                                 HelperText="MC/SLMP TCP port set on the PLC's Ethernet module."
+                                 Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1" Style="font-weight:500;">3E route header</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="display:block;">
+            Defaults address the local CPU over a direct Ethernet connection. Change only when
+            reaching a CPU across a network module (CC-Link IE / MELSECNET).
+        </MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.NetworkNo" Label="Network No." Min="0" Max="255"
+                                 HelperText="0x00–0xFF · default 0" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PcNo" Label="PC No." Min="0" Max="255"
+                                 HelperText="0x00–0xFF · default 0xFF (255)" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.RequestDestModuleIoNo" Label="Dest. module I/O No." Min="0" Max="65535"
+                                 HelperText="0x0000–0xFFFF · default 0x03FF (1023)" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.RequestDestModuleStationNo" Label="Dest. station No." Min="0" Max="255"
+                                 HelperText="0x00–0xFF · default 0" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+
+        <div role="status" aria-live="polite">
+        @if (_connProbe is null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3" Style="display:block;"
+                     data-testid="melsec-conn-not-tested">Not tested yet.</MudText>
+        }
+        else
+        {
+            <MudAlert Severity="@(_connProbe.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined" Class="mt-3" data-testid="melsec-probe-result">
+                @if (_connProbe.Success)
+                {
+                    <strong>@_connProbe.Message</strong>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">in @_connProbe.ElapsedMs ms.</MudText>
+                }
+                else
+                {
+                    <strong>Connection failed (@_connProbe.ErrorCode).</strong>
+                    <MudText Typo="Typo.body2">@_connProbe.Message</MudText>
+                }
+            </MudAlert>
+        }
+        </div>
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    Defaults are production-safe. Adjust only if your PLC documentation calls for non-standard values.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MonitoringTimerMs" Label="Monitoring timer (ms)"
+                                         Min="0" Max="63750" Variant="Variant.Outlined"
+                                         HelperText="Device-side timer (250 ms units)." />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.ConnectTimeoutMs" Label="Connect timeout (ms)"
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.RequestTimeoutMs" Label="Request timeout (ms)"
+                                         Min="100" Max="60000" Variant="Variant.Outlined"
+                                         HelperText="Must be ≥ the encoded monitoring timer." />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxTransactionRetries" Label="Max retries"
+                                         Min="0" Max="10" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.CircuitBreakerThreshold" Label="Breaker threshold"
+                                         Min="1" Max="50" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.CircuitBreakerResetMs" Label="Breaker reset (ms)"
+                                         Min="0" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)"
+                                         Min="0" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)"
+                                         Min="0" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxGapWords" Label="Max gap (words)"
+                                         Min="0" Max="960" Variant="Variant.Outlined"
+                                         HelperText="Planner coalescing gap." />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxPointsPerRequest" Label="Max points / request"
+                                         Min="1" Max="960" Variant="Variant.Outlined"
+                                         HelperText="Batch-read word cap (hard cap 960)." />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudSwitch @bind-Value="_model.KeepAlive" Label="Keep session alive" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="_includeRaw" Label="Include raw word payload in Test read (advanced)"
+                                   Color="Color.Primary" data-testid="melsec-include-raw" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                            Off by default. When on, the Test-read probe returns the raw word bytes per tag for
+                            protocol debugging. Raw bytes are never persisted and never appear in live diagnostics.
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="@($"Tags ({_model.Tags.Count})")">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddTag" Style="text-transform:none;">Add tag</MudButton>
+        </MudStack>
+
+        @if (_model.Tags.Count == 0)
+        {
+            <MudPaper Outlined="true" Class="pa-6" data-testid="melsec-empty-tags">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1">No tags yet.</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                        Add the first MELSEC address to read — it validates as you type.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add" OnClick="AddTag"
+                               Style="text-transform:none;" data-testid="melsec-add-first-tag">
+                        Add your first tag
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Bordered="false" Style="overflow:auto;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Datatype</th>
+                        <th>Scan interval (ms)</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < _model.Tags.Count; i++)
+                {
+                    var idx = i;
+                    var tag = _model.Tags[idx];
+                    var rowIssues = MelsecSourceWizardModel.ValidateTag(tag, _model.ResolvedProfile);
+                    var nameError = rowIssues.FirstOrDefault(iss => iss.Path == "Name");
+                    var addressError = rowIssues.FirstOrDefault(iss => iss.Path == "Address");
+                    var datatypeError = rowIssues.FirstOrDefault(iss => iss.Path == "Datatype");
+                    var scanError = rowIssues.FirstOrDefault(iss => iss.Path == "ScanRateMs");
+                    var parsedOk = !string.IsNullOrWhiteSpace(tag.Address)
+                                   && MelsecAddressParser.TryParse(tag.Address, _model.ResolvedProfile, out _, out _);
+                    var showWordOrder = MelsecSourceWizardModel.DatatypeUsesWordOrder(tag.Datatype);
+                    var selected = _selectedTagIndex == idx;
+                    <tr style="@(selected ? "background:var(--mud-palette-action-default-hover);" : null)"
+                        aria-selected="@(selected ? "true" : "false")"
+                        @onclick="@(() => SelectTag(idx))">
+                        <td>
+                            <MudTextField @bind-Value="tag.Name" Variant="Variant.Text" Margin="Margin.Dense"
+                                          Error="@(nameError is not null)" ErrorText="@nameError?.Message"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Tag name" })" />
+                        </td>
+                        <td>
+                            <MudTextField @bind-Value="tag.Address" DebounceInterval="350" Immediate="true"
+                                          Variant="Variant.Text" Margin="Margin.Dense"
+                                          Error="@(addressError is not null)" ErrorText="@addressError?.Message"
+                                          Class="mono"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "MELSEC address" })" />
+                            @if (addressError is null && parsedOk)
+                            {
+                                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-success);display:block;">
+                                    ✓ parses
+                                </MudText>
+                            }
+                        </td>
+                        <td>
+                            <MudSelect T="string" @bind-Value="tag.Datatype" Variant="Variant.Text" Margin="Margin.Dense" Clearable="true"
+                                       Error="@(datatypeError is not null)" ErrorText="@datatypeError?.Message"
+                                       UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Datatype" })">
+                                @foreach (var dt in MelsecSourceWizardModel.Datatypes)
+                                {
+                                    <MudSelectItem Value="@dt">@dt</MudSelectItem>
+                                }
+                            </MudSelect>
+                            @if (showWordOrder)
+                            {
+                                <MudSelect T="string" @bind-Value="tag.WordOrder" Variant="Variant.Text" Margin="Margin.Dense"
+                                           Label="Word order"
+                                           UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Word order" })">
+                                    @foreach (var wo in MelsecSourceWizardModel.WordOrders)
+                                    {
+                                        <MudSelectItem Value="@wo">@wo</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                        </td>
+                        <td>
+                            <MudNumericField @bind-Value="tag.ScanRateMs" Min="50" Max="600000" Step="50"
+                                             Variant="Variant.Text" Margin="Margin.Dense"
+                                             Error="@(scanError is not null)" ErrorText="@scanError?.Message"
+                                             UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Scan interval in milliseconds" })" />
+                        </td>
+                        <td>@RenderStatus(rowIssues.Count)</td>
+                        <td>
+                            <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                                <MudButton Variant="Variant.Text" Size="Size.Small" Style="text-transform:none;"
+                                           OnClick="@(() => ToggleMore(tag))">
+                                    @(_moreExpanded.Contains(tag) ? "Less" : "More")
+                                </MudButton>
+                                <MudTooltip Text="Remove tag">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                                   aria-label="@($"Remove tag {tag.Name}")"
+                                                   OnClick="@(() => RemoveTag(idx))" />
+                                </MudTooltip>
+                            </MudStack>
+                        </td>
+                    </tr>
+                    @if (_moreExpanded.Contains(tag))
+                    {
+                        <tr>
+                            <td></td>
+                            <td colspan="5">
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="4" md="3">
+                                        <MudTextField @bind-Value="tag.Unit" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="4" md="3">
+                                        <MudNumericField T="double?" @bind-Value="tag.Scale" Label="Scale" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="4" md="3">
+                                        <MudNumericField T="double?" @bind-Value="tag.Offset" Label="Offset" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                </MudGrid>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Style="text-transform:none;"
+                           Disabled="@(!CanTestReadSelected())" OnClick="TestReadSelectedAsync"
+                           data-testid="melsec-test-read-selected-btn">Read selected tag</MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Style="text-transform:none;"
+                           Disabled="@(!CanTestReadAll())" OnClick="TestReadAllAsync"
+                           data-testid="melsec-test-read-all-btn">Read all valid tags</MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@TestReadHint()</MudText>
+            </MudStack>
+
+            <div role="status" aria-live="polite">
+            @if (_readProbe is not null)
+            {
+                <MudAlert Severity="@(_readProbe.Success ? Severity.Success : Severity.Error)"
+                          Variant="Variant.Outlined" Dense="true" Class="mt-3" data-testid="melsec-read-result">
+                    <strong>@_readProbe.Message</strong>
+                </MudAlert>
+
+                @if (_readProbe.TagResults.Count > 0)
+                {
+                    <MudSimpleTable Dense="true" Bordered="false" Class="mt-2" data-testid="melsec-read-tag-results">
+                        <thead>
+                            <tr>
+                                <th>Tag</th>
+                                <th>Address</th>
+                                <th>Quality</th>
+                                <th>Value</th>
+                                <th>Detail</th>
+                                @if (_includeRaw) { <th>Raw (hex)</th> }
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var tr in _readProbe.TagResults)
+                        {
+                            <tr>
+                                <td>@tr.Name</td>
+                                <td class="mono">@tr.Address</td>
+                                <td>
+                                    <span style="color:@(tr.Quality == "Good" ? "var(--mud-palette-success)" : "var(--mud-palette-error)");font-weight:600;">
+                                        @tr.Quality
+                                    </span>
+                                </td>
+                                <td>@(tr.Value ?? "—")</td>
+                                <td>@(tr.EndCode is { } ec ? $"{ec} · {tr.Message}" : tr.Message)</td>
+                                @if (_includeRaw) { <td class="mono">@(tr.RawWordsHex ?? "—")</td> }
+                            </tr>
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+
+                @if (_readProbe.Blocks.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2" Style="display:block;">
+                        <strong>Planned read blocks (@_readProbe.Blocks.Count):</strong>
+                    </MudText>
+                    <ul style="margin:0.25rem 0 0; padding-left:1.4rem;" data-testid="melsec-planned-blocks">
+                    @foreach (var b in _readProbe.Blocks)
+                    {
+                        <li>
+                            <span class="mono">@b.Device@b.HeadDeviceNumber</span> ·
+                            @b.WordCount word(s) · @string.Join(", ", b.TagNames)
+                        </li>
+                    }
+                    </ul>
+                }
+
+                @if (_readProbe.Skipped.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2"
+                              data-testid="melsec-skipped-tags">
+                        <strong>@_readProbe.Skipped.Count tag(s) skipped as invalid — never sent to the PLC:</strong>
+                        <ul style="margin:0.25rem 0 0; padding-left:1.4rem;">
+                        @foreach (var s in _readProbe.Skipped)
+                        {
+                            <li><strong>@s.Name</strong> — @s.Message <code>(@s.Code)</code></li>
+                        }
+                        </ul>
+                    </MudAlert>
+                }
+            }
+            </div>
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="4" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route). Add a route later to activate it.
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route links this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
+                                      Label="Route id *"
+                                      HelperText="Auto-suggested from source id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId" Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+
+        <MudPaper Elevation="0" Class="pa-4 mb-3"
+                  Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+            <ul style="margin:0; padding-left:1.4rem;">
+                <li>
+                    <strong>Add source:</strong> @(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not yet named)" : _model.InstanceId)
+                    @if (!string.IsNullOrWhiteSpace(_model.Host)) { <text> (melsec, @_model.Host:@_model.Port)</text> }
+                    @if (_wiringChoice == "none") { <text> — </text><strong style="color:var(--mud-palette-warning);">created DISABLED</strong> }
+                    else { <text> — enabled</text> }
+                </li>
+                <li><strong>Define tags:</strong> @_model.Tags.Count</li>
+                <li>
+                    @if (_wiringChoice == "newRoute")
+                    {
+                        <strong>Create new route:</strong>
+                        @(string.IsNullOrWhiteSpace(_routeId) ? "(not yet named)" : _routeId)
+                        @if (_selectedSinkIds.Count > 0) { <text> · attaching to: @string.Join(", ", _selectedSinkIds)</text> }
+                    }
+                    else
+                    {
+                        <strong>Routes:</strong> <span>leave for later — source disabled until wired</span>
+                    }
+                </li>
+            </ul>
+        </MudPaper>
+    }
+
+    </ChildContent>
+    <Footer>
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="TestConnectionAsync"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in the Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    private MelsecSourceWizardModel _model = new();
+    private bool _hydrated;
+    private bool? _lastNotifiedValid;
+
+    // Routing UI state (Add mode only)
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    // Loaded context (Add mode)
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private bool _busy;
+
+    // Probe state (wizard-local, never persisted).
+    private MelsecProbeResultDto? _connProbe;
+    private MelsecProbeResultDto? _readProbe;
+    private int? _selectedTagIndex;
+    private readonly HashSet<MelsecTagWizardRow> _moreExpanded = new();
+    private bool _includeRaw;
+
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    private static readonly JsonSerializerOptions ProbeJson = new() { PropertyNameCaseInsensitive = true };
+
+    private bool ModeUnsupported()
+    {
+        var v = _model.Validate();
+        return v.Errors.Any(e => e.Code is "MELSEC.CONFIG_MODE_NOT_IMPLEMENTED" or "MELSEC.CONFIG_PROFILE_NOT_IMPLEMENTED");
+    }
+
+    private void ResetMode()
+    {
+        _model.NormalizeToSlice1();
+    }
+
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "melsec.instance-id.duplicate", "InstanceId", _instanceIdError, "#field-instance-id"));
+        }
+
+        var result = _model.Validate();
+        foreach (var issue in result.Errors)
+        {
+            messages.Add(new WizardValidationMessage(issue.Code, issue.Path ?? string.Empty, issue.Message, null));
+        }
+
+        return messages;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = MelsecSourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return;
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different source id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+
+        if (!_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void AddTag() => _model.Tags.Add(new MelsecTagWizardRow());
+
+    private void RemoveTag(int index)
+    {
+        if (index < 0 || index >= _model.Tags.Count) return;
+        var row = _model.Tags[index];
+        _moreExpanded.Remove(row);
+        _model.Tags.RemoveAt(index);
+        if (_selectedTagIndex == index) _selectedTagIndex = null;
+        else if (_selectedTagIndex > index) _selectedTagIndex--;
+    }
+
+    private void SelectTag(int index) => _selectedTagIndex = index;
+
+    private void ToggleMore(MelsecTagWizardRow row)
+    {
+        if (!_moreExpanded.Remove(row)) _moreExpanded.Add(row);
+    }
+
+    private static RenderFragment RenderStatus(int errorCount) => builder =>
+    {
+        string text; string color;
+        if (errorCount > 0) { text = "✗ Error"; color = "var(--mud-palette-error)"; }
+        else { text = "✓ Valid"; color = "var(--mud-palette-success)"; }
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "style", $"color:{color};font-weight:600;font-size:12px;");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private bool CanTestReadSelected()
+    {
+        if (_busy || _selectedTagIndex is not { } i || i < 0 || i >= _model.Tags.Count) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        return MelsecSourceWizardModel.ValidateTag(_model.Tags[i]).Count == 0;
+    }
+
+    private bool CanTestReadAll()
+    {
+        if (_busy || _model.Tags.Count == 0) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        // At least one tag must be valid — otherwise there is nothing to read.
+        return _model.Tags.Any(t => MelsecSourceWizardModel.ValidateTag(t).Count == 0);
+    }
+
+    private string TestReadHint()
+    {
+        if (_selectedTagIndex is { } i && i >= 0 && i < _model.Tags.Count)
+        {
+            var row = _model.Tags[i];
+            if (MelsecSourceWizardModel.ValidateTag(row).Count > 0)
+            {
+                return "The selected row has errors — fix them to read it.";
+            }
+            return $"Reads {row.Address} ({row.Name}) read-only; invalid tags are skipped, never sent.";
+        }
+        return "Select a row to read one tag, or read all valid tags. Read-only — does not save.";
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return _model.Validate().IsValid;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        if (_lastNotifiedValid == isValid) return;
+        _lastNotifiedValid = isValid;
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; _lastNotifiedValid = false; }
+        }
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+    // ── Probe request builders ─────────────────────────────────────────
+    private object ConnectionPayload() => new
+    {
+        host = _model.Host,
+        port = _model.Port,
+        networkNo = _model.NetworkNo,
+        pcNo = _model.PcNo,
+        requestDestModuleIoNo = _model.RequestDestModuleIoNo,
+        requestDestModuleStationNo = _model.RequestDestModuleStationNo,
+        monitoringTimerMs = _model.MonitoringTimerMs,
+        connectTimeoutMs = _model.ConnectTimeoutMs,
+        requestTimeoutMs = _model.RequestTimeoutMs,
+        profile = _model.DeviceProfile, // A-2O: UI always sends the selected profile
+    };
+
+    // ── A-2O profile tiles (copy approved with the mockup) ─────────────
+    private void SelectProfile(string key)
+    {
+        _model.DeviceProfile = key;
+        _readProbe = null; // planned blocks/validity depend on the profile
+    }
+
+    private static string TileStyle(bool selected) =>
+        selected
+            ? "flex:1; cursor:pointer; border:2px solid var(--mud-palette-primary); border-radius:8px; background:var(--mud-palette-primary-hover);"
+            : "flex:1; cursor:pointer; border:2px solid var(--mud-palette-lines-default); border-radius:8px;";
+
+    private static string ProfileTileTitle(string key) => key switch
+    {
+        "IqF" => "iQ-F / FX5",
+        _ => "Modern iQ-R/Q/L",
+    };
+
+    private static string ProfileTileCopy(string key) => key switch
+    {
+        "IqF" => "For FX5 CPU built-in Ethernet using MC 3E binary over TCP. Enter X/Y addresses as "
+                 + "FX5 / GX Works3 notation, for example X10. X/Y digits must be octal-style 0–7; "
+                 + "EdgeConnect converts to the binary head device number. ZR is not available on the FX5 CPU profile.",
+        _ => "For iQ-R, Q, and L series using MC 3E binary over TCP. X/Y/W/B/ZR addresses use hexadecimal notation.",
+    };
+
+    private string ProfileHelper() =>
+        string.Equals(_model.DeviceProfile, "IqF", StringComparison.OrdinalIgnoreCase)
+            ? "iQ-F / FX5 selected. X/Y example: X10 is the FX5 label for input point 8 (octal-style digits 0–7). "
+              + "ZR tags are not available on this profile — use R file registers instead. "
+              + "Devices: D, W, R, M, X, Y, B, SM, SD, SB, SW, TS/TC/TN, STS/STC/STN, CS/CC/CN. Max 960 words per read. "
+              + SpecialDeviceHint
+            : "Modern iQ-R/Q/L selected. X/Y/W/B/ZR device numbers are hexadecimal (e.g. X1F). "
+              + "Devices: D, W, R, ZR, M, X, Y, B, SM, SD, SB, SW, TS/TC/TN, STS/STC/STN, CS/CC/CN. Max 960 words per read. "
+              + SpecialDeviceHint;
+
+    // A-3a curated hint — deliberately minimal and manual-pinned (SM400 = RUN
+    // monitor, used in SH(NA)-082625ENG-J's own examples). This is helper text,
+    // not browse and not an in-UI device manual.
+    private const string SpecialDeviceHint =
+        "SM/SD are special system devices — use only documented addresses for your CPU "
+        + "(common example: SM400, RUN monitor). Verify against your PLC manual. "
+        + TimerCounterHint;
+
+    // A-3b — concise timer/counter mnemonic guidance (no table, no browse).
+    private const string TimerCounterHint =
+        "Timers/counters use explicit MELSEC mnemonics: TN for timer current value, "
+        + "TS for timer contact, TC for timer coil; STN/STS/STC for retentive timers; "
+        + "CN/CS/CC for counters. Bare T100/C100/ST100 is ambiguous and is not accepted.";
+
+    private object TagPayload(MelsecTagWizardRow t) => new
+    {
+        name = t.Name,
+        address = t.Address,
+        datatype = t.Datatype,
+        wordOrder = t.WordOrder,
+        scanRateMs = t.ScanRateMs,
+        scale = t.Scale,
+        offset = t.Offset,
+    };
+
+    private async Task TestConnectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Host)) return;
+        _busy = true;
+        _connProbe = null;
+        try
+        {
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/probe/melsec/test-connection", ConnectionPayload());
+            _connProbe = await resp.Content.ReadFromJsonAsync<MelsecProbeResultDto>(ProbeJson);
+            if (_connProbe is null && !EmbeddedMode)
+            {
+                Snackbar.Add($"Test connection failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test connection failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task TestReadSelectedAsync()
+    {
+        if (!CanTestReadSelected() || _selectedTagIndex is not { } i) return;
+        await RunReadAsync(new[] { _model.Tags[i] });
+    }
+
+    private async Task TestReadAllAsync()
+    {
+        if (!CanTestReadAll()) return;
+        await RunReadAsync(_model.Tags.ToArray());
+    }
+
+    private async Task RunReadAsync(IReadOnlyList<MelsecTagWizardRow> tags)
+    {
+        _busy = true;
+        _readProbe = null;
+        try
+        {
+            var conn = ConnectionPayload();
+            var request = new
+            {
+                host = _model.Host,
+                port = _model.Port,
+                networkNo = _model.NetworkNo,
+                pcNo = _model.PcNo,
+                requestDestModuleIoNo = _model.RequestDestModuleIoNo,
+                requestDestModuleStationNo = _model.RequestDestModuleStationNo,
+                monitoringTimerMs = _model.MonitoringTimerMs,
+                connectTimeoutMs = _model.ConnectTimeoutMs,
+                requestTimeoutMs = _model.RequestTimeoutMs,
+                maxGapWords = _model.MaxGapWords,
+                maxPointsPerRequest = _model.MaxPointsPerRequest,
+                includeRaw = _includeRaw,
+                profile = _model.DeviceProfile, // A-2O
+                tags = tags.Select(TagPayload).ToList(),
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/probe/melsec/test-read", request);
+            _readProbe = await resp.Content.ReadFromJsonAsync<MelsecProbeResultDto>(ProbeJson);
+            if (_readProbe is null && !EmbeddedMode)
+            {
+                Snackbar.Add($"Test read failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test read failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String && ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(raw, ProbeJson);
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Save failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(ProbeJson);
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status ? $" (reload: {status})" : string.Empty;
+            Snackbar.Add($"Source '{updatedSource.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

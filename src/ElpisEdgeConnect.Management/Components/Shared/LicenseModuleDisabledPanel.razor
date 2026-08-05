@@ -1,0 +1,51 @@
+@*
+    LicenseModuleDisabledPanel — read-only "this protocol module is not
+    licensed" panel for the M.2d.2 SourceEditRouter (and any future
+    feature gated on LicenseGate.IsModuleEnabled).
+
+    Rendered by SourceEditRouter when the requested protocol is known
+    to this Studio build but its license module is disabled. Mirrors
+    the LICENSE.MODULE_DISABLED error shape used by the probes.
+
+    Reference: docs/sessions/2026-05-22-m2d2-source-wizards-plan-v2.md §5.2
+*@
+
+<MudPaper Class="pa-6 my-4" Outlined="true" data-testid="license-module-disabled-panel">
+    <MudStack Spacing="3">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Warning" Size="Size.Large" />
+            <MudText Typo="Typo.h5">@ProtocolDisplayName module disabled</MudText>
+        </MudStack>
+
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+            <strong>Editing this source requires the @LicenseModuleKey license module.</strong>
+            The module is not currently enabled for this gateway, so the wizard cannot
+            modify the source. You can still inspect the configuration on the
+            <MudLink Href="/config" data-testid="license-disabled-config-link">Config page</MudLink>.
+        </MudAlert>
+
+        @if (!string.IsNullOrEmpty(InstanceId))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Surface">
+                Instance: <code>@InstanceId</code>
+            </MudText>
+        }
+
+        <MudText Typo="Typo.body2">
+            Contact your administrator to enable the <code>@LicenseModuleKey</code>
+            module in the gateway license. After it is activated, refresh this page
+            to resume editing.
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>License module key (e.g. "source-focas2"). Surfaced in copy + tests.</summary>
+    [Parameter, EditorRequired] public string LicenseModuleKey { get; set; } = string.Empty;
+
+    /// <summary>Operator-readable protocol name (e.g. "FOCAS2"). Used in the heading.</summary>
+    [Parameter, EditorRequired] public string ProtocolDisplayName { get; set; } = string.Empty;
+
+    /// <summary>The source instance id being edited; rendered for support correlation.</summary>
+    [Parameter] public string? InstanceId { get; set; }
+}

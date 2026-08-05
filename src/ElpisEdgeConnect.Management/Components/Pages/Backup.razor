@@ -1,0 +1,106 @@
+@*
+    Backup page (M.1c.3). One purpose: let an operator pull a
+    redacted, signed-audit-attached backup of the gateway as a single
+    zip download.
+
+    Restore is deliberately absent — lands in M.2a with the
+    configuration draft/apply pipeline. A placeholder card tells the
+    operator the workflow without claiming a capability the runtime
+    doesn't have yet.
+
+    The download is a plain anchor to /api/v1/backup with the
+    `download` attribute. The browser handles streaming, filename
+    (from Content-Disposition), and the "save as" dialog. No JS
+    gymnastics, no Blob handling.
+*@
+@page "/backup"
+
+<PageTitle>Backup · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.SettingsBackupRestore" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">Backup</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Download a complete backup of your gateway configuration, change history, and audit log.
+        </MudText>
+    </div>
+</MudStack>
+
+<MudGrid Spacing="3">
+    @* ---- Download card (the marquee) ---- *@
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                <MudIcon Icon="@Icons.Material.Filled.Archive" Size="Size.Medium" Color="Color.Primary" />
+                <MudText Typo="Typo.h6">Download backup</MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.body2" Class="mb-3">
+                The archive is a standard zip file containing:
+            </MudText>
+            <ul style="margin-top:0; padding-left:1.5rem;">
+                <li><strong>manifest.json</strong> — schema, redactions, checksums, gateway identity</li>
+                <li><strong>gateway.json</strong> — current configuration (secrets redacted)</li>
+                <li><strong>audit.log</strong> — full configuration audit trail (SHA-256 chained)</li>
+                <li><strong>history/*.json</strong> — every applied historical version (redacted)</li>
+            </ul>
+
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                <strong>Secrets are excluded from this export.</strong>
+                Properties matching common credential names (password, apiKey,
+                clientSecret, privateKey, certificate, …) are replaced with
+                <code>&lt;REDACTED&gt;</code> and listed by JSONPath in
+                <code>manifest.json</code>. Certificate files and key material
+                are <em>not</em> included in this backup type. Future
+                <code>configuration+certificates</code> exports will require
+                encryption.
+            </MudAlert>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton Href="/api/v1/backup"
+                           Target="_blank"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           Style="text-transform:none;">
+                    Download backup
+                </MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-flex align-center">
+                    Filename: <code class="ml-1">edgeconnect-backup-{gatewayId}-{ISO timestamp}.zip</code>
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    @* ---- Restore placeholder ---- *@
+    <MudItem xs="12" md="4">
+        <MudPaper Elevation="1" Class="pa-6" Style="height:100%;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.RestorePage" Size="Size.Medium" Color="Color.Default" />
+                <MudText Typo="Typo.h6">Restore</MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Restoring a backup lands in Milestone M.2a alongside the
+                configuration draft / apply / rollback pipeline. The Studio will
+                prompt you for redacted secret values during the restore flow,
+                using the per-file <code>redactions</code> map in the manifest
+                so each missing secret is requested in context.
+            </MudText>
+
+            <MudTooltip Text="Restore wizard lands in M.2a">
+                <span>
+                    <MudButton Variant="Variant.Outlined"
+                               Disabled="true"
+                               StartIcon="@Icons.Material.Filled.Upload"
+                               Class="mt-3"
+                               Style="text-transform:none;">
+                        Restore from backup
+                    </MudButton>
+                </span>
+            </MudTooltip>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

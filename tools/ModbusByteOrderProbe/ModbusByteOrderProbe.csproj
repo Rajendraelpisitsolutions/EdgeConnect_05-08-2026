@@ -1,0 +1,27 @@
+<!--
+  ModbusByteOrderProbe — operator commissioning aid. Reads N registers
+  from a Modbus TCP target and decodes the same bytes under every
+  supported byte order, printing a comparison table. Helps an
+  integrator pick the right `byteOrder` value for a tag without
+  guessing or trial-and-error config edits.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.ModbusByteOrderProbe</RootNamespace>
+    <AssemblyName>ModbusByteOrderProbe</AssemblyName>
+    <Description>Modbus byte-order commissioning probe — pick the right byteOrder for a tag.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1822;CA1848</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sources.ModbusTcp\ElpisEdgeConnect.Sources.ModbusTcp.csproj" />
+  </ItemGroup>
+
+</Project>

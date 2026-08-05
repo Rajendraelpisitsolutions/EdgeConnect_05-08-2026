@@ -1,0 +1,184 @@
+@implements IDisposable
+@inject NavigationManager Nav
+
+@*
+    Left navigation rail. One entry per major concept in the canonical
+    pipeline mental model, grouped so the operational screens an operator
+    uses hourly are separated from the system screens they visit rarely.
+
+    "Destinations" is the operator-facing label for the architectural
+    concept "sink." Core types (SinkInstanceConfig, SinkHealthSnapshot),
+    JSON keys (Sinks), and REST URLs (/api/v1/sinks) stay unchanged —
+    only what the operator reads is renamed. Industrial-automation
+    operators recognise Sources + Destinations + Routes; "sink" is a
+    data-streaming-engineering term and was confusing on smoke-test.
+
+    Visual treatment (Linear/Stripe pattern):
+       * Inactive tab: medium-grey text (#4B5563), no fill.
+       * Hover: very light blue tint (#EFF6FF).
+       * Active tab: light sky-blue fill + darker sky text. These are
+         MudButtons, not NavLinks, so there is no built-in ActiveClass —
+         NavClass() below derives it from the URL and css/site.css paints it.
+         The matching aria-current="page" carries the same fact to assistive
+         tech, which a background colour alone never did.
+
+    The rail carries its own collapse control rather than putting it in the
+    header: it belongs with the thing it collapses. The state itself lives in
+    MainLayout, because the content area and status bar are offset by the
+    rail's width and all three have to move together.
+*@
+<nav class="nav-menu d-flex" style="gap:4px;" aria-label="Main">
+
+    @* Mark and product name together at the head of the rail. There is no
+       header any more, so this is the only place the product is named. *@
+    <MudLink Href="/" Underline="Underline.None" Class="nav-brand">
+        <img src="img/elpis-logo.png" alt=""
+             onerror="this.style.display='none';" />
+        <span class="nav-brand-text">
+            <span class="nav-brand-name">EdgeConnect</span>
+            <span class="nav-brand-by">by Elpis</span>
+        </span>
+    </MudLink>
+
+    @* Collapse / expand. aria-expanded carries the state and the label flips
+       with it, so the control never announces the action it is not about to
+       perform. Title gives the same hint on hover once collapsed to an icon. *@
+    <button type="button"
+            class="nav-collapse-btn"
+            @onclick="@OnToggleCollapsed"
+            aria-expanded="@((!Collapsed).ToString().ToLowerInvariant())"
+            aria-label="@(Collapsed ? "Expand navigation" : "Collapse navigation")"
+            title="@(Collapsed ? "Expand navigation" : "Collapse navigation")"
+            data-testid="nav-toggle">
+        <MudIcon Icon="@(Collapsed ? Icons.Material.Filled.KeyboardDoubleArrowRight
+                                   : Icons.Material.Filled.KeyboardDoubleArrowLeft)"
+                 Size="Size.Small" aria-hidden="true" />
+        <span class="nav-collapse-label">Collapse</span>
+    </button>
+
+    <div class="nav-section-label" aria-hidden="true">Menu</div>
+
+    @foreach (var item in OperationalTabs)
+    {
+        @RenderTab(item)
+
+        @* ADR-0016 Q6 — Connect is the primary CTA, so it leads the rail
+           rather than sitting inline with the inventory tabs. *@
+        @if (item.Href == "/")
+        {
+            <MudTooltip Text="Guided setup — a source, a destination and the route between them, in one flow."
+                        Placement="Placement.Right">
+                <MudButton Href="/onboard" StartIcon="@Icons.Material.Filled.RocketLaunch"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="nav-btn"
+                           Style="text-transform:none; font-weight:500;"
+                           data-testid="nav-connect-a-device">
+                    Connect a device
+                </MudButton>
+            </MudTooltip>
+        }
+    }
+
+    <div class="nav-section-label" aria-hidden="true">System</div>
+
+    @foreach (var item in SystemTabs)
+    {
+        @RenderTab(item)
+    }
+</nav>
+
+@* One template for eleven tabs — the markup was identical eleven times over,
+   which is how a tooltip ends up on ten of them and not the eleventh.
+
+   The description earns its keep twice: collapsed, the rail is icons only and
+   the tooltip is the sole label; expanded, it says what the screen is FOR,
+   which a single noun like "Checklist" or "Bundle" never does. *@
+@code {
+    private RenderFragment RenderTab(NavTab tab) =>
+        @<MudTooltip Text="@tab.Description" Placement="Placement.Right">
+            <MudButton Href="@tab.Href" StartIcon="@tab.Icon"
+                       Variant="Variant.Text"
+                       Class="@NavClass(tab.Href)"
+                       aria-current="@AriaCurrent(tab.Href)"
+                       Style="color:#4B5563; text-transform:none; font-weight:500;"
+                       data-testid="@tab.TestId">
+                @tab.Label
+            </MudButton>
+        </MudTooltip>;
+}
+
+@code {
+    /// <summary>One rail entry: where it goes, and what the screen is for.</summary>
+    private sealed record NavTab(
+        string Href, string Icon, string Label, string Description, string? TestId = null);
+
+    private static readonly NavTab[] OperationalTabs =
+    [
+        new("/", Icons.Material.Filled.GridView, "Overview",
+            "Health of every route at a glance. Start here — anything broken is called out first."),
+        new("/sources", Icons.Material.Filled.Input, "Sources",
+            "Every device this gateway reads from, and whether each one is still reading."),
+        new("/sinks", Icons.Material.Filled.Output, "Destinations",
+            "Every system this gateway publishes to, and whether each one is keeping up."),
+        new("/routes", Icons.Material.Filled.Route, "Routes",
+            "Each data path: one source in, one or more destinations out."),
+        new("/diagnostics", Icons.Material.Filled.Troubleshoot, "Diagnostics",
+            "Recent events and faults, split by source, pipeline and destination."),
+        new("/checklist", Icons.Material.Filled.Checklist, "Checklist",
+            "Commissioning steps to confirm before handing this gateway over."),
+    ];
+
+    private static readonly NavTab[] SystemTabs =
+    [
+        new("/config", Icons.Material.Filled.Settings, "Config",
+            "The active configuration, pending drafts and version history."),
+        new("/backup", Icons.Material.Filled.SettingsBackupRestore, "Backup",
+            "Save the current configuration to a file, or restore one you saved earlier."),
+        new("/bundle", Icons.Material.Filled.Archive, "Diagnostic bundle",
+            "Collect logs and configuration into one file to send to Elpis support."),
+        new("/license", Icons.Material.Filled.Key, "License",
+            "Which edition this gateway runs, what it unlocks, and how long it stays valid.",
+            "nav-license"),
+    ];
+
+    /// <summary>True when the rail is showing icons only.</summary>
+    [Parameter] public bool Collapsed { get; set; }
+
+    /// <summary>Raised when the operator presses the collapse/expand control.</summary>
+    [Parameter] public EventCallback OnToggleCollapsed { get; set; }
+
+    // MudButton has no built-in active state (it is not a NavLink), so the
+    // current tab is derived from the URL here and surfaced as a CSS hook.
+    // A child route keeps its parent tab lit — /sources/Modbus/edit still
+    // highlights Sources.
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    private bool IsActive(string href)
+    {
+        var rel = Nav.ToBaseRelativePath(Nav.Uri);
+        var cut = rel.IndexOfAny(new[] { '?', '#' });
+        if (cut >= 0)
+        {
+            rel = rel.Substring(0, cut);
+        }
+        var path = "/" + rel.TrimEnd('/');
+
+        return href == "/"
+            ? path == "/"
+            : path.Equals(href, StringComparison.OrdinalIgnoreCase)
+              || path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string NavClass(string href) =>
+        IsActive(href) ? "nav-btn nav-btn-active" : "nav-btn";
+
+    // Null omits the attribute entirely in Blazor, which is what we want —
+    // aria-current="false" is not the same as absent to every screen reader.
+    private string? AriaCurrent(string href) => IsActive(href) ? "page" : null;
+}

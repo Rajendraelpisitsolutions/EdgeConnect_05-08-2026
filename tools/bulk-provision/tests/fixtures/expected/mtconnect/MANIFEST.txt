@@ -1,0 +1,6 @@
+# bulk-provision MANIFEST.txt
+# generator: tools/bulk-provision/generate.ps1 v0.1.0
+
+45a280e31abb0d8e13c23932a793f17ed1de3c3c76a3894b894040d8aab640cc  okuma-vmc-1.gateway.json
+380be25ac5597cfb934119b68119af27f51b24400926107ef99d5e5051722463  okuma-vmc-2.gateway.json
+29f7fec748034a582522c5e5cab1dc12a17bb4d25d99f1b56b9b6782c6cc42ba  okuma-lb-pro.gateway.json

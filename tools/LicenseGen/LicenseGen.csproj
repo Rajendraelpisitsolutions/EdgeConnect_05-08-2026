@@ -1,0 +1,32 @@
+<!--
+  LicenseGen. Internal tool to generate signed Elpis EdgeConnect licenses
+  and RSA keypairs. Not shipped to customers.
+  Reference: PHASE1_EXECUTION_PLAN.md Milestone B3.
+
+  Usage:
+    dotnet run project tools/LicenseGen keygen out keys/
+    dotnet run project tools/LicenseGen new
+        customer "ACME Corp" gateway "GW-001" edition Professional
+        expires 2027-04-07 private-key keys/private.pem out license.json
+
+  References Core for CanonicalJson + LicenseSignatureValidator so signer
+  and verifier can NEVER drift.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.LicenseGen</RootNamespace>
+    <AssemblyName>LicenseGen</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

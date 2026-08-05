@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Elpis EdgeConnect — WiX installer manifest.
+  Builds a per-machine x64 MSI that:
+    * installs the Management (Studio) and Host publish outputs under
+      "%ProgramFiles%\Elpis EdgeConnect\{Management,Host}"
+    * registers ElpisEdgeConnect.Management.exe as the auto-start Windows
+      service "ElpisEdgeConnect" — it runs the full data pipeline AND serves
+      the Studio UI on http://127.0.0.1:5080
+    * adds a Start Menu shortcut that opens the Studio UI in the browser
+    * OPTIONALLY adds a Desktop shortcut — a deselectable feature the user
+      toggles in the install wizard's feature tree (default: installed)
+    * shows a friendly install wizard (WixUI_FeatureTree) with the Elpis logo
+    * supports clean major-version upgrades and full uninstall
+
+  NOTE ON TOPOLOGY: Management is a superset of the headless Host (it runs the
+  same pipeline via EdgeConnectComposition PLUS the UI). Only ONE of them may
+  run as a service against a given data root, so the service points at
+  Management. Host.exe is still installed for optional manual/headless use but
+  is NOT registered as a service — do not run it while the service is running
+  (they would contend on the same SQLite buffers under C:\ProgramData\EdgeConnect).
+
+  Build (from repo root):
+    wix build installer/ElpisEdgeConnect.wxs -arch x64 \
+      -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext \
+      -bindpath "HostSrc=<root>/publish/Host" -bindpath "MgmtSrc=<root>/publish/Management" \
+      -o publish/ElpisEdgeConnect.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Elpis EdgeConnect"
+           Manufacturer="Elpis IT Solutions"
+           Version="$(Version)"
+           UpgradeCode="b7e2c1a4-9f3d-4c8e-8a21-5f6d7e8c9b01"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Elpis EdgeConnect — Industrial Edge Integration Platform" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Elpis EdgeConnect is already installed. Please uninstall it first." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Elpis logo icon — shown in Add/Remove Programs and reused for the
+         shortcuts. Path is relative to the repo root, where `wix build` is
+         invoked. -->
+    <Icon Id="ElpisIcon.ico" SourceFile="installer\elpis.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ElpisIcon.ico" />
+
+    <!-- Add/Remove Programs metadata -->
+    <Property Id="ARPCOMMENTS" Value="Protocol-agnostic industrial edge integration platform with management Studio." />
+    <Property Id="ARPCONTACT" Value="Elpis IT Solutions" />
+
+    <!-- ===== Install wizard UI ===== -->
+    <!-- WixUI_FeatureTree gives a Welcome -> License -> feature-selection
+         (Customize) -> Ready -> Install -> Finish flow. The feature tree is
+         where the operator turns the optional Desktop shortcut on or off. -->
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="installer\license.rtf" />
+
+    <!-- ===== Directory layout ===== -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Elpis EdgeConnect">
+        <Directory Id="MgmtDir" Name="Management" />
+        <Directory Id="HostDir" Name="Host" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuDir" Name="Elpis EdgeConnect" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+
+    <!-- ===== Management (Studio) — the auto-start service ===== -->
+    <ComponentGroup Id="ManagementComponents" Directory="MgmtDir">
+      <!-- Studio executable as an explicit component so ServiceInstall can
+           attach to it; the rest of the files are harvested. -->
+      <Component Id="StudioServiceExe" Guid="*">
+        <File Id="StudioExe"
+              Source="!(bindpath.MgmtSrc)\ElpisEdgeConnect.Management.exe"
+              KeyPath="yes" />
+        <ServiceInstall Id="StudioSvcInstall"
+                        Name="ElpisEdgeConnect"
+                        DisplayName="Elpis EdgeConnect"
+                        Description="Elpis EdgeConnect Industrial Edge Integration Platform and management Studio (UI at http://127.0.0.1:5080)."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes" />
+        <!-- Stop/remove: WAIT so the old exe is fully released before the
+             upgrade overwrites files (avoids file-in-use on version upgrade). -->
+        <ServiceControl Id="StudioSvcStop"
+                        Name="ElpisEdgeConnect"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+        <!-- Start: DO NOT WAIT. The Studio's first-run startup connects its
+             configured sinks/sources (e.g. an MQTT sink to a remote broker can
+             take up to its ~15s connect timeout), so the service can take ~20s
+             to reach "Running". Waiting for that during install exceeded the
+             installer's service-start window and failed the whole install with
+             MSI error 1920 (then rolled back, leaving the service stopped).
+             Starting without waiting lets the install complete immediately; the
+             service finishes coming up in the background. -->
+        <ServiceControl Id="StudioSvcStart"
+                        Name="ElpisEdgeConnect"
+                        Start="install"
+                        Wait="no" />
+      </Component>
+
+      <!-- Every other Studio file, minus build/dev artifacts that are not
+           needed at runtime: debug symbols (*.pdb), XML doc files (*.xml),
+           and the IIS-only web.config (this is a self-contained Windows
+           service, not an IIS-hosted app). Keeps the install lean. -->
+      <Files Include="!(bindpath.MgmtSrc)\**">
+        <Exclude Files="!(bindpath.MgmtSrc)\ElpisEdgeConnect.Management.exe" />
+        <Exclude Files="!(bindpath.MgmtSrc)\**\*.pdb" />
+        <Exclude Files="!(bindpath.MgmtSrc)\**\*.xml" />
+        <Exclude Files="!(bindpath.MgmtSrc)\web.config" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- ===== Host (headless variant) — files only, NOT a service ===== -->
+    <ComponentGroup Id="HostComponents" Directory="HostDir">
+      <Files Include="!(bindpath.HostSrc)\**">
+        <Exclude Files="!(bindpath.HostSrc)\**\*.pdb" />
+        <Exclude Files="!(bindpath.HostSrc)\**\*.xml" />
+        <Exclude Files="!(bindpath.HostSrc)\web.config" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- ===== Start Menu shortcut to the Studio UI ===== -->
+    <ComponentGroup Id="StartMenuComponents" Directory="AppMenuDir">
+      <Component Id="StudioShortcut" Guid="*">
+        <!-- IconFile points at the installed Management.exe, which embeds the
+             Elpis logo (ApplicationIcon), so the shortcut shows the Elpis logo
+             without shipping a separate .ico. -->
+        <util:InternetShortcut Id="StudioLink"
+                               Name="Elpis EdgeConnect Studio"
+                               Target="http://127.0.0.1:5080/"
+                               Type="url"
+                               IconFile="[#StudioExe]"
+                               IconIndex="0" />
+        <RemoveFolder Id="RemoveAppMenuDir" On="uninstall" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="StudioShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ===== OPTIONAL Desktop shortcut (deselectable feature) ===== -->
+    <ComponentGroup Id="DesktopShortcutComponents" Directory="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="*">
+        <util:InternetShortcut Id="DesktopStudioLink"
+                               Name="Elpis EdgeConnect Studio"
+                               Target="http://127.0.0.1:5080/"
+                               Type="url"
+                               IconFile="[#StudioExe]"
+                               IconIndex="0" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="DesktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ===== Features ===== -->
+    <!-- Main application is required (AllowAbsent="no") — the operator cannot
+         deselect the service/files. The Desktop shortcut is a separate,
+         deselectable feature the user toggles in the wizard's feature tree. -->
+    <Feature Id="MainApplication"
+             Title="Elpis EdgeConnect"
+             Description="The Elpis EdgeConnect service, Studio UI, and headless Host."
+             Level="1"
+             AllowAbsent="no"
+             Display="expand">
+      <ComponentGroupRef Id="ManagementComponents" />
+      <ComponentGroupRef Id="HostComponents" />
+      <ComponentGroupRef Id="StartMenuComponents" />
+    </Feature>
+
+    <Feature Id="DesktopShortcutFeature"
+             Title="Desktop shortcut"
+             Description="Add a shortcut to Elpis EdgeConnect Studio on the desktop."
+             Level="1">
+      <ComponentGroupRef Id="DesktopShortcutComponents" />
+    </Feature>
+
+  </Package>
+</Wix>

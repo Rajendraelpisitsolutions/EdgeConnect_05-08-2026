@@ -1,0 +1,111 @@
+@*
+    M.P2.2 phase 3 — Reload-outcome panel.
+
+    Thin binding shell over ReloadOutcomePanelModel. After a successful
+    Apply / Rollback, the host page sets [Outcome] from
+    ApplyResultDto.Reload; the panel hides itself entirely when Outcome
+    is null (per the locked UX distinction: null = no observation
+    surface available; InProgress = reconcile still running).
+
+    Observation only — no retry / rollback / re-apply buttons. The
+    architectural pin in §1 of the phase 3 plan v2 forbids feedback
+    from this surface back into runtime orchestration.
+*@
+
+@using ElpisEdgeConnect.Management.Contracts.Config
+
+@if (_model.Visible)
+{
+    <MudPaper Elevation="0" Outlined="true" Class="pa-4 mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Sync" Color="@StatusIconColor" />
+            <MudText Typo="Typo.subtitle1">
+                Reload outcome — <strong>@_model.Status</strong>
+            </MudText>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @_model.ElapsedMsDisplay · version <code>@(_model.Outcome?.NewVersionId)</code>
+            </MudText>
+        </MudStack>
+
+        @if (_model.IsInProgress)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                @ReloadOutcomePanelModel.InProgressMessage
+                <MudLink Href="/diagnostics" Class="ml-2">Open Diagnostics →</MudLink>
+            </MudAlert>
+        }
+        else if (_model.IsSkipped)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                @_model.SkippedMessage
+            </MudAlert>
+        }
+        else if (_model.IsCompleted)
+        {
+            @if (_model.AppliedInstances.Count > 0)
+            {
+                <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mt-2">
+                    <MudText Typo="Typo.body2" Class="mr-2">Applied:</MudText>
+                    @foreach (var id in _model.AppliedInstances)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@id</MudChip>
+                    }
+                </MudStack>
+            }
+            @if (_model.RestartedInstances.Count > 0)
+            {
+                <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                    <MudText Typo="Typo.body2" Class="mr-2">Restarted:</MudText>
+                    @foreach (var id in _model.RestartedInstances)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">@id</MudChip>
+                    }
+                </MudStack>
+            }
+            @if (_model.FaultedInstances.Count > 0)
+            {
+                <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                    <MudText Typo="Typo.body2" Class="mr-2">Faulted:</MudText>
+                    @foreach (var entry in _model.FaultedInstances)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="Color.Error"
+                                 Variant="Variant.Filled"
+                                 Href="@ReloadOutcomePanelModel.DiagnosticsHrefFor(entry.InstanceId)"
+                                 title="@($"{entry.ErrorCode}: {entry.Message}")">
+                            @entry.InstanceId
+                        </MudChip>
+                    }
+                </MudStack>
+            }
+            @if (_model.AppliedInstances.Count == 0
+                 && _model.RestartedInstances.Count == 0
+                 && _model.FaultedInstances.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                    No runtime work — this apply did not change any source / destination / route.
+                </MudText>
+            }
+        }
+    </MudPaper>
+}
+
+@code {
+    /// <summary>The outcome DTO from <c>ApplyResultDto.Reload</c>. Null hides the panel.</summary>
+    [Parameter] public ReloadOutcomeDto? Outcome { get; set; }
+
+    private ReloadOutcomePanelModel _model = new(null);
+
+    protected override void OnParametersSet()
+    {
+        _model = new ReloadOutcomePanelModel(Outcome);
+    }
+
+    private Color StatusIconColor =>
+        _model.IsCompleted ? Color.Success
+        : _model.IsInProgress ? Color.Warning
+        : _model.IsSkipped ? Color.Info
+        : Color.Default;
+}

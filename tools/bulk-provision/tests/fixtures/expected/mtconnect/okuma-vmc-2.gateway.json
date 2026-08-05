@@ -1,0 +1,93 @@
+{
+  "_provisioning": {
+    "configFingerprint": "f97a7370d38501636cf7a8f10aac806cce9bf7e156056ddac87c5e15ea18264b",
+    "csvFingerprint": "08258bca442eea72f28d891f8b94f81b4b45f5d511214bc4946d42ca832d48ae",
+    "fleetId": "fleet-acme",
+    "gatewayProvisioningId": "44444444-4444-4444-4444-444444444444",
+    "generatedAt": "2026-01-01T00:00:00Z",
+    "generatedBy": "tools/bulk-provision/generate.ps1",
+    "generatorVersion": "0.1.0",
+    "templateId": "template-mtconnect",
+    "templateSchemaVersion": 1
+  },
+  "Gateway": {
+    "GatewayId": "00000000-0000-0000-0000-000000000004",
+    "GatewayName": "edge-acme-site-d"
+  },
+  "Routes": [
+    {
+      "Buffer": {
+        "MaxAgeDays": 7,
+        "MaxDepth": 100000,
+        "Mode": "StoreAndForward",
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "BackoffMultiplier": 2.0,
+        "InitialBackoffMs": 100,
+        "JitterPercent": 10,
+        "MaxBackoffMs": 30000,
+        "MaxRetries": 100,
+        "Mode": "AtLeastOnce"
+      },
+      "Enabled": true,
+      "Name": "MTConnect CNCs to MQTT",
+      "RouteId": "route-mtconnect-44444444-4444-4444-4444-444444444444",
+      "SinkInstanceIds": [
+        "edge-acme-d-mqtt"
+      ],
+      "SourceInstanceId": "okuma-vmc-2-source"
+    }
+  ],
+  "Sinks": [
+    {
+      "Connection": {
+        "brokerHost": "127.0.0.1",
+        "brokerPort": 1883,
+        "clientId": "edge-acme-d-44444444-4444-4444-4444-444444444444",
+        "maxReconnectDelayMs": 30000,
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "publishMode": "PerTag",
+        "qosLevel": 1,
+        "reconnectDelayMs": 1000,
+        "useTls": false
+      },
+      "Enabled": true,
+      "InstanceId": "edge-acme-d-mqtt",
+      "ProtocolName": "mqtt"
+    }
+  ],
+  "Sources": [
+    {
+      "Connection": {
+        "agentBaseUrl": "http://192.168.10.52:5000/",
+        "backoffMultiplier": 2.0,
+        "dataPoints": [
+          "Program/MainProgram",
+          "Status/RunState",
+          "Axes/Position/Absolute",
+          "Axes/Position/Machine",
+          "Axes/FeedRate",
+          "Spindle/Speed",
+          "Spindle/Load",
+          "Alarms/Active",
+          "CycleTime",
+          "PartsCount"
+        ],
+        "degradeAfterConsecutiveFailures": 3,
+        "initialBackoffMs": 2000,
+        "maxBackoffMs": 60000,
+        "timeoutSeconds": 10
+      },
+      "DeviceClass": "cnc",
+      "DeviceId": "okuma-vmc-2",
+      "DeviceName": "Okuma-VMC-2",
+      "Enabled": true,
+      "InstanceId": "okuma-vmc-2-source",
+      "Polling": {
+        "IntervalMs": 3000
+      },
+      "ProtocolName": "mtconnect"
+    }
+  ]
+}

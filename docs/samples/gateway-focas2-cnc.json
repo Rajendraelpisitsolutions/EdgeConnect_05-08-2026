@@ -1,0 +1,81 @@
+{
+  "gateway": {
+    "gatewayId": "gw-line1-cnc-edge",
+    "gatewayName": "Line 1 CNC EdgeConnect"
+  },
+  "sources": [
+    {
+      "instanceId": "focas2-cnc01",
+      "protocolName": "focas2",
+      "deviceId": "CNC-01-Line1",
+      "deviceName": "Fanuc 30i-B, Line 1",
+      "deviceClass": "cnc",
+      "enabled": true,
+      "polling": {
+        "intervalMs": 1000
+      },
+      "connection": {
+        "ipAddress": "192.168.1.101",
+        "port": 8193,
+        "timeoutSeconds": 10,
+        "keepAlive": true,
+        "initialBackoffMs": 5000,
+        "maxBackoffMs": 120000,
+        "backoffMultiplier": 2.0,
+        "maxConnectRetries": 5,
+        "dataPoints": [
+          "Status/",
+          "Program/",
+          "Axes/",
+          "Spindle/",
+          "Alarms/",
+          "Production/",
+          "Tool/"
+        ]
+      }
+    }
+  ],
+
+  "sinks": [
+    {
+      "instanceId": "mqtt-eremos",
+      "protocolName": "mqtt",
+      "enabled": true,
+      "connection": {
+        "brokerHost": "20.197.8.189",
+        "brokerPort": 1883,
+        "clientId": "edgeconnect-gw-line1-cnc-edge",
+        "useTls": false,
+        "publishMode": "PerTag",
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "qosLevel": 0,
+        "reconnectDelayMs": 1000,
+        "maxReconnectDelayMs": 30000
+      }
+    }
+  ],
+
+  "routes": [
+    {
+      "routeId": "route-cnc01-to-eremos",
+      "name": "Line 1 CNC -> EREMOS (durable)",
+      "sourceInstanceId": "focas2-cnc01",
+      "sinkInstanceIds": [ "mqtt-eremos" ],
+      "enabled": true,
+      "buffer": {
+        "mode": "StoreAndForward",
+        "maxDepth": 100000,
+        "maxAgeDays": 7,
+        "onOverflow": "DropOldest"
+      },
+      "delivery": {
+        "mode": "AtLeastOnce",
+        "maxRetries": 100,
+        "initialBackoffMs": 100,
+        "maxBackoffMs": 30000,
+        "backoffMultiplier": 2.0,
+        "jitterPercent": 10
+      }
+    }
+  ]
+}

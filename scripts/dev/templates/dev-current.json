@@ -1,0 +1,32 @@
+{
+  "Gateway": {
+    "GatewayId": "dev-gateway",
+    "GatewayName": "Dev gateway",
+    "Site": "Local development",
+    "SiteId": "local-dev",
+    "Area": "Bay 1",
+    "AreaId": "bay-1",
+    "LogLevel": "Information",
+    "LicenseFile": ""
+  },
+  "Sources": [],
+  "Sinks": [
+    {
+      "InstanceId": "dev-mqtt",
+      "ProtocolName": "mqtt",
+      "Enabled": false,
+      "Connection": {
+        "brokerHost": "localhost",
+        "brokerPort": 1883,
+        "clientId": "edgeconnect-dev",
+        "useTls": false,
+        "publishMode": "PerTag",
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "qosLevel": 1,
+        "reconnectDelayMs": 1000,
+        "maxReconnectDelayMs": 30000
+      }
+    }
+  ],
+  "Routes": []
+}

@@ -1,0 +1,78 @@
+<!--
+  ElpisEdgeConnect.Sources.OpcUaClient: OPC UA Client source adapter
+  implementing ISourceAdapter. Subscribes to OPC UA Servers (FactoryTalk,
+  Kepware, Matrikon, vendor PLCs) via the OPC Foundation .NET Standard stack
+  and emits CanonicalDataPoints into the routing pipeline.
+
+  Per the multi-protocol pilot expansion plan v2.1 (locked 2026-05-28).
+  This is a SKELETON project introduced at milestone kickoff (2026-05-29) —
+  no adapter logic yet. The skeleton:
+    * sets the milestone marker visible in git log + solution explorer
+    * unblocks parallel streams (Browse infra, wizard work)
+    * lets the test project reference it from day one
+
+  Implementation arrives across weeks 1–5 per the plan trail:
+    Week 1 — stack-ceiling measurement + this skeleton + Core.Browse infra
+    Week 2 — session lifecycle + subscription factory + browse service
+    Week 3 — reconnect coordinator + type mapper + notification dispatcher
+    Week 4 — wizard + ReconfigureAsync override + integration tests
+    Week 5 — perf hardening + soak + QA
+
+  Reference: docs/sessions/2026-05-28-multi-protocol-pilot-plan-v2.1.md §1.1, §5.1
+             docs/sessions/2026-05-29-multi-protocol-pilot-expansion-kickoff.md §3 Stream 1+4
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.OpcUaClient</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.OpcUaClient</AssemblyName>
+    <Description>OPC UA Client source adapter for Elpis EdgeConnect — subscribes to OPC UA Servers via the OPC Foundation .NET Standard stack and emits canonical data points.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      Suppressed analyzer rules (match the pattern in the other source
+      adapters — Sources.ModbusTcp, Sources.BrotherHttp):
+        * CA1822 / CA1848 — performance-style suggestions that don't
+          materially affect this adapter's hot path
+        * CS0649 — fields _lastError / _lastSuccessAtUtc are deliberately
+          declared but not yet assigned at PR 1; PR 2 (Session lifecycle)
+          and PR 4 (NotificationDispatcher) populate them. Suppression
+          removed once those PRs land.
+    -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CS0649</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.OpcUaClient.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+    <!--
+      Castle DynamicProxy (NSubstitute's underlying proxy generator) needs
+      to see internal types to substitute them. Required for tests that
+      mock IOpcUaClientSessionFactory.
+    -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!--
+      The OPC Foundation .NET Standard stack. Already vendored by
+      Sinks.OpcUaServer; the Client API surface lives in the same NuGet
+      family. Version pinned to match the Sinks side (1.5.376.232) to
+      avoid double-vendoring and Microsoft.Extensions.Logging.Abstractions
+      package downgrades.
+    -->
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.376.232" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Configuration" Version="1.5.376.232" />
+  </ItemGroup>
+
+</Project>

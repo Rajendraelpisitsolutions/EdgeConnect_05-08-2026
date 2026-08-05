@@ -1,0 +1,792 @@
+@*
+    Sources list page. MudDataGrid with sortable columns —
+    integrators with 20+ PLCs jump here to see "is everything
+    actually polling?" at a glance.
+
+    Layout:
+       * Header row with title + tag count + "Add source" button
+         (wizard lands in M.2b; greyed out for now).
+       * DataGrid: instance ID · protocol · route · state · points
+         observed · last point · last error.
+       * Row click → /sources/{instanceId} for the detail view.
+       * Empty state when no sources are configured.
+
+    Polls /api/v1/sources every 3s via PeriodicTimer on the
+    interactive Blazor Server circuit (same pattern as Overview).
+*@
+@page "/sources"
+@using ElpisEdgeConnect.Management.Components.Shared
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IAsyncDisposable
+
+<PageTitle>Sources · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">Sources</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Every device this gateway reads from. A device counts as reading only if a new
+            value arrived in the last @OperatorFormat.DefaultStaleWindowText.
+        </MudText>
+    </div>
+    <MudSpacer />
+    <MudTooltip Text="Add many devices at once from a CSV file, instead of one at a time.">
+        <MudButton Href="/sources/bulk-import" Variant="Variant.Outlined" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Upload"
+                   Style="text-transform:none;"
+                   Class="mr-2">
+            Bulk import
+        </MudButton>
+    </MudTooltip>
+    <MudTooltip Text="Add one device by hand. Choose its protocol, then fill in its address and tags.">
+        <MudButton Href="/sources/new" Variant="@(_sources is { Length: 0 } ? Variant.Outlined : Variant.Filled)" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Style="text-transform:none;">
+            Add source
+        </MudButton>
+    </MudTooltip>
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="sources-load-error">
+        <MudText Typo="Typo.body2" Style="font-weight:600;">
+            Cannot reach the gateway — this list may be out of date.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Next: check the EdgeConnect service is running on this machine, then retry.
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;" Class="mt-1">
+            Details: @_loadError
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="mt-2"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="RefreshAsync"
+                   Style="text-transform:none;"
+                   data-testid="sources-load-error-retry">
+            Retry now
+        </MudButton>
+    </MudAlert>
+}
+else if (_sources is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_sources.Length == 0)
+{
+    <MudPaper Class="pa-8" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);"
+              data-testid="sources-empty-state">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No devices connected yet</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center"
+                     Style="max-width:34rem;">
+                A source is one machine this gateway reads from — a Modbus PLC, a FANUC or
+                Brother CNC, a Siemens S7 controller, an MTConnect machine. Connect one and
+                its live values start appearing here within seconds.
+            </MudText>
+            @* ADR-0016 Q3 — guided flow is the primary first-run CTA. The
+               existing standalone Add Source button stays as a secondary
+               action for power users who want to add one thing in isolation. *@
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-2">
+                <MudButton Href="/onboard"
+                           Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.RocketLaunch"
+                           Style="text-transform:none;"
+                           data-testid="sources-empty-state-connect">
+                    Connect a device
+                </MudButton>
+                <MudButton Href="/sources/new"
+                           Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Style="text-transform:none;">
+                    Add source only
+                </MudButton>
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-1">
+                <strong>Connect a device</strong> sets up source + destination + route in one flow.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudDataGrid T="SourceListItemDto"
+                 Items="@_sources"
+                 SortMode="SortMode.Multiple"
+                 Filterable="true"
+                 QuickFilter="@QuickFilter"
+                 Dense="true"
+                 Hover="true"
+                 Bordered="false"
+                 RowClick="@OnRowClick"
+                 RowStyleFunc="@RowStyleFunc"
+                 Elevation="1"
+                 Class="rounded-lg">
+        <ToolBarContent>
+            @* The bare count never told the operator what to look at. These
+               three chips split the fleet into "fine", "needs a look" and
+               "broken" before they read a single row. *@
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" data-testid="sources-summary">
+                <MudText Typo="Typo.subtitle2">
+                    @_sources.Length device@(_sources.Length == 1 ? "" : "s")
+                </MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                         Icon="@Icons.Material.Filled.CheckCircle"
+                         data-testid="sources-summary-reading">
+                    @ReadingCount() reading
+                </MudChip>
+                @if (NotReadingCount() > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning"
+                             Icon="@Icons.Material.Filled.PauseCircle"
+                             data-testid="sources-summary-not-reading">
+                        @NotReadingCount() not reading
+                    </MudChip>
+                }
+                @if (DownCount() > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                             Icon="@Icons.Material.Filled.Cancel"
+                             data-testid="sources-summary-down">
+                        @DownCount() disconnected
+                    </MudChip>
+                }
+            </MudStack>
+            <MudSpacer />
+            @* Immediate: without it @bind-Value only commits on blur, so typing
+               into the box did nothing at all until focus moved elsewhere — the
+               filter looked broken. The two wizard filters already set it; these
+               three did not. Debounce keeps it off the keystroke path on a list
+               of a few hundred rows. Clearable gives the operator the way back
+               that the "no matches" panel tells them to take. *@
+            <MudTextField @bind-Value="_searchText"
+                          Immediate="true"
+                          DebounceInterval="150"
+                          Clearable="true"
+                          Placeholder="Filter…"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Small"
+                          Margin="Margin.Dense"
+                          Variant="Variant.Outlined"
+                          aria-label="Filter this list"
+                          Style="max-width:280px;" />
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.Source.SourceInstanceId" Title="Device">
+                <CellTemplate>
+                    <MudLink Href="@($"/sources/{context.Item.Source.SourceInstanceId}")"
+                             Underline="Underline.Hover"
+                             Style="font-weight:500;">
+                        @context.Item.Source.SourceInstanceId
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            @* ── Action column (M.2b.6.1 Locked E + H two-column model).
+               Promoted to position 2 so the headline remediation surface is
+               always visible without horizontal scroll (post-smoke UX fix).
+               M.2d.2 step 11 added the inline Edit icon-button alongside
+               the Enable/Disable surface — same column, no horizontal-scroll
+               regression on default viewport widths. ── *@
+            <TemplateColumn Title="Action" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @{
+                        var id = context.Item.Source.SourceInstanceId;
+                        var configEnabled = ConfigEnabledFor(id);
+                    }
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        @if (configEnabled is null)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">—</MudText>
+                        }
+                        else if (configEnabled.Value)
+                        {
+                            @* Locked K.1 — Disable button at rest is NEVER solid red. *@
+                            <MudTooltip Text="Stop reading from this device. Its routes keep running but receive nothing new.">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                           OnClick="@(() => OpenToggleDrawer(id, desired: false))"
+                                           Style="text-transform:none;">
+                                    Disable
+                                </MudButton>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudTooltip Text="Start reading from this device again.">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => OpenToggleDrawer(id, desired: true))"
+                                           Style="text-transform:none;">
+                                    Enable
+                                </MudButton>
+                            </MudTooltip>
+                        }
+                        @* M.2d.2 step 11 — inline Edit. Icon-button keeps the
+                           action column dense; primary Edit surface lives on
+                           SourceDetail (Edit button in the header).
+                           Uses OnClick + stopPropagation so the MudDataGrid
+                           RowClick handler does not intercept the navigation. *@
+                        <MudTooltip Text="Edit this device's settings">
+                            <span @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Default"
+                                               aria-label="@($"Edit settings for {id}")"
+                                               OnClick="@(() => Nav.NavigateTo($"/sources/{Uri.EscapeDataString(id)}/edit"))"
+                                               data-testid="sources-row-edit-button" />
+                            </span>
+                        </MudTooltip>
+                        @* Delete — removes the source and any routes that read
+                           from it, via the audited draft → apply pipeline. Guarded
+                           by a confirmation dialog. stopPropagation keeps the row
+                           click (navigate to detail) from firing. *@
+                        <MudTooltip Text="Delete this device and any routes that carry its data">
+                            <span @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               aria-label="@($"Delete {id}")"
+                                               OnClick="@(() => ConfirmAndDeleteAsync(id))"
+                                               data-testid="sources-row-delete-button" />
+                            </span>
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Source.ProtocolName" Title="Protocol">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Color="Color.Default" Style="text-transform:none;">
+                        @context.Item.Source.ProtocolName
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.RouteId" Title="Route">
+                <CellTemplate>
+                    @if (context.Item.RouteId is { } rid)
+                    {
+                        <MudLink Href="@($"/routes/{rid}")" Underline="Underline.Hover">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@rid</MudText>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        @* Unwired source — operator chose "Do not wire yet". *@
+                        <MudTooltip Text="Values read from this device are not sent to any destination. Next: open Edit and choose where they should go.">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Not sent anywhere</MudText>
+                        </MudTooltip>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            @* ── The one question this page answers. Runtime state alone cannot
+               answer it: a source sits in "Running" while delivering nothing,
+               which is the failure operators most often read as healthy. The
+               verdict pairs state with data freshness, and never relies on
+               colour alone — icon + word + the raw state name. ── *@
+            <PropertyColumn Property="x => x.Source.StateName" Title="Reading?">
+                <CellTemplate>
+                    @{
+                        var src = context.Item.Source;
+                        var verdict = Verdict(src);
+                    }
+                    <MudTooltip Text="@($"{VerdictHelp(src)} (adapter state: {src.StateName})")">
+                        @* Verdict only. The raw adapter state ("Running") sat beside it
+                           and contradicted the verdict on the exact row that matters:
+                           a device reading nothing still reports Running, so the cell
+                           read "Not reading Running". The state is still in the hover
+                           text for anyone who needs it. *@
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center"
+                                  data-testid="sources-row-verdict">
+                            <MudIcon Icon="@VerdictIcon(verdict)" Size="Size.Small" Color="@VerdictColor(verdict)" />
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@VerdictLabel(verdict)</MudText>
+                        </MudStack>
+                    </MudTooltip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Source.PointsObserved" Title="Values read">
+                <CellTemplate>
+                    <MudTooltip Text="Total values read from this device since the gateway last started.">
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">
+                                @OperatorFormat.Count(context.Item.Source.PointsObserved)
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">values</MudText>
+                        </MudStack>
+                    </MudTooltip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Source.LastPointAtUtc" Title="Last read">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2"
+                             Color="@(OperatorFormat.IsStale(context.Item.Source.LastPointAtUtc) ? Color.Warning : Color.Secondary)"
+                             title="@OperatorFormat.Absolute(context.Item.Source.LastPointAtUtc)">
+                        @OperatorFormat.Ago(context.Item.Source.LastPointAtUtc)
+                    </MudText>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Source.LastErrorCode" Title="Last error">
+                <CellTemplate>
+                    @{
+                        var esrc = context.Item.Source;
+                        var errorIsOld = OperatorFormat.IsStale(esrc.LastErrorAtUtc);
+                    }
+                    @if (esrc.LastErrorCode is null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">None</MudText>
+                    }
+                    else if (errorIsOld)
+                    {
+                        @* Older than the freshness window: history, not a live fault.
+                           Painting it red made every recovered device look broken. *@
+                        <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                 title="@($"{esrc.LastErrorCode} · {OperatorFormat.Absolute(esrc.LastErrorAtUtc)}")"
+                                 data-testid="sources-row-error-past">
+                            Last error — @OperatorFormat.Ago(esrc.LastErrorAtUtc)
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center"
+                                  data-testid="sources-row-error-live">
+                            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" />
+                            <MudText Typo="Typo.body2" Color="Color.Error"
+                                     title="@esrc.LastErrorMessage">@esrc.LastErrorCode</MudText>
+                        </MudStack>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+        </Columns>
+        <NoRecordsContent>
+            @* Without this, filtering to zero rows leaves a bare grid with no
+               explanation and no way back. *@
+            <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="pa-6"
+                      data-testid="sources-no-matches">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Default" />
+                <MudText Typo="Typo.body2">No device matches <strong>@_searchText</strong>.</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Next: clear the filter box to see all @(_sources?.Length ?? 0) devices.
+                </MudText>
+            </MudStack>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+@* Confirm drawer (M.2b.6.1). Hidden until OpenToggleDrawer fires. *@
+<EnableDisableConfirmDrawer Model="@_drawerModel"
+                            OnPrimaryAction="@OnDrawerApply"
+                            OnCancelAction="@OnDrawerCancel" />
+
+@code {
+    private SourceListItemDto[]? _sources;
+    private string? _loadError;
+    private string _searchText = string.Empty;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    // M.2b.6.1 — config polled alongside runtime view so the Action column
+    // can show the operator's CONFIG-state Enable/Disable button (Locked H
+    // — config state and runtime state are operationally distinct surfaces).
+    private GatewayConfiguration? _currentConfig;
+    private string? _currentVersion;
+    private readonly EnableDisableConfirmDrawerModel _drawerModel = new();
+    private string? _focusedRowId;  // Locked C.1 — set from ?focus= query param
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadFocusQueryParam();
+        await RefreshAsync();
+    }
+
+    private void ReadFocusQueryParam()
+    {
+        // Locked C.1 deep-link form: /sources?focus=<id>. The drawer's
+        // cross-record blocker list emits this shape; the list page
+        // reads it here so the operator lands on the highlighted row.
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("focus", out var values) && !string.IsNullOrWhiteSpace(values))
+        {
+            _focusedRowId = values.ToString();
+        }
+    }
+
+    private string RowStyleFunc(SourceListItemDto item, int _) =>
+        string.Equals(item.Source.SourceInstanceId, _focusedRowId, StringComparison.Ordinal)
+            ? "background: var(--mud-palette-warning-hover);"
+            : string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected on dispose */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _sources = await HttpClient.GetFromJsonAsync<SourceListItemDto[]>("/api/v1/sources")
+                ?? Array.Empty<SourceListItemDto>();
+            // Config + version load is best-effort: a failure leaves the
+            // Action column showing "—" for that poll, but the runtime view
+            // still renders. Aligns with Locked H — runtime visibility never
+            // blocks on the config surface.
+            try
+            {
+                _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+                // Version is surfaced by the config endpoint via a separate
+                // header on some deployments; fall back to gateway id when
+                // not directly readable. Stale-view guard accepts null.
+                _currentVersion = null;
+            }
+            catch
+            {
+                _currentConfig = null;
+                _currentVersion = null;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { /* component torn down */ }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private bool? ConfigEnabledFor(string sourceId)
+    {
+        if (_currentConfig is null) return null;
+        foreach (var s in _currentConfig.Sources)
+        {
+            if (string.Equals(s.InstanceId, sourceId, StringComparison.Ordinal))
+            {
+                return s.Enabled;
+            }
+        }
+        return null;
+    }
+
+    // ─── Drawer wiring (M.2b.6.1) ───────────────────────────────────────
+
+    private void OpenToggleDrawer(string sourceId, bool desired)
+    {
+        if (_currentConfig is null) return;
+        // Plan locally so the drawer has the impact summary + dependents
+        // before the operator confirms. The API will re-plan server-side
+        // — this is for UX, not authority.
+        try
+        {
+            var plan = EnableDisablePlanner.Plan(_currentConfig, ConfigEntityKind.Source, sourceId, desired);
+            // NoOp pre-check (Locked F) — fire info snackbar and skip the drawer.
+            if (plan.Outcome == EnableDisablePlanOutcome.NoOp)
+            {
+                _drawerModel.Open(ConfigEntityKind.Source, sourceId, displayName: sourceId,
+                    desiredEnabled: desired, plan.Impact, _currentVersion);
+                Snackbar.Add(_drawerModel.NoOpSnackbarText, Severity.Info);
+                _drawerModel.TryDismiss();
+                return;
+            }
+            _drawerModel.Open(ConfigEntityKind.Source, sourceId, displayName: sourceId,
+                desiredEnabled: desired, plan.Impact, _currentVersion);
+            // For CrossRecordRefused, render the blockers inline immediately
+            // — the operator doesn't need to click Apply just to see the
+            // refusal that the planner already knows about.
+            if (plan.Outcome == EnableDisablePlanOutcome.CrossRecordRefused)
+            {
+                _drawerModel.BeginApply();
+                _drawerModel.RecordCrossRecord(plan.Blockers);
+            }
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add($"Source '{sourceId}' not found.", Severity.Error);
+        }
+    }
+
+    private async Task OnDrawerApply()
+    {
+        var verb = _drawerModel.DesiredEnabled ? "enable" : "disable";
+        var url = $"/api/v1/sources/{Uri.EscapeDataString(_drawerModel.InstanceId)}/{verb}";
+        try
+        {
+            var body = new EnableDisableRequestDto
+            {
+                ExpectedConfigurationVersion = _drawerModel.ExpectedConfigurationVersion,
+            };
+            var resp = await HttpClient.PostAsJsonAsync(url, body);
+            EnableDisableResponseDto? dto = null;
+            try { dto = await resp.Content.ReadFromJsonAsync<EnableDisableResponseDto>(); }
+            catch { /* leave dto null for the fallback path below */ }
+
+            if (dto is null)
+            {
+                _drawerModel.RecordValidationError($"Unexpected response ({(int)resp.StatusCode}).");
+                return;
+            }
+
+            switch (dto.Outcome)
+            {
+                case EnableDisableOutcome.Applied:
+                    _drawerModel.RecordApplied(dto.AuditRecordId ?? "");
+                    Snackbar.Add(_drawerModel.AppliedSnackbarText, Severity.Success);
+                    await RefreshAsync();
+                    break;
+                case EnableDisableOutcome.NoOp:
+                    Snackbar.Add(_drawerModel.NoOpSnackbarText, Severity.Info);
+                    _drawerModel.TryDismiss();
+                    break;
+                case EnableDisableOutcome.Conflict:
+                    if (dto.Error?.Code == "CONFIG.STALE_VIEW")
+                    {
+                        _drawerModel.RecordStaleView(dto.Error.CurrentVersion);
+                    }
+                    else if (dto.Error?.Code == "CONFIG.CROSS_RECORD_REFUSED")
+                    {
+                        var blockers = dto.Error.Dependents?.Select(d => new DependencyRef(
+                                Enum.TryParse<ConfigEntityKind>(d.Kind, ignoreCase: true, out var k) ? k : ConfigEntityKind.Source,
+                                d.Id,
+                                d.Name))
+                            .ToList() ?? new List<DependencyRef>();
+                        _drawerModel.RecordCrossRecord(blockers);
+                    }
+                    else
+                    {
+                        _drawerModel.RecordValidationError(dto.Error?.Message ?? "Conflict.");
+                    }
+                    break;
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _drawerModel.RecordTimeout();
+        }
+        catch (Exception ex)
+        {
+            _drawerModel.RecordValidationError(ex.Message);
+        }
+    }
+
+    private async Task OnDrawerCancel()
+    {
+        // If we cancelled from the stale-view banner, the operator clicked
+        // Refresh — repoll the list so the row reflects current truth.
+        if (_drawerModel.State == DrawerState.Closed)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    // ─── Delete wiring ──────────────────────────────────────────────────
+
+    private async Task ConfirmAndDeleteAsync(string sourceId)
+    {
+        // Surface the route cascade in the confirmation so the operator knows
+        // deleting the source also removes routes that read from it.
+        var affectedRoutes = _currentConfig?.Routes
+            .Where(r => string.Equals(r.SourceInstanceId, sourceId, StringComparison.Ordinal))
+            .Select(r => r.RouteId)
+            .ToList() ?? new List<string>();
+
+        // State the consequence before asking. "Delete source X?" told the
+        // operator nothing about what stops when they press Delete.
+        var message = affectedRoutes.Count > 0
+            ? $"Reading from '{sourceId}' stops immediately, and the {affectedRoutes.Count} route(s) "
+              + $"carrying its data are removed too ({string.Join(", ", affectedRoutes)}). "
+              + "Nothing is lost for good — you can roll back from Config → History."
+            : $"Reading from '{sourceId}' stops immediately and its settings are removed. "
+              + "Nothing is lost for good — you can roll back from Config → History.";
+
+        var confirmed = await DialogService.ShowMessageBox(
+            title: $"Stop reading and delete '{sourceId}'?",
+            message: message,
+            yesText: "Delete device",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            await DeleteSourceAsync(sourceId);
+        }
+    }
+
+    private async Task DeleteSourceAsync(string sourceId)
+    {
+        try
+        {
+            var resp = await HttpClient.DeleteAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(sourceId)}?actor=studio-ui");
+
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Source '{sourceId}' deleted.", Severity.Success);
+            }
+            else if ((int)resp.StatusCode == 404)
+            {
+                Snackbar.Add($"Source '{sourceId}' no longer exists.", Severity.Info);
+            }
+            else if ((int)resp.StatusCode == 409)
+            {
+                Snackbar.Add(
+                    $"Could not delete '{sourceId}': the configuration changed or failed validation. Refresh and retry.",
+                    Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add("Could not delete this device — it is unchanged and still running. Reload the page and try again; if it repeats, check Diagnostics.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+
+        await RefreshAsync();
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<SourceListItemDto> args)
+    {
+        if (args.Item is { Source: { SourceInstanceId: var id } })
+        {
+            Nav.NavigateTo($"/sources/{id}");
+        }
+    }
+
+    private bool QuickFilter(SourceListItemDto item)
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return true;
+        var q = _searchText.Trim();
+        return item.Source.SourceInstanceId.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || item.Source.ProtocolName.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || (item.RouteId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || item.Source.StateName.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || (item.Source.LastErrorCode?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    // ─── "Is this device connected and reading?" ─────────────────────────
+    // Runtime state alone cannot answer that, so the verdict pairs adapter
+    // state with data freshness (OperatorFormat.IsStale, 5 min):
+    //   reading  — state fine, a value arrived inside the window
+    //   stalled  — state fine, nothing inside the window (the misread state)
+    //   never    — state fine, no value has ever arrived
+    //   down     — the source is stopped or faulted
+    //   off      — deliberately disabled
+    // State names match the SourceInventoryBuilder.State* constants; drift
+    // surfaces as "Unknown" rather than as a wrong claim.
+    private static string Verdict(RouteSourceSummaryDto s)
+    {
+        if (s.StateName == "Disabled") return "off";
+        if (s.StateName is "Stopped" or "Failed" or "Faulted") return "down";
+        if (s.LastPointAtUtc is null) return "never";
+        return OperatorFormat.IsStale(s.LastPointAtUtc) ? "stalled" : "reading";
+    }
+
+    private static string VerdictLabel(string v) => v switch
+    {
+        "reading" => "Reading",
+        "stalled" => "Not reading",
+        "never" => "No data yet",
+        "down" => "Disconnected",
+        "off" => "Disabled",
+        _ => "Unknown",
+    };
+
+    private static Color VerdictColor(string v) => v switch
+    {
+        "reading" => Color.Success,
+        "stalled" => Color.Warning,
+        "never" => Color.Warning,
+        "down" => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static string VerdictIcon(string v) => v switch
+    {
+        "reading" => Icons.Material.Filled.CheckCircle,
+        "stalled" => Icons.Material.Filled.PauseCircle,
+        "never" => Icons.Material.Filled.HourglassEmpty,
+        "down" => Icons.Material.Filled.Cancel,
+        "off" => Icons.Material.Filled.Block,
+        _ => Icons.Material.Filled.Info,
+    };
+
+    // Every hover ends in a next step — a symptom on its own just sends the
+    // operator off to find someone who knows.
+    private static string VerdictHelp(RouteSourceSummaryDto s)
+    {
+        var v = Verdict(s);
+        if (v == "reading")
+        {
+            return $"Last value {OperatorFormat.Ago(s.LastPointAtUtc)} ({OperatorFormat.Absolute(s.LastPointAtUtc)}).";
+        }
+        if (v == "stalled")
+        {
+            return $"Connected, but the last value arrived {OperatorFormat.Ago(s.LastPointAtUtc)}. "
+                 + "Next: check the machine is powered and on the network, then open Edit and confirm its tag list.";
+        }
+        if (v == "never")
+        {
+            return "Connected, but no value has ever arrived. "
+                 + "Next: open Edit and check the device address, then the tag addresses.";
+        }
+        if (v == "off")
+        {
+            return "Reading is switched off for this device. Next: press Enable in this row.";
+        }
+        var fault = FaultedTooltip(s);
+        return (fault is null ? "" : fault + " ")
+             + "Next: check power, cabling and network to the device, then open Edit to verify its address.";
+    }
+
+    private int ReadingCount() => _sources?.Count(x => Verdict(x.Source) == "reading") ?? 0;
+    private int NotReadingCount() => _sources?.Count(x => Verdict(x.Source) is "stalled" or "never") ?? 0;
+    private int DownCount() => _sources?.Count(x => Verdict(x.Source) == "down") ?? 0;
+
+    // Tooltip text for the State chip when the source is Faulted.
+    // Locked format: "{ErrorCode}: {Message}" — no kind prefix
+    // (no "Configuration fault" vs "Runtime fault") so operator
+    // vocabulary stays uniform across config and runtime origins.
+    private static string? FaultedTooltip(RouteSourceSummaryDto src)
+    {
+        if (src.StateName != "Faulted" && src.StateName != "Failed") return null;
+        if (src.LastErrorCode is null) return null;
+        if (src.LastErrorMessage is null) return src.LastErrorCode;
+        return $"{src.LastErrorCode}: {src.LastErrorMessage}";
+    }
+
+    // Ages come from Components/Shared/OperatorFormat so this list and the
+    // detail page can never disagree about how old a reading is. The local
+    // FormatLastPoint copy that used to sit here has been removed.
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

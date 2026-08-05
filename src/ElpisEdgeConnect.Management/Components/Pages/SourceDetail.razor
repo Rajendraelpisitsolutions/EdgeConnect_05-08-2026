@@ -1,0 +1,415 @@
+@*
+    Sources detail page (one source). Header strip with status,
+    cards for Activity / Last error / Route context, plus
+    forward-pointers for surfaces that land in later sub-milestones
+    (Tag editor in M.2c, Try Read in M.2b wizards).
+
+    URL pattern: /sources/{sourceInstanceId}
+*@
+@page "/sources/{SourceInstanceId}"
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>@(_data?.Source.SourceInstanceId ?? SourceInstanceId) · Sources · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudTooltip Text="Back to Sources">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/sources"))"
+                       Size="Size.Small"
+                       aria-label="Back to the Sources list"
+                       data-testid="source-detail-back-button" />
+    </MudTooltip>
+    <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">@(_data?.Source.SourceInstanceId ?? SourceInstanceId)</MudText>
+        @if (_data is not null)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @_data.Source.ProtocolName
+                @if (_data.RouteId is { } rid)
+                {
+                    <text> · on route </text>
+                    <MudLink Href="@($"/routes/{rid}")" Underline="Underline.Hover" Class="ml-1">
+                        @rid
+                    </MudLink>
+                }
+                else
+                {
+                    <text> · not on any route</text>
+                }
+            </MudText>
+        }
+    </div>
+    <MudSpacer />
+    @if (_data is not null)
+    {
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            @* M.2d.2 step 11 — primary entry point to Edit mode. Resolves
+               via SourceEditRouter, which dispatches to the protocol-
+               specific wizard (focas2 / brother-http / modbustcp) or one
+               of the three non-happy-path panels. *@
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       Href="@($"/sources/{Uri.EscapeDataString(SourceInstanceId)}/edit")"
+                       Style="text-transform:none;"
+                       data-testid="source-detail-edit-button">
+                Edit
+            </MudButton>
+            @* A coloured dot carries no meaning without colour, and the state
+               name alone does not say whether data is arriving. Icon + verdict
+               + the raw state name, in that order. *@
+            <MudChip T="string"
+                     Color="@VerdictColor(Verdict(_data.Source))"
+                     Variant="Variant.Text"
+                     Icon="@VerdictIcon(Verdict(_data.Source))"
+                     title="@($"Adapter state: {_data.Source.StateName}")"
+                     data-testid="source-detail-state-chip">
+                @VerdictLabel(Verdict(_data.Source))
+            </MudChip>
+        </MudStack>
+    }
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" data-testid="source-detail-load-error">
+        <MudText Typo="Typo.body2" Style="font-weight:600;">
+            Cannot reach the gateway — what you see below may be out of date.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Next: check the EdgeConnect service is running on this machine, then retry.
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;" Class="mt-1">
+            Details: @_loadError
+        </MudText>
+    </MudAlert>
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" data-testid="source-detail-not-found">
+        <MudText Typo="Typo.body2" Style="font-weight:600;">
+            <code>@SourceInstanceId</code> is not in this gateway's configuration.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            It was deleted, or the link you followed is out of date. Nothing is being read
+            from it, and no data is being lost right now.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Next: go back to Sources to see the devices that do exist, or connect this one again.
+        </MudText>
+        <MudStack Row="true" Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/sources"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Style="text-transform:none;">
+                Back to Sources
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Href="/onboard"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       Style="text-transform:none;">
+                Connect a device
+            </MudButton>
+        </MudStack>
+    </MudAlert>
+}
+else if (_data is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @* ── The headline answer, before any card: is this device connected AND
+       reading? State alone lies — a source can sit in "Running" and have
+       delivered nothing for an hour. ── *@
+    <MudAlert Severity="@VerdictSeverity(Verdict(_data.Source))"
+              Variant="Variant.Outlined"
+              Icon="@VerdictIcon(Verdict(_data.Source))"
+              Class="mb-4"
+              data-testid="source-detail-verdict">
+        <MudText Typo="Typo.body1" Style="font-weight:600;">
+            @VerdictHeadline(_data.Source)
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            @VerdictNextStep(_data.Source)
+        </MudText>
+    </MudAlert>
+
+    <MudGrid Spacing="3">
+        @* ---- Activity ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.QueryStats" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Activity</MudText>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Values read</MudText>
+                        <MudText Typo="Typo.h6" data-testid="source-detail-points">
+                            @OperatorFormat.Count(_data.Source.PointsObserved)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            values, since the gateway last started
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Last read</MudText>
+                        <MudText Typo="Typo.h6"
+                                 Color="@(OperatorFormat.IsStale(_data.Source.LastPointAtUtc) ? Color.Warning : Color.Default)"
+                                 data-testid="source-detail-last-point">
+                            @OperatorFormat.Ago(_data.Source.LastPointAtUtc)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @(_data.Source.LastPointAtUtc is null
+                                ? "nothing received yet"
+                                : OperatorFormat.Absolute(_data.Source.LastPointAtUtc))
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Last error — live fault vs. old news ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                @{
+                    var errCode = _data.Source.LastErrorCode;
+                    var errIsOld = OperatorFormat.IsStale(_data.Source.LastErrorAtUtc);
+                }
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@(errCode is null
+                                       ? Icons.Material.Filled.CheckCircle
+                                       : (errIsOld ? Icons.Material.Filled.History : Icons.Material.Filled.Error))"
+                             Size="Size.Small"
+                             Color="@(errCode is null ? Color.Success : (errIsOld ? Color.Default : Color.Error))" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;" data-testid="source-detail-error-title">
+                        @(errCode is null
+                            ? "No errors"
+                            : (errIsOld ? "Last error — not current" : "Live error"))
+                    </MudText>
+                </MudStack>
+                @if (errCode is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        This device has reported no errors since the gateway last started.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" data-testid="source-detail-error-code">
+                        <strong>@errCode</strong>
+                        <span title="@OperatorFormat.Absolute(_data.Source.LastErrorAtUtc)">
+                            · @OperatorFormat.Ago(_data.Source.LastErrorAtUtc)
+                        </span>
+                    </MudText>
+                    @if (_data.Source.LastErrorMessage is { } msg)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">@msg</MudText>
+                    }
+                    <MudText Typo="Typo.body2" Class="mt-2"
+                             Color="@(errIsOld ? Color.Secondary : Color.Default)">
+                        @(errIsOld
+                            ? $"Older than {OperatorFormat.DefaultStaleWindowText} and not repeating — history, not a live fault. Nothing to do unless it comes back."
+                            : "Next: check the device is powered and reachable on the network, then open Edit to verify its address and tag list.")
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- MELSEC diagnostics (observational; only for MELSEC sources) ---- *@
+        @if (string.Equals(_data.Source.ProtocolName, "melsec", StringComparison.Ordinal))
+        {
+            <MudItem xs="12">
+                <MelsecDiagnosticsPanel SourceInstanceId="@SourceInstanceId" />
+            </MudItem>
+        }
+
+        @* ---- Tags + Test (forward-pointers) ---- *@
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Tags</MudText>
+                </MudStack>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Tags are the individual addresses this device is read from, and the names
+                    its values are published under. A read-only tag table and a single-tag live
+                    test are not available yet — until then, Edit is where you add, remove and
+                    rename tags.
+                </MudText>
+                <MudStack Row="true" Spacing="2" Class="mt-3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Href="@($"/sources/{Uri.EscapeDataString(SourceInstanceId)}/edit")"
+                               Style="text-transform:none;"
+                               data-testid="source-detail-tags-edit-button">
+                        Edit tags
+                    </MudButton>
+                    <MudTooltip Text="Not available yet — reading one tag on demand lands in a later release.">
+                        <span>
+                            <MudButton Variant="Variant.Outlined" Disabled="true"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                                       Style="text-transform:none;">
+                                Try Read
+                            </MudButton>
+                        </span>
+                    </MudTooltip>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string SourceInstanceId { get; set; } = string.Empty;
+
+    private SourceListItemDto? _data;
+    private string? _loadError;
+    private bool _notFound;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _data = null;
+        _loadError = null;
+        _notFound = false;
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            using var resp = await HttpClient.GetAsync($"/api/v1/sources/{Uri.EscapeDataString(SourceInstanceId)}");
+            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+                _data = null;
+            }
+            else
+            {
+                resp.EnsureSuccessStatusCode();
+                _data = await resp.Content.ReadFromJsonAsync<SourceListItemDto>();
+                _notFound = false;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    // ─── "Is this device connected and reading?" ─────────────────────────
+    // Same vocabulary as the Sources list, so a row and its detail page can
+    // never disagree. Adapter state alone cannot answer the question: a
+    // source can sit in "Running" and have delivered nothing for an hour.
+    // The freshness window comes from OperatorFormat.IsStale.
+    private static string Verdict(RouteSourceSummaryDto s)
+    {
+        if (s.StateName == "Disabled") return "off";
+        if (s.StateName is "Stopped" or "Failed" or "Faulted") return "down";
+        if (s.LastPointAtUtc is null) return "never";
+        return OperatorFormat.IsStale(s.LastPointAtUtc) ? "stalled" : "reading";
+    }
+
+    private static string VerdictLabel(string v) => v switch
+    {
+        "reading" => "Reading",
+        "stalled" => "Not reading",
+        "never" => "No data yet",
+        "down" => "Disconnected",
+        "off" => "Disabled",
+        _ => "Unknown",
+    };
+
+    private static Color VerdictColor(string v) => v switch
+    {
+        "reading" => Color.Success,
+        "stalled" => Color.Warning,
+        "never" => Color.Warning,
+        "down" => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static string VerdictIcon(string v) => v switch
+    {
+        "reading" => Icons.Material.Filled.CheckCircle,
+        "stalled" => Icons.Material.Filled.PauseCircle,
+        "never" => Icons.Material.Filled.HourglassEmpty,
+        "down" => Icons.Material.Filled.Cancel,
+        "off" => Icons.Material.Filled.Block,
+        _ => Icons.Material.Filled.Info,
+    };
+
+    private static Severity VerdictSeverity(string v) => v switch
+    {
+        "reading" => Severity.Success,
+        "stalled" => Severity.Warning,
+        "never" => Severity.Warning,
+        "down" => Severity.Error,
+        _ => Severity.Normal,
+    };
+
+    private static string VerdictHeadline(RouteSourceSummaryDto s) => Verdict(s) switch
+    {
+        "reading" => $"Connected and reading — last value {OperatorFormat.Ago(s.LastPointAtUtc)}",
+        "stalled" => $"Connected — but not reading. Last value {OperatorFormat.Ago(s.LastPointAtUtc)}",
+        "never" => "Connected — but no value has ever arrived",
+        "down" => $"Not connected — {s.StateName}",
+        "off" => "Reading is switched off for this device",
+        _ => $"State: {s.StateName}",
+    };
+
+    // Every fault states its next step. A symptom on its own just sends the
+    // operator off to find someone who knows.
+    private static string VerdictNextStep(RouteSourceSummaryDto s) => Verdict(s) switch
+    {
+        "reading" => "Nothing to do.",
+        "stalled" => "Next: check the machine is powered and on the network. If it is, open Edit and confirm its tag list still matches the machine.",
+        "never" => "Next: open Edit and check the device address first, then the tag addresses — one wrong address stops every read.",
+        "down" => s.LastErrorMessage is null
+            ? "Next: check power, cabling and network to the device, then open Edit to verify its address."
+            : $"{s.LastErrorCode}: {s.LastErrorMessage}. Next: check power, cabling and network, then open Edit to verify its address.",
+        "off" => "Next: enable this device from the Sources list to start reading again.",
+        _ => "Next: open Edit to review this device's settings.",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

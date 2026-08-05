@@ -1,0 +1,39 @@
+<!--
+  ElpisEdgeConnect.SchemaValidation
+  Production library that provides JSON Schema generation and validation for
+  ElpisEdgeConnect.Core.Configuration records. Wraps NJsonSchema so that the
+  Core assembly stays free of external package dependencies.
+
+  Owners:
+    - ConfigurationSchemaFactory: single source of truth for the schema
+      generation settings (string enums, additionalProperties=true) shared
+      with the SchemaGen CLI tool and the schema round-trip tests.
+    - NJsonSchemaConfigurationValidator: implements
+      ElpisEdgeConnect.Core.Configuration.IConfigurationSchemaValidator and
+      validates raw JSON against the generated schema. Used by the
+      ConfigurationManager when loading config files from disk.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.SchemaValidation</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.SchemaValidation</AssemblyName>
+    <Description>JSON Schema generation and validation for Elpis EdgeConnect configuration records</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NJsonSchema" Version="11.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

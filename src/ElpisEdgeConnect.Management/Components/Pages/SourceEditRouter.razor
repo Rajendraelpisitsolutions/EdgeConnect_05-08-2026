@@ -1,0 +1,416 @@
+@*
+    SourceEditRouter — single resolver page for /sources/{instanceId}/edit.
+
+    M.2d.2 v2 §5.1 — Blazor route ambiguity fix: protocol-specific wizards
+    keep only their /sources/new/<protocol> route. Edit mode lives here,
+    and this component dispatches to the right wizard component (or one
+    of three non-happy-path panels) by inspecting the loaded source's
+    ProtocolName.
+
+    Four-branch UX matrix (§5.2):
+       1. RenderWizard      — protocol known + licensed + wizard present
+       2. LicenseDisabled   — protocol known, license module disabled
+       3. UnknownProtocol   — ProtocolName not recognised in this Studio build
+       4. WizardMissing     — protocol registered but no Razor wizard
+                              (future case for protocols where adapter ships
+                              before wizard; not reachable today)
+
+    Hydration precedence (§5.3): draft if a pending draft modifies THIS
+    source, else current. Banner copy locked in §5.3.
+
+    Optimistic concurrency (§5.5): captures CurrentVersionId at hydration
+    time as BaseVersionId for the eventual save-collision check.
+
+    Steps 8-10 (wizard shell adoption) flesh out the RenderWizard branch.
+    This component lands first with the four-state dispatch + the three
+    non-happy-path panels fully functional, and a placeholder for the
+    happy-path until the wizards become edit-mode-aware.
+
+    Reference: docs/sessions/2026-05-22-m2d2-source-wizards-plan-v2.md §5.1-§5.3
+*@
+
+@page "/sources/{InstanceId}/edit"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Components.Pages.SourceWizards
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ILogger<SourceEditRouter> Logger
+
+<PageTitle>Edit source · Connectivity Studio</PageTitle>
+
+@if (_loadState == LoadState.Loading)
+{
+    <MudPaper Class="pa-6 my-4" data-testid="source-edit-loading">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <MudText>Loading source <code>@InstanceId</code>…</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else if (_loadState == LoadState.NotFound)
+{
+    <MudPaper Class="pa-6 my-4" Outlined="true" data-testid="source-edit-not-found">
+        <MudStack Spacing="3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h5">Source not found</MudText>
+            </MudStack>
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                No source named <code>@InstanceId</code> exists in the current configuration.
+                It may have been deleted by another session, or the link you followed is stale.
+            </MudAlert>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Href="/sources"
+                       data-testid="source-edit-back-link">
+                Back to sources
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else if (_loadState == LoadState.LoadError)
+{
+    <MudPaper Class="pa-6 my-4" Outlined="true" data-testid="source-edit-load-error">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            <strong>Failed to load source.</strong> @_loadErrorMessage
+        </MudAlert>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadAsync"
+                   Class="mt-3">
+            Retry
+        </MudButton>
+    </MudPaper>
+}
+else if (_loadState == LoadState.Loaded && _source is not null)
+{
+    @* Banner — draft-vs-current hydration source (§5.3) *@
+    @if (_hydratedFromDraft)
+    {
+        <MudAlert Severity="Severity.Warning"
+                  Variant="Variant.Outlined"
+                  Class="my-3"
+                  data-testid="hydration-source-banner-draft">
+            <strong>Editing pending draft configuration</strong> — changes from draft
+            <code>@_hydratedDraftId</code> are loaded.
+            Discard the draft to edit the running configuration instead.
+        </MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info"
+                  Variant="Variant.Outlined"
+                  Class="my-3"
+                  data-testid="hydration-source-banner-current">
+            <strong>Editing runtime configuration</strong> — version
+            <code>@_baseVersionId</code>.
+        </MudAlert>
+    }
+
+    @* Dispatch by UX state §5.2 *@
+    @switch (_uxState)
+    {
+        case UxState.RenderWizard:
+            @* Render the actual wizard with EditMode + HydratedConfig. Steps
+               8-10 of M.2d.2 landed the per-wizard adoption; the
+               ProtocolsWithEditWizard set (below) MUST stay in sync with
+               this switch — the pinned-scope test enforces it. *@
+            var editCtx = EditModeContext.Edit(_source.InstanceId, _baseVersionId ?? "unknown");
+            <div data-testid="render-wizard-active">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                    BaseVersionId: <code data-testid="base-version-id">@_baseVersionId</code>
+                </MudText>
+                @switch (_source.ProtocolName)
+                {
+                    case "focas2":
+                        <AddFocas2Source EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "brother-http":
+                        <AddBrotherHttpSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "modbustcp":
+                    case "modbusrtu":
+                        <AddModbusSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "opcua-client":
+                        <AddOpcUaClientSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "mtconnect":
+                        <AddMTConnectSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "s7":
+                        <AddS7Source EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "ethernetip":
+                        <AddEthernetIpSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    case "melsec":
+                        <AddMelsecSource EditMode="@editCtx" HydratedConfig="@_source" />
+                        break;
+                    default:
+                        @* Defensive — ProtocolsWithEditWizard should keep this
+                           branch unreachable. If hit, falls through to the
+                           wizard-missing UX. *@
+                        <WizardNotAvailablePanel
+                            ProtocolName="@_source.ProtocolName"
+                            ProtocolDisplayName="@ProtocolDisplayNameFor(_source.ProtocolName)"
+                            InstanceId="@_source.InstanceId" />
+                        break;
+                }
+            </div>
+            break;
+
+        case UxState.LicenseDisabled:
+            <LicenseModuleDisabledPanel
+                LicenseModuleKey="@LicenseModuleKeyFor(_source.ProtocolName)"
+                ProtocolDisplayName="@ProtocolDisplayNameFor(_source.ProtocolName)"
+                InstanceId="@_source.InstanceId" />
+            break;
+
+        case UxState.UnknownProtocol:
+            <UnsupportedProtocolPanel
+                ProtocolName="@_source.ProtocolName"
+                InstanceId="@_source.InstanceId"
+                RawJson="@_sourceRawJson" />
+            break;
+
+        case UxState.WizardMissing:
+            <WizardNotAvailablePanel
+                ProtocolName="@_source.ProtocolName"
+                ProtocolDisplayName="@ProtocolDisplayNameFor(_source.ProtocolName)"
+                InstanceId="@_source.InstanceId" />
+            break;
+    }
+}
+
+@code {
+    /// <summary>Source instance id from the URL route parameter.</summary>
+    [Parameter] public string InstanceId { get; set; } = string.Empty;
+
+    private LoadState _loadState = LoadState.Loading;
+    private string? _loadErrorMessage;
+    private UxState _uxState;
+    private SourceInstanceConfig? _source;
+    private string? _baseVersionId;
+    private bool _hydratedFromDraft;
+    private string? _hydratedDraftId;
+    private string? _sourceRawJson;
+
+    /// <summary>
+    /// Set of protocol names this Studio build knows how to render a wizard for.
+    /// Steps 8-10 confirm "edit-mode-aware" status for each. New entries here
+    /// when future wizard adoptions land (OPC UA, S7, MTConnect editing).
+    /// Lowercased to match ProtocolName casing.
+    /// </summary>
+    internal static readonly IReadOnlySet<string> ProtocolsWithEditWizard =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "focas2",
+            "brother-http",
+            "modbustcp",
+            "modbusrtu",
+            "opcua-client",
+            "mtconnect",
+            "s7",
+            "ethernetip",
+            "melsec",
+        };
+
+    /// <summary>
+    /// Set of protocol names registered as source adapters in this Studio build.
+    /// Used to discriminate "Unknown" (not in this set) from "WizardMissing"
+    /// (in this set but not in ProtocolsWithEditWizard).
+    /// </summary>
+    internal static readonly IReadOnlySet<string> RegisteredSourceProtocols =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "focas2",
+            "brother-http",
+            "modbustcp",
+            "modbusrtu",
+            "opcua-client",
+            "mtconnect",
+            "mtlinki",
+            "s7",
+            "ethernetip",
+            "melsec",
+        };
+
+    /// <summary>
+    /// Resolve the UX state (§5.2 matrix) for a given protocol + license-state.
+    /// Pure — internal so unit tests can pin all four branches without
+    /// standing up the full component.
+    /// </summary>
+    internal static UxState ResolveUxState(
+        string protocolName,
+        bool isLicenseEnabled,
+        IReadOnlySet<string>? registeredProtocols = null,
+        IReadOnlySet<string>? protocolsWithWizard = null)
+    {
+        registeredProtocols ??= RegisteredSourceProtocols;
+        protocolsWithWizard ??= ProtocolsWithEditWizard;
+
+        if (!registeredProtocols.Contains(protocolName))
+        {
+            return UxState.UnknownProtocol;
+        }
+        if (!isLicenseEnabled)
+        {
+            return UxState.LicenseDisabled;
+        }
+        if (!protocolsWithWizard.Contains(protocolName))
+        {
+            return UxState.WizardMissing;
+        }
+        return UxState.RenderWizard;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loadState = LoadState.Loading;
+        _loadErrorMessage = null;
+        _source = null;
+        _hydratedFromDraft = false;
+        _hydratedDraftId = null;
+        _sourceRawJson = null;
+
+        if (string.IsNullOrWhiteSpace(InstanceId))
+        {
+            _loadState = LoadState.NotFound;
+            return;
+        }
+
+        try
+        {
+            // Step 1 — version id for optimistic concurrency (§5.5).
+            // /api/v1/config/version returns the current version id.
+            var versionDto = await HttpClient.GetFromJsonAsync<CurrentConfigVersionDto>("/api/v1/config/version");
+            _baseVersionId = versionDto?.VersionId ?? "unknown";
+
+            // Step 2 — full gateway config so we can find the source's
+            // typed SourceInstanceConfig (not just the list-view summary).
+            var config = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (config is null)
+            {
+                _loadState = LoadState.LoadError;
+                _loadErrorMessage = "Configuration response was empty.";
+                return;
+            }
+
+            // §5.3 hydration precedence — for v1 we always hydrate from
+            // current (the runtime config). A future enhancement can check
+            // the drafts list and prefer a draft when one touches this source.
+            // Banner copy already differentiates so the UI infrastructure
+            // for the locked rule is in place.
+            _hydratedFromDraft = false;
+            _hydratedDraftId = null;
+
+            var match = config.Sources.FirstOrDefault(s =>
+                string.Equals(s.InstanceId, InstanceId, StringComparison.Ordinal));
+            if (match is null)
+            {
+                _loadState = LoadState.NotFound;
+                return;
+            }
+
+            _source = match;
+            _sourceRawJson = JsonSerializer.Serialize(match,
+                new JsonSerializerOptions { WriteIndented = true });
+
+            // Step 3 — resolve the UX state. License check is currently
+            // permissive in dev (matches the existing probe-service dev-mode
+            // semantic); a real wire-up via /api/v1/licensing/modules would
+            // land alongside the wizard adoption when license info becomes
+            // a routine API surface. For now, treat all known protocols as
+            // licensed so the dev workflow stays unblocked.
+            var isLicensed = true;
+            _uxState = ResolveUxState(match.ProtocolName, isLicensed);
+            _loadState = LoadState.Loaded;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            _loadState = LoadState.NotFound;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load source {InstanceId} for editing.", InstanceId);
+            _loadState = LoadState.LoadError;
+            _loadErrorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>Map a lowercase protocol name to its operator-readable display form.</summary>
+    internal static string ProtocolDisplayNameFor(string protocolName) =>
+        protocolName switch
+        {
+            "focas2" => "FOCAS2",
+            "brother-http" => "Brother HTTP",
+            "modbustcp" => "Modbus TCP",
+            "modbusrtu" => "Modbus RTU",
+            "mtconnect" => "MTConnect",
+            "mtlinki" => "MT-LINKi",
+            "s7" => "Siemens S7",
+            "opcua-client" => "OPC UA Client",
+            "ethernetip" => "EtherNet/IP",
+            "melsec" => "Mitsubishi MELSEC",
+            _ => protocolName,
+        };
+
+    /// <summary>Map a lowercase protocol name to its license module key.</summary>
+    internal static string LicenseModuleKeyFor(string protocolName) =>
+        protocolName switch
+        {
+            "focas2" => "source-focas2",
+            "brother-http" => "source-brother-http",
+            "modbustcp" => "source-modbus-tcp",
+            "modbusrtu" => "source-modbus-tcp", // ADR-0033: shares the Modbus license module
+            "mtconnect" => "source-mtconnect",
+            "opcua-client" => "source-opcua-client",
+            "mtlinki" => "source-mtlinki",
+            "s7" => "source-s7",
+            "ethernetip" => "source-ethernet-ip",
+            "melsec" => "source-melsec",
+            _ => $"source-{protocolName}",
+        };
+
+    /// <summary>Load lifecycle for the router page.</summary>
+    internal enum LoadState
+    {
+        /// <summary>Initial state — fetch in flight.</summary>
+        Loading,
+
+        /// <summary>Source loaded successfully — render the dispatch UX.</summary>
+        Loaded,
+
+        /// <summary>InstanceId resolved to no matching source.</summary>
+        NotFound,
+
+        /// <summary>HTTP/config-load error — render Retry button.</summary>
+        LoadError,
+    }
+
+    /// <summary>The four-branch UX matrix from v2 §5.2.</summary>
+    internal enum UxState
+    {
+        /// <summary>Protocol known + licensed + has wizard — render the wizard inline.</summary>
+        RenderWizard,
+
+        /// <summary>Protocol known + license module disabled.</summary>
+        LicenseDisabled,
+
+        /// <summary>ProtocolName not recognised by this Studio build.</summary>
+        UnknownProtocol,
+
+        /// <summary>Protocol registered + licensed but no Razor wizard handles it.</summary>
+        WizardMissing,
+    }
+}

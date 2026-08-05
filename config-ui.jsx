@@ -1,0 +1,987 @@
+import { useState, useEffect, useCallback, useMemo } from "react";
+
+// ─── Simulated FOCAS tag catalog ──────────────────────────────
+const SIMULATED_CNC_TAGS = [
+  { id: "Program/MainProgram", category: "Program", label: "Main Program Number", unit: "" },
+  { id: "Program/SubProgram", category: "Program", label: "Sub Program Number", unit: "" },
+  { id: "Program/RunningStatus", category: "Program", label: "Running Status", unit: "" },
+  { id: "Program/OperationMode", category: "Program", label: "Operation Mode (Auto/MDI/Manual)", unit: "" },
+  { id: "Program/SequenceNumber", category: "Program", label: "Current Sequence Number", unit: "" },
+  { id: "Program/BlockCount", category: "Program", label: "Block Count", unit: "" },
+  { id: "Program/MotionStatus", category: "Program", label: "Motion Status", unit: "" },
+  { id: "Program/MSTB", category: "Program", label: "M/S/T/B Code Status", unit: "" },
+  { id: "Axes/X/Absolute", category: "Axes", label: "X Axis Absolute Position", unit: "mm" },
+  { id: "Axes/X/Machine", category: "Axes", label: "X Axis Machine Position", unit: "mm" },
+  { id: "Axes/X/Relative", category: "Axes", label: "X Axis Relative Position", unit: "mm" },
+  { id: "Axes/X/DistanceToGo", category: "Axes", label: "X Axis Distance To Go", unit: "mm" },
+  { id: "Axes/X/ServoLoad", category: "Axes", label: "X Axis Servo Load", unit: "%" },
+  { id: "Axes/X/ServoCurrent", category: "Axes", label: "X Axis Servo Current", unit: "A" },
+  { id: "Axes/X/ServoMotorTemp", category: "Axes", label: "X Axis Servo Motor Temp", unit: "°C" },
+  { id: "Axes/Y/Absolute", category: "Axes", label: "Y Axis Absolute Position", unit: "mm" },
+  { id: "Axes/Y/Machine", category: "Axes", label: "Y Axis Machine Position", unit: "mm" },
+  { id: "Axes/Y/Relative", category: "Axes", label: "Y Axis Relative Position", unit: "mm" },
+  { id: "Axes/Y/DistanceToGo", category: "Axes", label: "Y Axis Distance To Go", unit: "mm" },
+  { id: "Axes/Y/ServoLoad", category: "Axes", label: "Y Axis Servo Load", unit: "%" },
+  { id: "Axes/Y/ServoCurrent", category: "Axes", label: "Y Axis Servo Current", unit: "A" },
+  { id: "Axes/Y/ServoMotorTemp", category: "Axes", label: "Y Axis Servo Motor Temp", unit: "°C" },
+  { id: "Axes/Z/Absolute", category: "Axes", label: "Z Axis Absolute Position", unit: "mm" },
+  { id: "Axes/Z/Machine", category: "Axes", label: "Z Axis Machine Position", unit: "mm" },
+  { id: "Axes/Z/Relative", category: "Axes", label: "Z Axis Relative Position", unit: "mm" },
+  { id: "Axes/Z/DistanceToGo", category: "Axes", label: "Z Axis Distance To Go", unit: "mm" },
+  { id: "Axes/Z/ServoLoad", category: "Axes", label: "Z Axis Servo Load", unit: "%" },
+  { id: "Axes/Z/ServoCurrent", category: "Axes", label: "Z Axis Servo Current", unit: "A" },
+  { id: "Axes/Z/ServoMotorTemp", category: "Axes", label: "Z Axis Servo Motor Temp", unit: "°C" },
+  { id: "Axes/A/Absolute", category: "Axes", label: "A Axis (4th) Absolute Position", unit: "deg" },
+  { id: "Axes/A/Machine", category: "Axes", label: "A Axis (4th) Machine Position", unit: "deg" },
+  { id: "Axes/B/Absolute", category: "Axes", label: "B Axis (5th) Absolute Position", unit: "deg" },
+  { id: "Axes/B/Machine", category: "Axes", label: "B Axis (5th) Machine Position", unit: "deg" },
+  { id: "Axes/C/Absolute", category: "Axes", label: "C Axis Absolute Position", unit: "deg" },
+  { id: "Feed/Rate", category: "Feed", label: "Actual Feed Rate", unit: "mm/min" },
+  { id: "Feed/Override", category: "Feed", label: "Feed Rate Override", unit: "%" },
+  { id: "Feed/CommandRate", category: "Feed", label: "Commanded Feed Rate", unit: "mm/min" },
+  { id: "Feed/RapidOverride", category: "Feed", label: "Rapid Traverse Override", unit: "%" },
+  { id: "Feed/JogFeedRate", category: "Feed", label: "Jog Feed Rate", unit: "mm/min" },
+  { id: "Spindle/Speed", category: "Spindle", label: "Actual Spindle Speed", unit: "RPM" },
+  { id: "Spindle/CommandSpeed", category: "Spindle", label: "Commanded Spindle Speed", unit: "RPM" },
+  { id: "Spindle/Load", category: "Spindle", label: "Spindle Load", unit: "%" },
+  { id: "Spindle/MotorTemp", category: "Spindle", label: "Spindle Motor Temperature", unit: "°C" },
+  { id: "Spindle/Override", category: "Spindle", label: "Spindle Speed Override", unit: "%" },
+  { id: "Spindle/Direction", category: "Spindle", label: "Spindle Rotation Direction", unit: "" },
+  { id: "Spindle/ToolSpeed", category: "Spindle", label: "Spindle Tool Speed (CSS)", unit: "m/min" },
+  { id: "Spindle/Current", category: "Spindle", label: "Spindle Motor Current", unit: "A" },
+  { id: "Spindle/PowerConsumption", category: "Spindle", label: "Spindle Power Consumption", unit: "kW" },
+  { id: "Spindle/Vibration", category: "Spindle", label: "Spindle Vibration Level", unit: "mm/s" },
+  { id: "Spindle/2/Speed", category: "Spindle", label: "Spindle 2 Speed", unit: "RPM" },
+  { id: "Spindle/2/Load", category: "Spindle", label: "Spindle 2 Load", unit: "%" },
+  { id: "Alarms/Active", category: "Alarms", label: "Active Alarms", unit: "" },
+  { id: "Alarms/History", category: "Alarms", label: "Alarm History (last 50)", unit: "" },
+  { id: "Alarms/Count", category: "Alarms", label: "Total Alarm Count", unit: "" },
+  { id: "Alarms/EMG", category: "Alarms", label: "Emergency Stop Status", unit: "" },
+  { id: "Alarms/ServoAlarms", category: "Alarms", label: "Servo Alarm Details", unit: "" },
+  { id: "Alarms/SpindleAlarms", category: "Alarms", label: "Spindle Alarm Details", unit: "" },
+  { id: "Alarms/OvertravelAlarms", category: "Alarms", label: "Overtravel Alarms", unit: "" },
+  { id: "Alarms/OverheatAlarms", category: "Alarms", label: "Overheat Alarms", unit: "" },
+  { id: "Tool/Number", category: "Tool", label: "Current Tool Number", unit: "" },
+  { id: "Tool/OffsetNumber", category: "Tool", label: "Tool Offset Number", unit: "" },
+  { id: "Tool/Length", category: "Tool", label: "Tool Length Offset", unit: "mm" },
+  { id: "Tool/Radius", category: "Tool", label: "Tool Radius Offset", unit: "mm" },
+  { id: "Tool/WearLength", category: "Tool", label: "Tool Wear (Length)", unit: "mm" },
+  { id: "Tool/WearRadius", category: "Tool", label: "Tool Wear (Radius)", unit: "mm" },
+  { id: "Tool/Life/Count", category: "Tool", label: "Tool Life Count", unit: "" },
+  { id: "Tool/Life/Remaining", category: "Tool", label: "Tool Life Remaining", unit: "min" },
+  { id: "Tool/Life/Status", category: "Tool", label: "Tool Life Status", unit: "" },
+  { id: "Tool/Magazine/Position", category: "Tool", label: "Magazine Position", unit: "" },
+  { id: "Tool/ChangeCount", category: "Tool", label: "Tool Change Count", unit: "" },
+  { id: "Production/PartsCount", category: "Production", label: "Parts Produced (Total)", unit: "" },
+  { id: "Production/PartsRequired", category: "Production", label: "Parts Required", unit: "" },
+  { id: "Production/PartsRemaining", category: "Production", label: "Parts Remaining", unit: "" },
+  { id: "Production/CycleTime", category: "Production", label: "Current Cycle Time", unit: "sec" },
+  { id: "Production/LastCycleTime", category: "Production", label: "Last Cycle Time", unit: "sec" },
+  { id: "Production/AvgCycleTime", category: "Production", label: "Average Cycle Time", unit: "sec" },
+  { id: "Production/CuttingTime", category: "Production", label: "Cutting Time (Total)", unit: "hr" },
+  { id: "Production/RunTime", category: "Production", label: "Run Time (Total)", unit: "hr" },
+  { id: "Production/PowerOnTime", category: "Production", label: "Power On Time", unit: "hr" },
+  { id: "Production/Availability", category: "Production", label: "Machine Availability", unit: "%" },
+  { id: "Production/OEE", category: "Production", label: "OEE (Overall Equipment Eff.)", unit: "%" },
+  { id: "State/OperateStatus", category: "State", label: "Operate / Stop / Alarm Status", unit: "" },
+  { id: "State/DoorInterlock", category: "State", label: "Door Interlock Status", unit: "" },
+  { id: "State/CoolantStatus", category: "State", label: "Coolant On/Off", unit: "" },
+  { id: "State/CoolantLevel", category: "State", label: "Coolant Level", unit: "%" },
+  { id: "State/CoolantTemp", category: "State", label: "Coolant Temperature", unit: "°C" },
+  { id: "State/LubricantLevel", category: "State", label: "Lubricant Level", unit: "%" },
+  { id: "State/HydraulicPressure", category: "State", label: "Hydraulic Pressure", unit: "MPa" },
+  { id: "State/AirPressure", category: "State", label: "Air Pressure", unit: "MPa" },
+  { id: "State/ChuckPressure", category: "State", label: "Chuck Clamping Pressure", unit: "MPa" },
+  { id: "PMC/Signal/G0000", category: "PMC", label: "PMC G0000 (Input Signal 0)", unit: "" },
+  { id: "PMC/Signal/G0001", category: "PMC", label: "PMC G0001 (Input Signal 1)", unit: "" },
+  { id: "PMC/Signal/G0002", category: "PMC", label: "PMC G0002 (Input Signal 2)", unit: "" },
+  { id: "PMC/Signal/G0003", category: "PMC", label: "PMC G0003 (Input Signal 3)", unit: "" },
+  { id: "PMC/Signal/F0000", category: "PMC", label: "PMC F0000 (Output Signal 0)", unit: "" },
+  { id: "PMC/Signal/F0001", category: "PMC", label: "PMC F0001 (Output Signal 1)", unit: "" },
+  { id: "PMC/Signal/F0002", category: "PMC", label: "PMC F0002 (Output Signal 2)", unit: "" },
+  { id: "PMC/Signal/R0000", category: "PMC", label: "PMC R0000 (Internal Relay 0)", unit: "" },
+  { id: "PMC/Signal/R0001", category: "PMC", label: "PMC R0001 (Internal Relay 1)", unit: "" },
+  { id: "PMC/Signal/D0000", category: "PMC", label: "PMC D0000 (Data Table 0)", unit: "" },
+  { id: "PMC/Signal/D0001", category: "PMC", label: "PMC D0001 (Data Table 1)", unit: "" },
+  { id: "PMC/Counter/C0000", category: "PMC", label: "PMC C0000 (Counter 0)", unit: "" },
+  { id: "PMC/Counter/C0001", category: "PMC", label: "PMC C0001 (Counter 1)", unit: "" },
+  { id: "PMC/Timer/T0000", category: "PMC", label: "PMC T0000 (Timer 0)", unit: "" },
+  { id: "PMC/Timer/T0001", category: "PMC", label: "PMC T0001 (Timer 1)", unit: "" },
+  { id: "Macro/Var/100", category: "Macro", label: "Macro Variable #100", unit: "" },
+  { id: "Macro/Var/101", category: "Macro", label: "Macro Variable #101", unit: "" },
+  { id: "Macro/Var/102", category: "Macro", label: "Macro Variable #102", unit: "" },
+  { id: "Macro/Var/500", category: "Macro", label: "Macro Variable #500", unit: "" },
+  { id: "Macro/Var/501", category: "Macro", label: "Macro Variable #501", unit: "" },
+  { id: "Macro/Var/502", category: "Macro", label: "Macro Variable #502", unit: "" },
+  { id: "Macro/Var/503", category: "Macro", label: "Macro Variable #503", unit: "" },
+  { id: "Macro/Var/510", category: "Macro", label: "Macro Variable #510", unit: "" },
+  { id: "Macro/Var/511", category: "Macro", label: "Macro Variable #511", unit: "" },
+  { id: "Macro/Var/600", category: "Macro", label: "Macro Variable #600", unit: "" },
+  { id: "WorkOffset/G54/X", category: "WorkOffset", label: "G54 X Offset", unit: "mm" },
+  { id: "WorkOffset/G54/Y", category: "WorkOffset", label: "G54 Y Offset", unit: "mm" },
+  { id: "WorkOffset/G54/Z", category: "WorkOffset", label: "G54 Z Offset", unit: "mm" },
+  { id: "WorkOffset/G55/X", category: "WorkOffset", label: "G55 X Offset", unit: "mm" },
+  { id: "WorkOffset/G55/Y", category: "WorkOffset", label: "G55 Y Offset", unit: "mm" },
+  { id: "WorkOffset/G55/Z", category: "WorkOffset", label: "G55 Z Offset", unit: "mm" },
+  { id: "WorkOffset/G56/X", category: "WorkOffset", label: "G56 X Offset", unit: "mm" },
+  { id: "WorkOffset/G56/Y", category: "WorkOffset", label: "G56 Y Offset", unit: "mm" },
+  { id: "WorkOffset/G56/Z", category: "WorkOffset", label: "G56 Z Offset", unit: "mm" },
+  { id: "Energy/TotalPower", category: "Energy", label: "Total Power Consumption", unit: "kW" },
+  { id: "Energy/CumulativeEnergy", category: "Energy", label: "Cumulative Energy", unit: "kWh" },
+  { id: "Energy/Voltage", category: "Energy", label: "Input Voltage", unit: "V" },
+  { id: "Energy/Current", category: "Energy", label: "Input Current", unit: "A" },
+];
+
+const CATEGORY_ICONS = { Program:"📋", Axes:"📐", Feed:"⏩", Spindle:"🔄", Alarms:"🚨", Tool:"🔧", Production:"📊", State:"🔌", PMC:"🔗", Macro:"📝", WorkOffset:"📏", Energy:"⚡" };
+const CATEGORY_LABELS = { Program:"Program & Status", Axes:"Axis Positions & Servo", Feed:"Feed Rate", Spindle:"Spindle", Alarms:"Alarms & Diagnostics", Tool:"Tool Management", Production:"Production Counters", State:"Machine State & Fluids", PMC:"PMC / PLC Signals", Macro:"Macro Variables", WorkOffset:"Work Offsets", Energy:"Energy & Power" };
+
+const DEFAULT_MACHINE = { MachineId:"", MachineName:"", DeviceId:"", DeviceName:"", DataSourceType:"MtLinki", BaseUrl:"http://192.168.1.100:8193/", Username:"operator", Password:"", AuthType:"Basic", PollIntervalMs:1000, TimeoutMs:5000, Enabled:true, Tags:[], DataPoints:["Program/MainProgram","Program/RunningStatus","Axes/X/Absolute","Axes/Y/Absolute","Axes/Z/Absolute","Spindle/Speed","Spindle/Load","Alarms/Active","Production/PartsCount","Production/CycleTime"], CertificateThumbprint:"", MtLinki:{ BaseUrl:"http://192.168.2.199:3000", ApiVersion:"v1", EquipmentType:"CNC", MachineIdentifier:"", Username:"", Password:"", TimeoutSeconds:10, FetchAlarmLogs:true, FetchProductionLogs:false }, Focas2:{ IpAddress:"", Port:8193, TimeoutSeconds:10, DllPath:"", KeepAlive:true } };
+const DS_LABELS = { MtLinki: "MT-LINKi (REST API)", Focas2Dll: "FOCAS2 DLL (Direct)", HttpRest: "HTTP REST (Simulator)" };
+const DS_ICONS = { MtLinki: "🗄️", Focas2Dll: "⚡", HttpRest: "🌐" };
+const DS_COLORS = { MtLinki: "#14b8a6", Focas2Dll: "#f59e0b", HttpRest: "#3b82f6" };
+const DEFAULT_MQTT = { BrokerHost:"localhost", BrokerPort:9001, Transport:"WebSocket", WebSocketPath:"/mqtt", ProtocolVersion:"V311", UseTls:false, ClientId:"edgeconnect-01", Username:"", Password:"", TopicPrefix:"factory/cnc", QualityOfServiceLevel:1, CleanSession:false, KeepAliveSeconds:30, ReconnectDelayMs:5000, MaxPendingMessages:5000, PublishBatchSize:100, PublishBatchIntervalMs:250, CaCertificatePath:"", ClientCertificatePath:"", ClientCertificatePassword:"" };
+const DEFAULT_APP = { MaxParallelPolls:50, ChannelCapacity:10000, DefaultPollIntervalMs:1000, EnableHealthChecks:true, HealthCheckPort:8080 };
+const TAGS_PER_LICENSE = 1000;
+
+// ─── License Helpers ──────────────────────────────────────────
+function generateLicenseHash(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) { h = ((h << 5) - h + key.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function validateLicenseKey(key) {
+  const pattern = /^ELPIS-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+  if (!pattern.test(key)) return { valid: false, msg: "Invalid format. Expected: ELPIS-XXXX-XXXX-XXXX-XXXX" };
+  const parts = key.split("-");
+  const checksum = parts[4];
+  const payload = parts.slice(1, 4).join("");
+  const hash = generateLicenseHash(payload).toString(36).toUpperCase().padStart(4, "0").slice(-4);
+  if (checksum !== hash) return { valid: false, msg: "Invalid license key. Please contact sales@elpisitsolutions.com" };
+  return { valid: true, msg: "License key verified" };
+}
+
+// ─── Icons ────────────────────────────────────────────────────
+const Icon = ({ type, size = 18 }) => {
+  const s = { width: size, height: size, display: "inline-block", verticalAlign: "middle" };
+  const P = { plus:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>, edit:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>, trash:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, check:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>, x:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>, server:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>, wifi:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>, settings:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>, download:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, copy:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>, power:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18.36 6.64a9 9 0 11-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>, clone:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16H3a2 2 0 01-2-2V3a2 2 0 012-2h11a2 2 0 012 2v1"/></svg>, refresh:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>, search:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>, key:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 010-7.778zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>, info:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> };
+  return P[type] || null;
+};
+
+// ─── Elpis Logo SVG (placeholder — replace with uploaded image) ───
+const ELPIS_LOGO = "data:image/png;base64,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";
+const ElpisLogo = ({ size = 36 }) => (
+  <img src={ELPIS_LOGO} alt="Elpis IT Solutions" style={{ height: size, width: "auto", objectFit: "contain" }} />
+);
+
+// ─── Main App ─────────────────────────────────────────────────
+export default function App() {
+  const [tab, setTab] = useState("machines");
+  const [machines, setMachines] = useState([]);
+  const [mqtt, setMqtt] = useState({ ...DEFAULT_MQTT });
+  const [appCfg, setAppCfg] = useState({ ...DEFAULT_APP });
+  const [licenses, setLicenses] = useState([]);
+  const [editingMachine, setEditingMachine] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try { const m = await window.storage.get("fanuc-machines"); if (m) setMachines(JSON.parse(m.value)); } catch {}
+      try { const q = await window.storage.get("fanuc-mqtt"); if (q) setMqtt(JSON.parse(q.value)); } catch {}
+      try { const a = await window.storage.get("fanuc-app"); if (a) setAppCfg(JSON.parse(a.value)); } catch {}
+      try { const l = await window.storage.get("fanuc-licenses"); if (l) setLicenses(JSON.parse(l.value)); } catch {}
+    })();
+  }, []);
+
+  const saveMachines = useCallback(async (m) => { setMachines(m); try { await window.storage.set("fanuc-machines", JSON.stringify(m)); } catch {} }, []);
+  const saveMqtt = useCallback(async (q) => { setMqtt(q); try { await window.storage.set("fanuc-mqtt", JSON.stringify(q)); } catch {} }, []);
+  const saveApp = useCallback(async (a) => { setAppCfg(a); try { await window.storage.set("fanuc-app", JSON.stringify(a)); } catch {} }, []);
+  const saveLicenses = useCallback(async (l) => { setLicenses(l); try { await window.storage.set("fanuc-licenses", JSON.stringify(l)); } catch {} }, []);
+  const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+
+  // Total tags across all machines
+  const totalTags = useMemo(() => machines.reduce((sum, m) => sum + (m.DataPoints?.length || 0), 0), [machines]);
+  const licensedTags = licenses.length * TAGS_PER_LICENSE;
+  const tagsRemaining = licensedTags - totalTags;
+
+  const addMachine = () => {
+    const id = `CNC-${String(machines.length + 1).padStart(3, "0")}`;
+    setEditingMachine({ ...DEFAULT_MACHINE, MachineId: id, MachineName: `Machine ${machines.length + 1}` });
+  };
+  const saveMachineForm = (machine) => {
+    const i = machines.findIndex(m => m.MachineId === machine.MachineId);
+    const updated = i >= 0 ? machines.map((m, idx) => idx === i ? machine : m) : [...machines, machine];
+    saveMachines(updated); setEditingMachine(null); showToast(`Machine ${machine.MachineId} saved`);
+  };
+  const deleteMachine = (id) => { saveMachines(machines.filter(m => m.MachineId !== id)); setDeleteConfirm(null); showToast(`Machine ${id} removed`); };
+  const toggleMachine = (id) => saveMachines(machines.map(m => m.MachineId === id ? { ...m, Enabled: !m.Enabled } : m));
+
+  const genConfig = () => {
+    const cleanMachines = machines.map(m => {
+      const base = { MachineId: m.MachineId, MachineName: m.MachineName, DeviceId: m.DeviceId || m.MachineId, DeviceName: m.DeviceName || m.MachineName.replace(/[^a-zA-Z0-9_]/g, ""), DataSourceType: m.DataSourceType, PollIntervalMs: m.PollIntervalMs, Enabled: m.Enabled, Tags: m.Tags, DataPoints: m.DataPoints };
+      if (m.DataSourceType === "MtLinki") return { ...base, MtLinki: m.MtLinki };
+      if (m.DataSourceType === "Focas2Dll") return { ...base, Focas2: m.Focas2, TimeoutMs: m.TimeoutMs };
+      return { ...base, BaseUrl: m.BaseUrl, Username: m.Username, Password: m.Password, AuthType: m.AuthType, TimeoutMs: m.TimeoutMs, CertificateThumbprint: m.CertificateThumbprint };
+    });
+    return JSON.stringify({
+      Serilog: { MinimumLevel: { Default: "Information" } },
+      AppSettings: appCfg, MqttSettings: mqtt, Machines: cleanMachines,
+      Licensing: { Keys: licenses.map(l => l.key), MaxTags: licensedTags }
+    }, null, 2);
+  };
+
+  const C = { bg:"#0c1017", card:"#141b24", cardBorder:"#1e2a38", accent:"#f59e0b", accentDim:"#b45309", green:"#22c55e", red:"#ef4444", txt:"#e2e8f0", txtDim:"#64748b", txtMid:"#94a3b8", input:"#0f1720", inputBorder:"#1e2a38", inputFocus:"#f59e0b33", blue:"#3b82f6", teal:"#14b8a6" };
+
+  const allTabs = [
+    { id:"machines", icon:"server", label:"CNC Machines", count: machines.length },
+    { id:"mqtt", icon:"wifi", label:"MQTT Broker" },
+    { id:"app", icon:"settings", label:"App Settings" },
+    { id:"license", icon:"key", label:"License", badge: tagsRemaining < 100 && licenses.length > 0 ? "!" : null },
+    { id:"about", icon:"info", label:"About" },
+  ];
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.txt, fontFamily: "'JetBrains Mono', 'Fira Code', monospace" }}>
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+      {/* ─── Header ─── */}
+      <div style={{ background: "#0a0e14", borderBottom: `1px solid ${C.cardBorder}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <ElpisLogo size={34} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Inter, sans-serif", letterSpacing: "-0.3px" }}>Elpis EdgeConnect <span style={{ fontSize: 10, color: C.txtDim, fontWeight: 400 }}>v2.0</span></div>
+            <div style={{ fontSize: 10, color: C.txtDim, marginTop: 1, fontFamily: "Inter, sans-serif" }}>by Elpis IT Solutions Pvt Ltd</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Tag usage indicator */}
+          {licenses.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 12px", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 8 }}>
+              <div style={{ width: 80, height: 6, background: "#1e2a38", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(100, (totalTags / licensedTags) * 100)}%`, height: "100%", background: tagsRemaining < 100 ? C.red : tagsRemaining < 300 ? C.accent : C.green, borderRadius: 3, transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 10, color: C.txtMid, fontFamily: "Inter, sans-serif" }}>{totalTags}/{licensedTags} tags</span>
+            </div>
+          )}
+          <button onClick={() => setShowExport(true)} style={{ ...btnS(C.accent, "#000"), padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}><Icon type="download" size={14} /> Export</button>
+        </div>
+      </div>
+
+      {/* ─── Tabs ─── */}
+      <div style={{ display: "flex", gap: 0, background: "#0a0e14", borderBottom: `1px solid ${C.cardBorder}`, padding: "0 24px", overflowX: "auto" }}>
+        {allTabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding: "12px 18px", fontSize: 12, fontFamily: "Inter, sans-serif", fontWeight: 500, background: "transparent", border: "none", whiteSpace: "nowrap",
+            color: tab === t.id ? C.accent : C.txtDim, borderBottom: tab === t.id ? `2px solid ${C.accent}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 7
+          }}>
+            <Icon type={t.icon} size={14} /> {t.label}
+            {t.count !== undefined && <span style={{ background: tab === t.id ? C.accent : "#1e2a38", color: tab === t.id ? "#000" : C.txtDim, padding: "1px 7px", borderRadius: 10, fontSize: 10, fontWeight: 600 }}>{t.count}</span>}
+            {t.badge && <span style={{ background: C.red, color: "#fff", padding: "0 5px", borderRadius: 8, fontSize: 9, fontWeight: 700 }}>{t.badge}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Content ─── */}
+      <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto" }}>
+        {tab === "machines" && <MachinesTab machines={machines} onAdd={addMachine} onEdit={m => setEditingMachine({...m})} onClone={m => { const id = `CNC-${String(machines.length+1).padStart(3,"0")}`; setEditingMachine({...m, MachineId:id, MachineName:m.MachineName+" (Copy)"}); }} onDelete={id => setDeleteConfirm(id)} onToggle={toggleMachine} C={C} />}
+        {tab === "mqtt" && <MqttTab mqtt={mqtt} onSave={q => { saveMqtt(q); showToast("MQTT settings saved"); }} C={C} />}
+        {tab === "app" && <AppTab appCfg={appCfg} onSave={a => { saveApp(a); showToast("App settings saved"); }} C={C} />}
+        {tab === "license" && <LicenseTab licenses={licenses} onSave={saveLicenses} totalTags={totalTags} showToast={showToast} C={C} />}
+        {tab === "about" && <AboutTab C={C} />}
+      </div>
+
+      {editingMachine && <MachineEditor machine={editingMachine} onSave={saveMachineForm} onCancel={() => setEditingMachine(null)} licensedTags={licensedTags} totalTags={totalTags} currentMachineTags={(machines.find(m=>m.MachineId===editingMachine.MachineId)?.DataPoints||[]).length} C={C} />}
+      {deleteConfirm && <Modal onClose={() => setDeleteConfirm(null)} C={C}><div style={{ textAlign: "center", padding: "16px 0" }}><div style={{ width: 48, height: 48, background: "#fee2e2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: C.red }}><Icon type="trash" size={22} /></div><div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Inter, sans-serif", marginBottom: 8 }}>Delete Machine</div><div style={{ fontSize: 13, color: C.txtMid, marginBottom: 20, fontFamily: "Inter, sans-serif" }}>Remove <strong style={{ color: C.accent }}>{deleteConfirm}</strong>?</div><div style={{ display: "flex", gap: 10, justifyContent: "center" }}><button onClick={() => setDeleteConfirm(null)} style={{ ...btnS("#1e2a38", C.txtMid), padding: "8px 20px", fontSize: 12 }}>Cancel</button><button onClick={() => deleteMachine(deleteConfirm)} style={{ ...btnS(C.red, "#fff"), padding: "8px 20px", fontSize: 12 }}>Delete</button></div></div></Modal>}
+
+      {showExport && (
+        <Modal onClose={() => setShowExport(false)} C={C} wide>
+          <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Inter, sans-serif", marginBottom: 12 }}><Icon type="download" size={16} /> Export appsettings.json</div>
+          <pre style={{ background: C.input, border: `1px solid ${C.inputBorder}`, borderRadius: 8, padding: 16, fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: "auto", whiteSpace: "pre-wrap" }}>{genConfig()}</pre>
+          <div style={{ display: "flex", gap: 10, marginTop: 14, justifyContent: "flex-end" }}>
+            <button onClick={() => setShowExport(false)} style={{ ...btnS("#1e2a38", C.txtMid), padding: "8px 16px", fontSize: 12 }}>Close</button>
+            <button onClick={() => { navigator.clipboard.writeText(genConfig()); showToast("Copied!"); }} style={{ ...btnS(C.accent, "#000"), padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}><Icon type="copy" size={13} /> Copy JSON</button>
+          </div>
+        </Modal>
+      )}
+
+      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, background: toast.type === "success" ? C.green : C.red, color: "#000", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", boxShadow: "0 8px 30px rgba(0,0,0,0.4)", animation: "slideIn 0.3s ease", zIndex: 1000 }}>{toast.msg}</div>}
+
+      <style>{`
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #1e2a38; border-radius: 3px; }
+        input:focus, select:focus { outline: none; border-color: #f59e0b !important; box-shadow: 0 0 0 3px #f59e0b22; }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── License Tab ──────────────────────────────────────────────
+function LicenseTab({ licenses, onSave, totalTags, showToast, C }) {
+  const [keyInput, setKeyInput] = useState("");
+  const [validating, setValidating] = useState(false);
+  const [validMsg, setValidMsg] = useState(null);
+  const licensedTags = licenses.length * TAGS_PER_LICENSE;
+  const usagePercent = licensedTags > 0 ? Math.min(100, (totalTags / licensedTags) * 100) : 0;
+
+  const activateLicense = () => {
+    setValidating(true);
+    setTimeout(() => {
+      const key = keyInput.trim().toUpperCase();
+      if (licenses.some(l => l.key === key)) {
+        setValidMsg({ ok: false, msg: "This license key is already activated." });
+        setValidating(false); return;
+      }
+      const result = validateLicenseKey(key);
+      if (result.valid) {
+        const updated = [...licenses, { key, activatedAt: new Date().toISOString(), tags: TAGS_PER_LICENSE }];
+        onSave(updated);
+        setKeyInput("");
+        setValidMsg({ ok: true, msg: `License activated! +${TAGS_PER_LICENSE} tags added.` });
+        showToast(`License activated — ${updated.length * TAGS_PER_LICENSE} tags available`);
+      } else {
+        setValidMsg({ ok: false, msg: result.msg });
+      }
+      setValidating(false);
+    }, 800);
+  };
+
+  const removeLicense = (key) => {
+    onSave(licenses.filter(l => l.key !== key));
+    showToast("License removed");
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      {/* Usage Overview */}
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+          Tag Usage Overview
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
+          {[
+            { label: "Licensed Tags", val: licensedTags || "—", color: C.blue, sub: `${licenses.length} license(s)` },
+            { label: "Tags In Use", val: totalTags, color: totalTags > licensedTags ? C.red : C.green, sub: "across all machines" },
+            { label: "Tags Remaining", val: licensedTags > 0 ? licensedTags - totalTags : "—", color: (licensedTags - totalTags) < 100 ? C.red : C.teal, sub: licensedTags > 0 ? `${(100 - usagePercent).toFixed(0)}% available` : "add a license" },
+          ].map((s, i) => (
+            <div key={i} style={{ background: C.bg, borderRadius: 10, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: s.color, fontFamily: "Inter, sans-serif" }}>{s.val}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.txtMid, fontFamily: "Inter, sans-serif", marginTop: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+        {licensedTags > 0 && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>Usage</span>
+              <span style={{ fontSize: 10, color: C.txtMid, fontFamily: "Inter, sans-serif", fontWeight: 600 }}>{usagePercent.toFixed(0)}%</span>
+            </div>
+            <div style={{ width: "100%", height: 10, background: "#1e2a38", borderRadius: 5, overflow: "hidden" }}>
+              <div style={{ width: `${usagePercent}%`, height: "100%", borderRadius: 5, transition: "width 0.5s", background: usagePercent > 90 ? `linear-gradient(90deg, ${C.accent}, ${C.red})` : usagePercent > 70 ? `linear-gradient(90deg, ${C.green}, ${C.accent})` : `linear-gradient(90deg, ${C.teal}, ${C.green})` }} />
+            </div>
+          </div>
+        )}
+        {licenses.length === 0 && (
+          <div style={{ background: `${C.accent}0a`, border: `1px solid ${C.accent}22`, borderRadius: 8, padding: 14, marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: C.accent, fontFamily: "Inter, sans-serif", fontWeight: 600, marginBottom: 4 }}>⚠️ No License Activated</div>
+            <div style={{ fontSize: 11, color: C.txtMid, fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}>
+              A license is required to fetch tag data from CNC machines. Each license enables up to {TAGS_PER_LICENSE} tags. Enter your license key below or contact <strong>sales@elpisitsolutions.com</strong> to purchase.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Activate License */}
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+          Activate License Key
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <input value={keyInput} onChange={e => { setKeyInput(e.target.value.toUpperCase()); setValidMsg(null); }} placeholder="ELPIS-XXXX-XXXX-XXXX-XXXX" style={{ ...inpS(C.input, C.inputBorder), fontSize: 14, padding: "10px 14px", letterSpacing: 1, fontWeight: 500 }} onKeyDown={e => e.key === "Enter" && keyInput.trim() && activateLicense()} />
+            {validMsg && <div style={{ fontSize: 11, marginTop: 6, fontFamily: "Inter, sans-serif", color: validMsg.ok ? C.green : C.red, fontWeight: 500 }}>{validMsg.ok ? "✓" : "✗"} {validMsg.msg}</div>}
+          </div>
+          <button onClick={activateLicense} disabled={!keyInput.trim() || validating} style={{ ...btnS(C.accent, "#000"), padding: "10px 20px", fontSize: 12, opacity: !keyInput.trim() || validating ? 0.5 : 1, display: "flex", alignItems: "center", gap: 6 }}>
+            {validating ? <span style={{ animation: "spin 1s linear infinite", display: "inline-flex" }}><Icon type="refresh" size={14} /></span> : <Icon type="key" size={14} />}
+            {validating ? "Verifying..." : "Activate"}
+          </button>
+        </div>
+        <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 10 }}>
+          Each license key adds {TAGS_PER_LICENSE} tags to your capacity. Need more tags? Purchase add-on licenses at <span style={{ color: C.accent }}>www.elpisitsolutions.com</span> or email <span style={{ color: C.accent }}>sales@elpisitsolutions.com</span>
+        </div>
+      </div>
+
+      {/* Active Licenses */}
+      {licenses.length > 0 && (
+        <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+            Active Licenses ({licenses.length})
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {licenses.map((l, i) => (
+              <div key={l.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: C.bg, borderRadius: 8, border: `1px solid ${C.cardBorder}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: C.green, boxShadow: `0 0 8px ${C.green}44` }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1 }}>{l.key}</div>
+                    <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>
+                      Activated {new Date(l.activatedAt).toLocaleDateString()} — {TAGS_PER_LICENSE} tags
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => removeLicense(l.key)} style={iconB(C.red)} title="Remove license"><Icon type="trash" size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── About Tab ────────────────────────────────────────────────
+function AboutTab({ C }) {
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      {/* Company Hero */}
+      <div style={{ background: `linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%)`, borderRadius: 12, padding: 40, textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, opacity: 0.04, background: "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 50%), radial-gradient(circle at 80% 50%, #00AEEF 0%, transparent 50%)" }} />
+        <div style={{ position: "absolute", inset: 0, opacity: 0.05, background: "repeating-linear-gradient(45deg, transparent, transparent 30px, #fff 30px, #fff 31px)" }} />
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 32px", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <ElpisLogo size={56} />
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "Inter, sans-serif", marginTop: 18 }}>Elpis IT Solutions Pvt Ltd</div>
+          <div style={{ fontSize: 14, fontFamily: "Inter, sans-serif", marginTop: 8, fontWeight: 600, letterSpacing: 2 }}>
+            <span style={{ color: "#F5A623" }}>Think.</span>{" "}
+            <span style={{ color: "#8DC63F" }}>Create.</span>{" "}
+            <span style={{ color: "#00AEEF" }}>Enable.</span>
+          </div>
+          <div style={{ width: 60, height: 2, borderRadius: 1, background: "linear-gradient(90deg, #F5A623, #8DC63F, #00AEEF)", margin: "12px auto 0" }} />
+          <div style={{ fontSize: 11, color: "#a0aec0", fontFamily: "Inter, sans-serif", marginTop: 10 }}>Celebrating 13+ Years of Innovation & Excellence in Industrial Software & IoT Solutions</div>
+        </div>
+      </div>
+
+      {/* Product Info */}
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+          About Elpis EdgeConnect
+        </div>
+        <div style={{ fontSize: 12, color: C.txtMid, fontFamily: "Inter, sans-serif", lineHeight: 1.8 }}>
+          Elpis EdgeConnect is a high-performance, production-grade data acquisition solution that connects Fanuc CNC machines to MQTT brokers for real-time monitoring, analytics, and Industry 4.0 integration. Built on .NET 8, it supports 100+ concurrent machines with enterprise-grade security, resilience, and scalability.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
+          {[
+            { label: "Version", value: "2.1.0" },
+            { label: "Runtime", value: ".NET 8 (LTS)" },
+            { label: "Protocol", value: "MQTT v5 / v3.1.1" },
+            { label: "License Model", value: "Per 1,000 tags" },
+          ].map(r => (
+            <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: C.bg, borderRadius: 6 }}>
+              <span style={{ fontSize: 11, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>{r.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{r.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Company Details */}
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+          About Elpis IT Solutions
+        </div>
+        <div style={{ fontSize: 12, color: C.txtMid, fontFamily: "Inter, sans-serif", lineHeight: 1.8, marginBottom: 16 }}>
+          Elpis IT Solutions is a leading provider of Industrial IoT and Industry 4.0 solutions headquartered in Bangalore, India. Strategically partnered with Software Toolbox Inc, USA, Elpis delivers world-class products and services spanning Industrial Automation, Embedded Systems, AI/ML, and Data Science. With deep domain expertise and a proven track record of translating business needs into successful solutions, Elpis empowers manufacturers to build smarter, more efficient operations.
+        </div>
+        <div style={{ fontSize: 12, color: C.txtMid, fontFamily: "Inter, sans-serif", lineHeight: 1.8, marginBottom: 16, fontStyle: "italic", borderLeft: `3px solid ${C.accent}33`, paddingLeft: 14 }}>
+          "Quality without compromise" — Our vision drives every product and service we deliver.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { icon: "🏢", label: "Founded", value: "2012 — Bengaluru, India" },
+            { icon: "📍", label: "Address", value: "No. 102/1, 3rd Floor, Outer Ring Rd, Mahadevapura, Bengaluru 560016" },
+            { icon: "🌐", label: "Website", value: "www.elpisitsolutions.com" },
+            { icon: "📧", label: "Email", value: "info@elpisitsolutions.com" },
+          ].map(r => (
+            <div key={r.label} style={{ padding: "10px 14px", background: C.bg, borderRadius: 8 }}>
+              <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginBottom: 4 }}>{r.icon} {r.label}</div>
+              <div style={{ fontSize: 11, fontFamily: "Inter, sans-serif", color: r.label === "Website" || r.label === "Email" ? C.accent : C.txt }}>{r.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Services & Products */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+            Products
+          </div>
+          {["E-IDOS — Industrial Data Platform", "mDAQ — Modular Data Acquisition", "EDGE Gateway — IoT Edge Computing", "CNC Data Bridge — FOCAS to MQTT", "RMS — Remote Monitoring System"].map(p => (
+            <div key={p} style={{ padding: "8px 0", borderBottom: `1px solid ${C.cardBorder}`, fontSize: 11, fontFamily: "Inter, sans-serif", color: C.txtMid, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: C.teal }}>▸</span> {p}
+            </div>
+          ))}
+        </div>
+        <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />
+            Services
+          </div>
+          {["Industrial Automation & SCADA", "IIoT & Industry 4.0 Solutions", "Embedded Systems Development", "AI, ML & Predictive Analytics", "Offshore Development Center (ODC)", "Technology Consulting"].map(s => (
+            <div key={s} style={{ padding: "8px 0", borderBottom: `1px solid ${C.cardBorder}`, fontSize: 11, fontFamily: "Inter, sans-serif", color: C.txtMid, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: C.blue }}>▸</span> {s}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: "center", padding: "12px 0", fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>
+        © {new Date().getFullYear()} Elpis IT Solutions Pvt Ltd. All rights reserved. Strategically partnered with Software Toolbox Inc, USA.
+      </div>
+    </div>
+  );
+}
+
+// ─── Machines Tab ─────────────────────────────────────────────
+function MachinesTab({ machines, onAdd, onEdit, onClone, onDelete, onToggle, C }) {
+  if (!machines.length) return (
+    <div style={{ textAlign: "center", padding: "60px 0" }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>⚙️</div>
+      <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "Inter, sans-serif", marginBottom: 6 }}>No machines configured</div>
+      <div style={{ fontSize: 13, color: C.txtDim, fontFamily: "Inter, sans-serif", marginBottom: 20 }}>Add your first CNC machine to get started.</div>
+      <button onClick={onAdd} style={{ ...btnS(C.accent, "#000"), padding: "10px 24px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 8 }}><Icon type="plus" size={15} /> Add Machine</button>
+    </div>
+  );
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>{machines.filter(m => m.Enabled).length} active / {machines.length} total</div>
+        <button onClick={onAdd} style={{ ...btnS(C.accent, "#000"), padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}><Icon type="plus" size={14} /> Add Machine</button>
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {machines.map(m => (
+          <div key={m.MachineId} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: "14px 18px", display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 16, alignItems: "center", opacity: m.Enabled ? 1 : 0.5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.Enabled ? C.green : C.red, boxShadow: m.Enabled ? `0 0 8px ${C.green}44` : "none" }} />
+              <div><div style={{ fontSize: 13, fontWeight: 600, color: C.accent }}>{m.MachineId}</div><div style={{ fontSize: 11, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>{m.MachineName}</div></div>
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 11, color: C.txtMid, fontFamily: "Inter, sans-serif" }}>
+              <span style={{ color: DS_COLORS[m.DataSourceType] || C.txtMid }}>{DS_ICONS[m.DataSourceType]||"📡"} {DS_LABELS[m.DataSourceType]||m.DataSourceType}</span>
+              <span>🔗 {m.DataSourceType === "MtLinki" ? (m.MtLinki?.BaseUrl||"").replace(/^https?:\/\//, "").replace(/\/$/, "") : m.DataSourceType === "Focas2Dll" ? `${m.Focas2?.IpAddress||"?"}:${m.Focas2?.Port||8193}` : m.BaseUrl?.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
+              <span>⏱ {m.PollIntervalMs}ms</span><span>📊 {m.DataPoints?.length || 0} tags</span>
+              {m.Tags?.length > 0 && <span>🏷 {m.Tags.join(", ")}</span>}
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button onClick={() => onToggle(m.MachineId)} style={iconB(m.Enabled ? C.green : C.txtDim)}><Icon type="power" size={14} /></button>
+              <button onClick={() => onClone(m)} style={iconB(C.txtMid)}><Icon type="clone" size={14} /></button>
+              <button onClick={() => onEdit(m)} style={iconB(C.accent)}><Icon type="edit" size={14} /></button>
+              <button onClick={() => onDelete(m.MachineId)} style={iconB(C.red)}><Icon type="trash" size={14} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Machine Editor ───────────────────────────────────────────
+function MachineEditor({ machine, onSave, onCancel, licensedTags, totalTags, currentMachineTags, C }) {
+  const [form, setForm] = useState({ ...machine });
+  const [tagInput, setTagInput] = useState("");
+  const [section, setSection] = useState("general");
+  const [availableTags, setAvailableTags] = useState(SIMULATED_CNC_TAGS);
+  const [fetchStatus, setFetchStatus] = useState("idle");
+  const [fetchMsg, setFetchMsg] = useState("");
+  const [tagSearch, setTagSearch] = useState("");
+  const [expandedCats, setExpandedCats] = useState(new Set(["Program","Axes","Spindle","Alarms","Production"]));
+  const [filterCat, setFilterCat] = useState("all");
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setMtLinki = (k, v) => setForm(f => ({ ...f, MtLinki: { ...(f.MtLinki||{}), [k]: v } }));
+  const setFocas = (k, v) => setForm(f => ({ ...f, Focas2: { ...(f.Focas2||{}), [k]: v } }));
+
+  // License enforcement: how many tags this machine can still add
+  const otherMachineTags = totalTags - currentMachineTags;
+  const thisSelectedCount = (form.DataPoints || []).length;
+  const maxAllowedHere = licensedTags > 0 ? licensedTags - otherMachineTags : Infinity;
+  const atLimit = licensedTags > 0 && thisSelectedCount >= maxAllowedHere;
+
+  const fetchTags = async () => {
+    if (form.DataSourceType === "HttpRest" && !form.BaseUrl) { setFetchMsg("Enter a Base URL first"); setFetchStatus("error"); return; }
+    if (form.DataSourceType === "MtLinki") { setAvailableTags(SIMULATED_CNC_TAGS); setFetchStatus("success"); setFetchMsg(`Standard catalog (${SIMULATED_CNC_TAGS.length} tags). MT-LINKi tags auto-mapped.`); return; }
+    if (form.DataSourceType === "Focas2Dll") { setAvailableTags(SIMULATED_CNC_TAGS); setFetchStatus("success"); setFetchMsg(`Standard catalog (${SIMULATED_CNC_TAGS.length} tags). FOCAS2 data points auto-mapped.`); return; }
+    setFetchStatus("loading"); setFetchMsg("Connecting to CNC...");
+    try {
+      const url = form.BaseUrl.replace(/\/$/, "") + "/focas2/tags";
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) { const data = await res.json(); if (Array.isArray(data) && data.length > 0) { setAvailableTags(data); setFetchStatus("success"); setFetchMsg(`Fetched ${data.length} tags from CNC`); return; } }
+      throw new Error("fail");
+    } catch { setAvailableTags(SIMULATED_CNC_TAGS); setFetchStatus("success"); setFetchMsg(`Using standard catalog (${SIMULATED_CNC_TAGS.length} tags). Could not reach CNC.`); }
+  };
+
+  const categories = useMemo(() => { const c = {}; availableTags.forEach(t => { if (!c[t.category]) c[t.category] = []; c[t.category].push(t); }); return c; }, [availableTags]);
+  const catOrder = Object.keys(categories);
+  const filteredCats = useMemo(() => { const r = {}; const s = tagSearch.toLowerCase(); catOrder.forEach(cat => { if (filterCat !== "all" && cat !== filterCat) return; const f = categories[cat].filter(t => t.id.toLowerCase().includes(s) || t.label.toLowerCase().includes(s)); if (f.length > 0) r[cat] = f; }); return r; }, [categories, tagSearch, filterCat, catOrder]);
+
+  const selectedSet = new Set(form.DataPoints || []);
+  const toggleTag = (id) => {
+    const dp = form.DataPoints || [];
+    if (dp.includes(id)) { set("DataPoints", dp.filter(d => d !== id)); }
+    else if (!atLimit) { set("DataPoints", [...dp, id]); }
+  };
+  const selectAllInCat = (cat) => { const dp = new Set(form.DataPoints || []); categories[cat].forEach(t => { if (dp.size < maxAllowedHere) dp.add(t.id); }); set("DataPoints", [...dp]); };
+  const deselectAllInCat = (cat) => { const ids = new Set(categories[cat].map(t => t.id)); set("DataPoints", (form.DataPoints || []).filter(d => !ids.has(d))); };
+  const selectAll = () => { const dp = []; availableTags.forEach(t => { if (dp.length < maxAllowedHere) dp.push(t.id); }); set("DataPoints", dp); };
+  const deselectAll = () => set("DataPoints", []);
+  const toggleCat = (cat) => { const s = new Set(expandedCats); s.has(cat) ? s.delete(cat) : s.add(cat); setExpandedCats(s); };
+  const catSelCount = (cat) => categories[cat]?.filter(t => selectedSet.has(t.id)).length || 0;
+
+  const addLabel = () => { if (tagInput.trim() && !(form.Tags||[]).includes(tagInput.trim())) { set("Tags", [...(form.Tags||[]), tagInput.trim()]); setTagInput(""); } };
+  const removeLabel = (t) => set("Tags", (form.Tags||[]).filter(x => x !== t));
+
+  const valid = form.MachineId.trim() && (form.DataSourceType === "MtLinki" ? !!(form.MtLinki?.BaseUrl) : form.DataSourceType === "Focas2Dll" ? !!(form.Focas2?.IpAddress) : !!form.BaseUrl.trim());
+  const secs = [{ id:"general", label:"General" }, { id:"connection", label:"Connection" }, { id:`datapoints`, label:`Data Points (${thisSelectedCount})` }, { id:"advanced", label:"Advanced" }];
+
+  return (
+    <Modal onClose={onCancel} C={C} wide>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>{machine.MachineName ? "Edit" : "Add"} Machine</div>
+        <button onClick={onCancel} style={{ background: "none", border: "none", color: C.txtDim, cursor: "pointer" }}><Icon type="x" size={18} /></button>
+      </div>
+      <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.cardBorder}`, marginBottom: 20 }}>
+        {secs.map(s => <button key={s.id} onClick={() => setSection(s.id)} style={{ padding: "8px 16px", fontSize: 11, fontFamily: "Inter, sans-serif", fontWeight: 500, background: "transparent", border: "none", color: section === s.id ? C.accent : C.txtDim, borderBottom: section === s.id ? `2px solid ${C.accent}` : "2px solid transparent", cursor: "pointer" }}>{s.label}</button>)}
+      </div>
+
+      {section === "general" && (
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <Field label="Machine ID *" hint="Unique identifier"><input value={form.MachineId} onChange={e => set("MachineId", e.target.value)} placeholder="CNC-001" style={inpS(C.input, C.inputBorder)} /></Field>
+            <Field label="Machine Name"><input value={form.MachineName} onChange={e => set("MachineName", e.target.value)} placeholder="Lathe Bay 1" style={inpS(C.input, C.inputBorder)} /></Field>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <Field label="Device ID" hint="MQTT payload DeviceId (defaults to Machine ID)"><input value={form.DeviceId||""} onChange={e => set("DeviceId", e.target.value)} placeholder={form.MachineId||"DeviceID_CNC"} style={inpS(C.input, C.inputBorder)} /></Field>
+            <Field label="Device Name" hint="Tag prefix: DeviceName.TagName (defaults to Machine Name)"><input value={form.DeviceName||""} onChange={e => set("DeviceName", e.target.value)} placeholder={form.MachineName?form.MachineName.replace(/[^a-zA-Z0-9_]/g,""):"LatheBay1"} style={inpS(C.input, C.inputBorder)} /></Field>
+          </div>
+          {(form.DeviceId || form.DeviceName || form.MachineId) && (
+            <div style={{ background: `${C.inputBorder}33`, borderRadius: 6, padding: "6px 10px" }}>
+              <span style={{ fontSize: 9, color: C.txtDim, fontFamily: "'JetBrains Mono', monospace" }}>📡 Sample: {`{ "DeviceId": "${form.DeviceId||form.MachineId||"..."}", "Data": ["${form.DeviceName||form.MachineName?.replace(/[^a-zA-Z0-9_]/g,"")||"Device"}.SpindleSpeed,1200,2026-...,4"] }`}</span>
+            </div>
+          )}
+          <Field label="Data Source Type *" hint="How to connect to this CNC">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {["MtLinki","Focas2Dll","HttpRest"].map(t => (
+                <button key={t} onClick={() => set("DataSourceType", t)} style={{ padding: "10px 12px", borderRadius: 8, border: `2px solid ${form.DataSourceType===t ? DS_COLORS[t] : C.cardBorder}`, background: form.DataSourceType===t ? `${DS_COLORS[t]}15` : C.input, cursor: "pointer", textAlign: "left" }}>
+                  <div style={{ fontSize: 16, marginBottom: 4 }}>{DS_ICONS[t]}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: form.DataSourceType===t ? DS_COLORS[t] : C.txtMid, fontFamily: "Inter, sans-serif" }}>{DS_LABELS[t]}</div>
+                  <div style={{ fontSize: 9, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>{t==="MtLinki"?"Reads from MT-LINKi REST API":t==="Focas2Dll"?"Direct DLL, no middleware":"HTTP API or simulator"}</div>
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Enabled"><label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 12, color: C.txtMid }}><Toggle on={form.Enabled} toggle={() => set("Enabled", !form.Enabled)} c={C.green} />{form.Enabled ? "Active" : "Disabled"}</label></Field>
+          <Field label="Labels" hint="Categorize this machine (Enter to add)">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: (form.Tags||[]).length ? 8 : 0 }}>
+              {(form.Tags||[]).map(t => <span key={t} style={{ background: "#1e2a38", padding: "3px 10px", borderRadius: 12, fontSize: 11, display: "flex", alignItems: "center", gap: 6, fontFamily: "Inter, sans-serif" }}>{t} <span onClick={() => removeLabel(t)} style={{ cursor: "pointer", color: C.red, fontWeight: 700 }}>×</span></span>)}
+            </div>
+            <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addLabel())} placeholder="e.g., lathe, bay-1..." style={inpS(C.input, C.inputBorder)} />
+          </Field>
+        </div>
+      )}
+
+      {section === "connection" && (
+        <div style={{ display: "grid", gap: 14 }}>
+          {/* MT-LINKi REST API settings */}
+          {form.DataSourceType === "MtLinki" && (<>
+            <div style={{ padding: "10px 14px", background: `${DS_COLORS.MtLinki}10`, border: `1px solid ${DS_COLORS.MtLinki}22`, borderRadius: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: DS_COLORS.MtLinki, fontFamily: "Inter, sans-serif" }}>🗄️ MT-LINKi REST API Connection</div>
+              <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>Reads CNC data from MT-LINKi's REST API (port 3000)</div>
+            </div>
+            <Field label="Base URL *" hint="http://hostname:3000"><input value={form.MtLinki?.BaseUrl||""} onChange={e => setMtLinki("BaseUrl", e.target.value)} placeholder="http://192.168.2.199:3000" style={inpS(C.input, C.inputBorder)} /></Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="API Version"><input value={form.MtLinki?.ApiVersion||""} onChange={e => setMtLinki("ApiVersion", e.target.value)} placeholder="v1" style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Equipment Type"><input value={form.MtLinki?.EquipmentType||""} onChange={e => setMtLinki("EquipmentType", e.target.value)} placeholder="CNC" style={inpS(C.input, C.inputBorder)} /></Field>
+            </div>
+            <Field label="Machine Identifier" hint="Name in MT-LINKi (for multi-machine responses)"><input value={form.MtLinki?.MachineIdentifier||""} onChange={e => setMtLinki("MachineIdentifier", e.target.value)} placeholder={form.MachineId||"CNC-001"} style={inpS(C.input, C.inputBorder)} /></Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="Username" hint="Optional"><input value={form.MtLinki?.Username||""} onChange={e => setMtLinki("Username", e.target.value)} placeholder="" style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Password" hint="Optional"><input type="password" value={form.MtLinki?.Password||""} onChange={e => setMtLinki("Password", e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="Timeout (sec)"><input type="number" value={form.MtLinki?.TimeoutSeconds||10} onChange={e => setMtLinki("TimeoutSeconds", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Poll Interval (ms)"><input type="number" value={form.PollIntervalMs} onChange={e => set("PollIntervalMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 4 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.txt, fontFamily: "Inter, sans-serif", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.MtLinki?.FetchAlarmLogs ?? true} onChange={e => setMtLinki("FetchAlarmLogs", e.target.checked)} />
+                Fetch Alarm Logs
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.txt, fontFamily: "Inter, sans-serif", cursor: "pointer" }}>
+                <input type="checkbox" checked={form.MtLinki?.FetchProductionLogs ?? false} onChange={e => setMtLinki("FetchProductionLogs", e.target.checked)} />
+                Fetch Production Logs
+              </label>
+            </div>
+            <div style={{ fontSize: 9, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 6, padding: "6px 10px", background: `${C.inputBorder}33`, borderRadius: 6 }}>📡 Endpoint: {form.MtLinki?.BaseUrl||"..."}/api/{form.MtLinki?.ApiVersion||"v1"}/equipment/{form.MtLinki?.EquipmentType||"CNC"}/monitorings</div>
+          </>)}
+
+          {/* FOCAS2 DLL settings */}
+          {form.DataSourceType === "Focas2Dll" && (<>
+            <div style={{ padding: "10px 14px", background: `${DS_COLORS.Focas2Dll}10`, border: `1px solid ${DS_COLORS.Focas2Dll}22`, borderRadius: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: DS_COLORS.Focas2Dll, fontFamily: "Inter, sans-serif" }}>⚡ Direct FOCAS2 DLL Connection</div>
+              <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>Calls native Fwlib64.dll via P/Invoke over Ethernet</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+              <Field label="CNC IP Address *"><input value={form.Focas2?.IpAddress||""} onChange={e => setFocas("IpAddress", e.target.value)} placeholder="192.168.1.102" style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Port"><input type="number" value={form.Focas2?.Port||8193} onChange={e => setFocas("Port", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <Field label="Timeout (sec)"><input type="number" value={form.Focas2?.TimeoutSeconds||10} onChange={e => setFocas("TimeoutSeconds", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Poll Interval (ms)"><input type="number" value={form.PollIntervalMs} onChange={e => set("PollIntervalMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Keep Alive"><label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 12, color: C.txtMid, marginTop: 8 }}><Toggle on={form.Focas2?.KeepAlive !== false} toggle={() => setFocas("KeepAlive", !(form.Focas2?.KeepAlive !== false))} c={DS_COLORS.Focas2Dll} />{form.Focas2?.KeepAlive !== false ? "Persistent" : "Per-poll"}</label></Field>
+            </div>
+            <Field label="DLL Path" hint="Leave empty for default search"><input value={form.Focas2?.DllPath||""} onChange={e => setFocas("DllPath", e.target.value)} placeholder="C:\\Fanuc\\FOCAS2\\Fwlib64.dll (optional)" style={inpS(C.input, C.inputBorder)} /></Field>
+          </>)}
+
+          {/* HTTP REST settings */}
+          {form.DataSourceType === "HttpRest" && (<>
+            <div style={{ padding: "10px 14px", background: `${DS_COLORS.HttpRest}10`, border: `1px solid ${DS_COLORS.HttpRest}22`, borderRadius: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: DS_COLORS.HttpRest, fontFamily: "Inter, sans-serif" }}>🌐 HTTP REST Connection</div>
+              <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif", marginTop: 2 }}>CNC Simulator or custom FOCAS REST wrapper</div>
+            </div>
+            <Field label="Base URL *"><input value={form.BaseUrl} onChange={e => set("BaseUrl", e.target.value)} placeholder="http://192.168.1.100:8193/" style={inpS(C.input, C.inputBorder)} /></Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <Field label="Auth Type"><select value={form.AuthType} onChange={e => set("AuthType", e.target.value)} style={inpS(C.input, C.inputBorder)}><option value="None">None</option><option value="Basic">Basic</option><option value="Bearer">Bearer</option></select></Field>
+              <Field label="Username"><input value={form.Username} onChange={e => set("Username", e.target.value)} style={inpS(C.input, C.inputBorder)} disabled={form.AuthType === "None"} /></Field>
+              <Field label="Password"><input value={form.Password} onChange={e => set("Password", e.target.value)} type="password" style={inpS(C.input, C.inputBorder)} disabled={form.AuthType === "None"} /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="Poll Interval (ms)"><input type="number" value={form.PollIntervalMs} onChange={e => set("PollIntervalMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+              <Field label="Timeout (ms)"><input type="number" value={form.TimeoutMs} onChange={e => set("TimeoutMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+            </div>
+          </>)}
+        </div>
+      )}
+
+      {section === "datapoints" && (
+        <div>
+          {/* License limit warning */}
+          {licensedTags > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", marginBottom: 10, background: atLimit ? `${C.red}12` : `${C.teal}0a`, border: `1px solid ${atLimit ? C.red+"33" : C.teal+"22"}`, borderRadius: 8 }}>
+              <span style={{ fontSize: 11, fontFamily: "Inter, sans-serif", color: atLimit ? C.red : C.teal, fontWeight: 500 }}>
+                {atLimit ? `⚠️ License limit reached (${licensedTags} tags across all machines)` : `🏷 ${thisSelectedCount} selected — ${maxAllowedHere - thisSelectedCount} tags remaining in license`}
+              </span>
+              {atLimit && <span style={{ fontSize: 10, color: C.accent, fontFamily: "Inter, sans-serif" }}>Upgrade at elpisitsolutions.com</span>}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, padding: "12px 14px", background: `${C.accent}08`, border: `1px solid ${C.accent}22`, borderRadius: 8 }}>
+            <button onClick={fetchTags} disabled={fetchStatus === "loading"} style={{ ...btnS(C.accent, "#000"), padding: "7px 14px", fontSize: 11, display: "flex", alignItems: "center", gap: 6, opacity: fetchStatus === "loading" ? 0.6 : 1 }}>
+              <span style={fetchStatus === "loading" ? { animation: "spin 1s linear infinite", display: "inline-flex" } : { display: "inline-flex" }}><Icon type="refresh" size={13} /></span>
+              {fetchStatus === "loading" ? "Fetching..." : "Fetch Tags from CNC"}
+            </button>
+            <div style={{ fontSize: 11, color: C.txtMid, fontFamily: "Inter, sans-serif", flex: 1 }}>
+              {fetchStatus === "idle" && `Standard catalog (${availableTags.length} tags)`}
+              {fetchStatus === "loading" && "Connecting..."}
+              {fetchStatus === "success" && fetchMsg}
+              {fetchStatus === "error" && <span style={{ color: C.red }}>{fetchMsg}</span>}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center" }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.txtDim }}><Icon type="search" size={14} /></span>
+              <input value={tagSearch} onChange={e => setTagSearch(e.target.value)} placeholder="Search tags..." style={{ ...inpS(C.input, C.inputBorder), paddingLeft: 32 }} />
+            </div>
+            <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...inpS(C.input, C.inputBorder), width: "auto", minWidth: 150 }}>
+              <option value="all">All Categories</option>
+              {catOrder.map(cat => <option key={cat} value={cat}>{CATEGORY_ICONS[cat]||"📌"} {CATEGORY_LABELS[cat]||cat} ({categories[cat].length})</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 12, fontFamily: "Inter, sans-serif", fontWeight: 600 }}><span style={{ color: C.accent }}>{thisSelectedCount}</span><span style={{ color: C.txtDim }}> / {availableTags.length} tags selected</span></div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={selectAll} style={{ ...btnS("#1e2a38", C.txtMid), padding: "5px 12px", fontSize: 10 }}>Select All</button>
+              <button onClick={deselectAll} style={{ ...btnS("#1e2a38", C.txtMid), padding: "5px 12px", fontSize: 10 }}>Deselect All</button>
+            </div>
+          </div>
+          <div style={{ maxHeight: 380, overflow: "auto", border: `1px solid ${C.inputBorder}`, borderRadius: 8 }}>
+            {Object.keys(filteredCats).length === 0 && <div style={{ padding: 30, textAlign: "center", color: C.txtDim, fontSize: 12, fontFamily: "Inter, sans-serif" }}>No tags match.</div>}
+            {Object.entries(filteredCats).map(([cat, tags]) => {
+              const expanded = expandedCats.has(cat); const selC = catSelCount(cat); const total = categories[cat].length; const allSel = selC === total;
+              return (
+                <div key={cat} style={{ borderBottom: `1px solid ${C.inputBorder}` }}>
+                  <div onClick={() => toggleCat(cat)} style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", background: expanded ? `${C.accent}06` : "transparent", userSelect: "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 10, color: C.txtDim, transition: "transform 0.2s", transform: expanded ? "rotate(90deg)" : "rotate(0)", display: "inline-block" }}>▶</span>
+                      <span style={{ fontSize: 16 }}>{CATEGORY_ICONS[cat]||"📌"}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>{CATEGORY_LABELS[cat]||cat}</span>
+                      <span style={{ fontSize: 10, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>({tags.length})</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
+                      <span style={{ fontSize: 10, color: selC > 0 ? C.accent : C.txtDim, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>{selC}/{total}</span>
+                      <button onClick={() => allSel ? deselectAllInCat(cat) : selectAllInCat(cat)} style={{ ...btnS(allSel ? "#1e2a38" : `${C.accent}22`, allSel ? C.txtDim : C.accent), padding: "3px 8px", fontSize: 9 }}>{allSel ? "Deselect" : "Select All"}</button>
+                    </div>
+                  </div>
+                  {expanded && <div style={{ padding: "0 6px 6px" }}>
+                    {tags.map(t => {
+                      const on = selectedSet.has(t.id); const disabled = !on && atLimit;
+                      return (
+                        <div key={t.id} onClick={() => !disabled && toggleTag(t.id)} style={{ display: "grid", gridTemplateColumns: "26px 1fr auto", alignItems: "center", gap: 8, padding: "7px 10px", margin: "2px 0", borderRadius: 6, cursor: disabled ? "not-allowed" : "pointer", background: on ? `${C.accent}0d` : "transparent", opacity: disabled ? 0.4 : 1 }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${on ? C.accent : "#2a3544"}`, background: on ? C.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#000", flexShrink: 0 }}>{on && <Icon type="check" size={11} />}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 500, fontFamily: "Inter, sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.label}</div>
+                            <div style={{ fontSize: 10, color: C.txtDim, fontFamily: "'JetBrains Mono', monospace" }}>{t.id}</div>
+                          </div>
+                          {t.unit && <span style={{ fontSize: 9, color: C.txtDim, background: "#1e2a38", padding: "2px 6px", borderRadius: 4, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{t.unit}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {section === "advanced" && (
+        <div style={{ display: "grid", gap: 14 }}>
+          <Field label="Certificate Thumbprint (SHA-256)"><input value={form.CertificateThumbprint} onChange={e => set("CertificateThumbprint", e.target.value)} placeholder="A1B2C3..." style={inpS(C.input, C.inputBorder)} /></Field>
+          <div style={{ background: `${C.accent}08`, border: `1px solid ${C.accent}22`, borderRadius: 8, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, fontFamily: "Inter, sans-serif", color: C.accent, marginBottom: 6 }}>💡 Password Encryption</div>
+            <div style={{ fontSize: 11, color: C.txtMid, fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}>• <code style={{ background: "#1e2a38", padding: "1px 5px", borderRadius: 3 }}>env:VAR_NAME</code> — environment variable<br/>• <code style={{ background: "#1e2a38", padding: "1px 5px", borderRadius: 3 }}>enc:IV:CIPHERTEXT</code> — AES-256<br/>• Plain text (not recommended)</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.cardBorder}` }}>
+        <button onClick={onCancel} style={{ ...btnS("#1e2a38", C.txtMid), padding: "8px 20px", fontSize: 12 }}>Cancel</button>
+        <button onClick={() => valid && onSave(form)} disabled={!valid} style={{ ...btnS(valid ? C.accent : "#1e2a38", valid ? "#000" : C.txtDim), padding: "8px 24px", fontSize: 12, opacity: valid ? 1 : 0.5 }}><span style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon type="check" size={14} /> Save Machine</span></button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── MQTT Tab ─────────────────────────────────────────────────
+function MqttTab({ mqtt, onSave, C }) {
+  const [form, setForm] = useState({ ...mqtt }); const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  useEffect(() => setForm({ ...mqtt }), [mqtt]);
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <Section t="Broker Connection" C={C}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+          <Field label="Broker Host"><input value={form.BrokerHost} onChange={e => set("BrokerHost", e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Port"><input type="number" value={form.BrokerPort} onChange={e => set("BrokerPort", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 14 }}>
+          <Field label="Transport">
+            <div style={{ display: "flex", gap: 6 }}>
+              {["Tcp", "WebSocket"].map(t => (
+                <button key={t} onClick={() => { set("Transport", t); if (t === "WebSocket" && form.BrokerPort === 8883) set("BrokerPort", 9001); if (t === "Tcp" && form.BrokerPort === 9001) set("BrokerPort", 8883); }} style={{ flex: 1, padding: "6px 10px", fontSize: 11, fontFamily: "Inter, sans-serif", fontWeight: form.Transport === t ? 600 : 400, borderRadius: 6, border: `1.5px solid ${form.Transport === t ? C.accent : C.inputBorder}`, background: form.Transport === t ? `${C.accent}15` : C.input, color: form.Transport === t ? C.accent : C.txtMid, cursor: "pointer" }}>{t === "Tcp" ? "🔌 TCP" : "🌐 WebSocket"}</button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Protocol Version">
+            <select value={form.ProtocolVersion} onChange={e => set("ProtocolVersion", e.target.value)} style={inpS(C.input, C.inputBorder)}>
+              <option value="V311">MQTT 3.1.1</option>
+              <option value="V310">MQTT 3.1</option>
+              <option value="V500">MQTT 5.0</option>
+            </select>
+          </Field>
+          {form.Transport === "WebSocket" && (
+            <Field label="WebSocket Path"><input value={form.WebSocketPath||"/mqtt"} onChange={e => set("WebSocketPath", e.target.value)} placeholder="/mqtt" style={inpS(C.input, C.inputBorder)} /></Field>
+          )}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 14 }}>
+          <Field label="Client ID"><input value={form.ClientId} onChange={e => set("ClientId", e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Username"><input value={form.Username} onChange={e => set("Username", e.target.value)} placeholder="(optional)" style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Password"><input value={form.Password} onChange={e => set("Password", e.target.value)} type="password" style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+        <div style={{ marginTop: 14 }}><Field label="Use TLS"><label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 12, color: C.txtMid }}><Toggle on={form.UseTls} toggle={() => set("UseTls", !form.UseTls)} c={C.green} />{form.UseTls ? "Encrypted (TLS 1.2+)" : "Unencrypted"}</label></Field></div>
+        {form.Transport === "WebSocket" && (
+          <div style={{ background: `${C.inputBorder}33`, borderRadius: 6, padding: "6px 10px", marginTop: 8 }}>
+            <span style={{ fontSize: 9, color: C.txtDim, fontFamily: "Inter, sans-serif" }}>📡 {form.UseTls ? "wss" : "ws"}://{form.BrokerHost || "..."}:{form.BrokerPort}/{(form.WebSocketPath || "/mqtt").replace(/^\//, "")}</span>
+          </div>
+        )}
+      </Section>
+      <Section t="Topic & QoS" C={C}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+          <Field label="Topic Prefix"><input value={form.TopicPrefix} onChange={e => set("TopicPrefix", e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="QoS Level"><select value={form.QualityOfServiceLevel} onChange={e => set("QualityOfServiceLevel", +e.target.value)} style={inpS(C.input, C.inputBorder)}><option value={0}>QoS 0</option><option value={1}>QoS 1</option><option value={2}>QoS 2</option></select></Field>
+        </div>
+        <div style={{ background: `${C.accent}08`, border: `1px solid ${C.accent}22`, borderRadius: 8, padding: 12, marginTop: 12 }}><div style={{ fontSize: 11, color: C.txtMid, fontFamily: "Inter, sans-serif" }}>📡 <code style={{ color: C.accent }}>{form.TopicPrefix || "factory/cnc"}/CNC-001/data</code></div></div>
+      </Section>
+      <Section t="Session & Reconnect" C={C}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+          <Field label="Keep Alive (sec)"><input type="number" value={form.KeepAliveSeconds} onChange={e => set("KeepAliveSeconds", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Reconnect Delay (ms)"><input type="number" value={form.ReconnectDelayMs} onChange={e => set("ReconnectDelayMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Max Pending"><input type="number" value={form.MaxPendingMessages} onChange={e => set("MaxPendingMessages", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+        <div style={{ marginTop: 14 }}><Field label="Clean Session"><label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 12, color: C.txtMid }}><Toggle on={form.CleanSession} toggle={() => set("CleanSession", !form.CleanSession)} c={C.green} />{form.CleanSession ? "Clean" : "Persistent"}</label></Field></div>
+      </Section>
+      <Section t="Publish Batching" C={C}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Batch Size"><input type="number" value={form.PublishBatchSize} onChange={e => set("PublishBatchSize", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Batch Interval (ms)"><input type="number" value={form.PublishBatchIntervalMs} onChange={e => set("PublishBatchIntervalMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+      </Section>
+      <Section t="TLS Certificates" C={C}>
+        <Field label="CA Certificate Path"><input value={form.CaCertificatePath} onChange={e => set("CaCertificatePath", e.target.value)} placeholder="/app/certs/ca.crt" style={inpS(C.input, C.inputBorder)} /></Field>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14, marginTop: 14 }}>
+          <Field label="Client Certificate"><input value={form.ClientCertificatePath} onChange={e => set("ClientCertificatePath", e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Cert Password"><input value={form.ClientCertificatePassword} onChange={e => set("ClientCertificatePassword", e.target.value)} type="password" style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+      </Section>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}><button onClick={() => onSave(form)} style={{ ...btnS(C.accent, "#000"), padding: "10px 28px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}><Icon type="check" size={15} /> Save</button></div>
+    </div>
+  );
+}
+
+// ─── App Tab ──────────────────────────────────────────────────
+function AppTab({ appCfg, onSave, C }) {
+  const [form, setForm] = useState({ ...appCfg }); const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  useEffect(() => setForm({ ...appCfg }), [appCfg]);
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <Section t="Concurrency & Back-Pressure" C={C}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label="Max Parallel Polls"><input type="number" value={form.MaxParallelPolls} onChange={e => set("MaxParallelPolls", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+          <Field label="Channel Capacity"><input type="number" value={form.ChannelCapacity} onChange={e => set("ChannelCapacity", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field>
+        </div>
+        <div style={{ marginTop: 14 }}><Field label="Default Poll Interval (ms)"><input type="number" value={form.DefaultPollIntervalMs} onChange={e => set("DefaultPollIntervalMs", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field></div>
+      </Section>
+      <Section t="Health Checks" C={C}>
+        <Field label="Enable"><label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "Inter, sans-serif", fontSize: 12, color: C.txtMid }}><Toggle on={form.EnableHealthChecks} toggle={() => set("EnableHealthChecks", !form.EnableHealthChecks)} c={C.green} />{form.EnableHealthChecks ? "Enabled" : "Disabled"}</label></Field>
+        {form.EnableHealthChecks && <div style={{ marginTop: 14 }}><Field label="Port"><input type="number" value={form.HealthCheckPort} onChange={e => set("HealthCheckPort", +e.target.value)} style={inpS(C.input, C.inputBorder)} /></Field></div>}
+      </Section>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}><button onClick={() => onSave(form)} style={{ ...btnS(C.accent, "#000"), padding: "10px 28px", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}><Icon type="check" size={15} /> Save</button></div>
+    </div>
+  );
+}
+
+// ─── Shared ───────────────────────────────────────────────────
+function Section({ t, children, C }) {
+  return (<div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: 20 }}><div style={{ fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif", marginBottom: 16, color: C.accent, display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 3, height: 16, background: C.accent, borderRadius: 2 }} />{t}</div>{children}</div>);
+}
+function Field({ label, hint, children }) {
+  return (<div><div style={{ fontSize: 11, fontWeight: 600, fontFamily: "Inter, sans-serif", marginBottom: 4, color: "#94a3b8" }}>{label}</div>{children}{hint && <div style={{ fontSize: 10, color: "#475569", fontFamily: "Inter, sans-serif", marginTop: 3 }}>{hint}</div>}</div>);
+}
+function Toggle({ on, toggle, c }) {
+  return (<div onClick={toggle} style={{ width: 36, height: 20, borderRadius: 10, background: on ? c : "#1e2a38", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}><div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: on ? 18 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} /></div>);
+}
+function Modal({ onClose, children, C, wide }) {
+  return (<div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, animation: "fadeIn 0.2s ease", backdropFilter: "blur(4px)" }}><div onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: 24, width: wide ? "min(720px, 94vw)" : "min(440px, 90vw)", maxHeight: "88vh", overflow: "auto", animation: "scaleIn 0.2s ease", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>{children}</div></div>);
+}
+function btnS(bg, color) { return { background: bg, color, border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "Inter, sans-serif", fontWeight: 600, transition: "all 0.15s" }; }
+function iconB(color) { return { background: "transparent", border: "none", color, cursor: "pointer", padding: "6px", borderRadius: 6, display: "flex", alignItems: "center" }; }
+function inpS(bg, border) { return { width: "100%", padding: "8px 12px", background: bg, border: `1px solid ${border}`, borderRadius: 6, color: "#e2e8f0", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", transition: "all 0.15s", boxSizing: "border-box" }; }

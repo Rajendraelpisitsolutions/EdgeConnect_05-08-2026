@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Store-and-Forward in IIoT: What It Means (and What It Doesn&rsquo;t) &middot; Elpis</title>
+  <meta name="description" content="Store-and-forward keeps edge data flowing through network outages - within limits. What it actually means, what it does not promise, and how to configure it honestly.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/blog/store-and-forward-iiot">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Store-and-Forward in IIoT: What It Means (and What It Doesn&rsquo;t) &middot; Elpis">
+  <meta property="og:description" content="Store-and-forward keeps edge data flowing through network outages - within limits. What it actually means, what it does not promise, and how to configure it honestly.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/blog/store-and-forward-iiot">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Store-and-Forward in IIoT: What It Means (and What It Doesn&rsquo;t) &middot; Elpis">
+  <meta name="twitter:description" content="Store-and-forward keeps edge data flowing through network outages - within limits. What it actually means, what it does not promise, and how to configure it honestly.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org","@type":"Article","headline":"Store-and-Forward in IIoT: What It Means (and What It Doesn't)","description":"What it means, what it does not promise, and how to configure it honestly.",
+    "datePublished":"2026-06-07","dateModified":"2026-06-07",
+    "author":{"@type":"Organization","name":"Elpis IT Solutions"},
+    "publisher":{"@type":"Organization","name":"Elpis IT Solutions","logo":{"@type":"ImageObject","url":"https://www.elpisitsolutions.com/assets/brand/favicon-512.png"}},
+    "mainEntityOfPage":{"@type":"WebPage","@id":"https://www.elpisitsolutions.com/blog/store-and-forward-iiot"},"image":"https://www.elpisitsolutions.com/assets/og-default.png"
+  }
+  </script>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="/assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="/platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="/eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="/architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="/security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="/capabilities" class="nav__item">Capabilities</a>
+          <a href="/solutions" class="nav__item">Solutions</a>
+          <a href="/industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="/mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="/mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="/vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="/e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="/services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="/services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="/services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="/services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main">
+
+    <section class="section article-hero" data-mode="dark-deep">
+      <div class="container container--narrow">
+        <p class="eyebrow"><a href="/blog/" class="article-hero__crumb">Industrial Intelligence Blog</a> &middot; Connectivity &amp; Edge</p>
+        <h1 class="article-hero__title">Store-and-Forward in IIoT: What It Means (and What It Doesn&rsquo;t)</h1>
+        <p class="article-hero__meta">7 June 2026 &middot; 5 min read</p>
+      </div>
+    </section>
+
+    <section class="section" data-mode="light">
+      <div class="container container--narrow article">
+        <img class="article__hero-img" src="/assets/blog/store-and-forward-iiot-hero.png" alt="Diagram: edge source buffering through an outage and forwarding to the destination" width="1600" height="900">
+
+        <p class="article__lead">Edge networks are not perfectly reliable. Links drop, a cellular connection blips, a switch reboots mid-shift. If your data path assumes a perfect connection, those moments are when you can lose the data you most wanted to keep &mdash; and you often don't find out until someone asks why a report has a hole in it.</p>
+
+        <h2>What store-and-forward means</h2>
+        <p>Store-and-forward is a simple, important idea: when the onward link is unavailable, the edge <strong>buffers</strong> the data locally, and <strong>forwards</strong> it once the connection returns. Done well, it's <strong>designed to preserve data through supported outage scenarios where buffering is configured, and to make gaps visible instead of hiding them</strong> &mdash; so a supported network blip can become a delay rather than a silent loss, and any genuine gap is shown rather than papered over.</p>
+
+        <h2>What it does <em>not</em> mean</h2>
+        <ul class="article__list">
+          <li><strong>It's not infinite.</strong> Buffering is bounded by the storage and configuration you give it. A long enough outage, or one beyond the configured limits, can still exceed the buffer.</li>
+          <li><strong>It's not a "never lose data" guarantee.</strong> It improves continuity within supported, configured scenarios &mdash; it doesn't repeal physics.</li>
+          <li><strong>It's not a replacement for network reliability.</strong> It's a safety net for outages, not a reason to tolerate a bad link.</li>
+          <li><strong>It's not a historian or backup.</strong> It's a transient buffer to bridge outages, not long-term storage.</li>
+        </ul>
+
+        <h2>Where it applies</h2>
+        <p>Anywhere the edge-to-destination link can't be trusted: remote sites, cellular-connected gateways, plants where IT and OT networks are separated, or simply any floor where switches and links occasionally fail.</p>
+
+        <h2>Common mistakes teams make</h2>
+        <ul class="article__list">
+          <li><strong>Assuming it's infinite or perfect.</strong> Size the buffer to your realistic worst-case outage, and know the limit.</li>
+          <li><strong>Not sizing the buffer at all.</strong> Defaults may not match your outage profile.</li>
+          <li><strong>Hiding gaps.</strong> If a buffer is exceeded, the honest behaviour is to <em>show</em> the gap, not silently interpolate.</li>
+          <li><strong>Treating it as your archive.</strong> It bridges outages; your historian keeps history.</li>
+        </ul>
+
+        <h2>How Elpis approaches it</h2>
+        <p>In <a href="/edgeconnect">EdgeConnect</a>, store-and-forward is <strong>per route</strong>, and is designed to preserve data through supported, buffered outage scenarios and to make gaps visible rather than hide them. Because the pipeline is <strong>deterministic and replayable</strong>, buffered data forwards in a consistent order when the link returns &mdash; which is part of what keeps downstream reports traceable. It sits within the broader data path described in the <a href="/architecture">architecture</a>.</p>
+
+        <h2>What to decide when configuring store-and-forward</h2>
+        <ul class="article__list">
+          <li>Your realistic worst-case outage duration, and the buffer size to match.</li>
+          <li>What happens when the buffer limit is reached (and how the gap is surfaced).</li>
+          <li>Which routes need it most (not every destination has the same tolerance).</li>
+        </ul>
+
+        <div class="article__cta">
+          <h3>See it on your own floor</h3>
+          <p>Explore the platform, or get in touch to design an edge data path that survives outages.</p>
+          <div class="article__cta-actions">
+            <a href="/platform" class="btn btn--primary">Explore the platform</a>
+            <a href="/contact" class="btn btn--secondary">Contact us</a>
+          </div>
+        </div>
+
+        <p class="article__sig">Elpis IT Solutions builds an Industrial Intelligence Ecosystem &mdash; from shop-floor signal to enterprise decision. Operating across India and the Middle East.</p>
+
+      </div>
+    </section>
+
+  </main>
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="/assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="/edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="/eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="/edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="/mdaq" class="footer__link">mDAQ</a>
+          <a href="/mtracker" class="footer__link">mTracker</a>
+          <a href="/vas" class="footer__link">VAS</a>
+          <a href="/e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="/platform" class="footer__link">Platform</a>
+          <a href="/capabilities" class="footer__link">Capabilities</a>
+          <a href="/solutions" class="footer__link">Solutions</a>
+          <a href="/industries" class="footer__link">Industries</a>
+          <a href="/services" class="footer__link">Services</a>
+          <a href="/architecture" class="footer__link">Architecture</a>
+          <a href="/security" class="footer__link">Security</a>
+          <a href="/blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="/resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="/roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="/resources-brochures" class="footer__link">Brochures</a>
+          <a href="/resources" class="footer__link">Pitch deck</a>
+          <a href="/resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="/customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="/privacy" class="footer__link">Privacy</a>
+          <a href="/terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

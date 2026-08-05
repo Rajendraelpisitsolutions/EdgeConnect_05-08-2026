@@ -1,0 +1,984 @@
+@*
+    Add / Edit OPC UA Client source wizard (PR 7c-4).
+
+    Two modes:
+      * Add  — @page "/sources/new/opcua-client" entry. WizardConfigMerger
+        BuildNewSourceDraft → drafts API.
+      * Edit — rendered from SourceEditRouter. PUT /api/v1/sources/{instanceId}.
+
+    Wires PR 7c-1 (TagCountThresholds), PR 7c-2 (TestConnect + Browse
+    APIs), PR 7c-3 (FromSourceInstance host wiring), and the locked
+    five-amendment shape:
+
+      #1  Test Connection cooldown FSM — Idle → Probing → CoolingDown(1s) → Idle,
+          with Cancel skipping cooldown (OpcUaTestConnectionCooldownFsm)
+      #2  Manual tag entry canonicalises NodeIds for de-dup (model.TryAddMonitoredItem
+          uses OpcUaNodeIdCanonicalizer)
+      #3  Live sticky selection summary on the Browse step (model.SelectionSummary)
+      #4  Back-navigation persistence (model holds all state)
+      #5  Tag-count Blocked disables Save (model.CanSave gates on SelectionSummary.BlocksSave);
+          Operational Expectations on Review (model.SelectionSummary surfaced)
+
+    Reference: PR 7c plan + amendments (user lock 2026-05-29)
+               docs/decisions/0015-wizard-contract.md
+*@
+@page "/sources/new/opcua-client"
+@using System
+@using System.Linq
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Core.Adapters
+@using ElpisEdgeConnect.Core.Browse
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Api
+@using ElpisEdgeConnect.Management.Components.Shared
+@using ElpisEdgeConnect.Management.Wizards
+@using ElpisEdgeConnect.Sources.OpcUaClient
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") OPC UA Client source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Hub"
+             Title="@(_isEdit ? $"Edit OPC UA Client source — {_model.InstanceId}" : "Add OPC UA Client source")"
+             Subtitle="Subscribe to FactoryTalk SCADA, Kepware, or vendor PLCs via OPC UA. Saves through the draft → validate → apply pipeline (Add) or directly with optimistic concurrency (Edit)."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    @* ── 1. Device identity ──────────────────────────────────────── *@
+    <WizardSection Index="1" Title="Device identity">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId"
+                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
+                              HelperText="Operator-readable; defaults to instance id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Device name"
+                              HelperText="Display name shown in lists and tooltips."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("scada")">scada</MudSelectItem>
+                    <MudSelectItem Value="@("plc")">plc</MudSelectItem>
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </WizardSection>
+
+    @* ── 2. Connection (endpoint + security + auth) ─────────────── *@
+    <WizardSection Index="2" Title="Connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="_model.EndpointUrl" Label="Endpoint URL *"
+                              Placeholder="opc.tcp://192.168.1.50:4840"
+                              HelperText="Starts with opc.tcp:// — not http://. Format opc.tcp://host-or-IP:port. Port 4840 is the OPC UA default; Kepware servers often use 49320."
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="_model.ApplicationUri" Label="Application URI"
+                              Placeholder="urn:elpis:edgeconnect:line3-gateway"
+                              HelperText="Leave blank unless the server's allow-list names this gateway. Format urn:company:product:name — it must stay identical every time, or the server treats this as a new client."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.SecurityMode" Label="Security mode" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@(OpcUaSecurityMode.None)">None</MudSelectItem>
+                    <MudSelectItem Value="@(OpcUaSecurityMode.Sign)">Sign</MudSelectItem>
+                    <MudSelectItem Value="@(OpcUaSecurityMode.SignAndEncrypt)">SignAndEncrypt</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.AuthMode" Label="Auth mode" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@(OpcUaAuthMode.Anonymous)">Anonymous</MudSelectItem>
+                    <MudSelectItem Value="@(OpcUaAuthMode.UserName)">UserName</MudSelectItem>
+                    <MudSelectItem Value="@(OpcUaAuthMode.Certificate)">Certificate</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSwitch @bind-Value="_model.AutoAcceptUntrustedServerCertificate"
+                           Label="Auto-accept untrusted server cert"
+                           Color="Color.Primary" />
+            </MudItem>
+            @if (_model.AuthMode == OpcUaAuthMode.UserName)
+            {
+                <MudItem xs="6" md="3">
+                    <MudTextField @bind-Value="_model.Username" Label="Username" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudTextField @bind-Value="_model.Password" Label="Password" InputType="InputType.Password"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            }
+            else if (_model.AuthMode == OpcUaAuthMode.Certificate)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.CertificatePath" Label="Certificate path *"
+                                  HelperText="Path to the client X.509 certificate."
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            }
+        </MudGrid>
+    </WizardSection>
+
+    @* ── 3. Test Connection (cooldown FSM — amendment #1) ──────── *@
+    <WizardSection Index="3" Title="Test connection">
+        @* Each probe builds its client with a fresh per-probe instance id
+           (Api/OpcUaClientTestConnectionService.cs:260), which mints a brand-new
+           self-signed certificate every click. Against a server that requires
+           certificate trust the test therefore CANNOT pass, however correct the
+           address and credentials are. That is a backend defect this UI cannot
+           fix — so warn before, and explain after, instead of leaving the
+           operator to retry an unwinnable test. *@
+        @if (_model.SecurityMode != OpcUaSecurityMode.None)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3"
+                      Icon="@Icons.Material.Filled.VerifiedUser"
+                      data-testid="opcua-test-cert-notice">
+                <strong>Read this before you test — security mode is @_model.SecurityMode.</strong>
+                <MudText Typo="Typo.body2">
+                    Every test creates a brand-new temporary certificate for this gateway, so the
+                    server sees an unknown client each time. The test will keep failing with a
+                    security error until that certificate is trusted on the server — even when the
+                    address, the credentials and the network are all correct.
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    Fastest path: set Security mode to <strong>None</strong> and test, to prove the
+                    address and network are right. Then set it back and have the server owner move
+                    this gateway's certificate out of the server's rejected list into its trusted list.
+                </MudText>
+            </MudAlert>
+        }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(!_probeFsm.ButtonEnabled || string.IsNullOrWhiteSpace(_model.EndpointUrl))"
+                       StartIcon="@Icons.Material.Filled.NetworkPing"
+                       OnClick="@ProbeTestConnectionAsync"
+                       data-testid="opcua-test-connection-button">
+                @if (_probeFsm.State == OpcUaTestConnectionProbeState.Probing)
+                {
+                    <text>Probing…</text>
+                }
+                else if (_probeFsm.State == OpcUaTestConnectionProbeState.CoolingDown)
+                {
+                    <text>Cooldown…</text>
+                }
+                else
+                {
+                    <text>Test connection</text>
+                }
+            </MudButton>
+            @if (_probeFsm.CancelVisible)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           OnClick="@CancelTestConnection"
+                           data-testid="opcua-test-connection-cancel">
+                    Cancel
+                </MudButton>
+            }
+        </MudStack>
+
+        @if (_probeResult is not null)
+        {
+            <MudAlert Severity="@(_probeResult.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined"
+                      data-testid="opcua-probe-result">
+                @if (_probeResult.Success)
+                {
+                    <strong>Probe succeeded.</strong>
+                    <MudText Typo="Typo.body2">
+                        Endpoint: <code>@_probeResult.EndpointUrl</code>.
+                        Server state: <strong>@_probeResult.ServerState</strong> in
+                        @_probeResult.ElapsedMs ms.
+                    </MudText>
+                }
+                else if (IsSecurityFailure(_probeResult.ErrorCode))
+                {
+                    <strong>Blocked at the security handshake — the server does not trust this gateway yet.</strong>
+                    <MudText Typo="Typo.body2">
+                        <strong>Next step:</strong> on the OPC UA server, open its
+                        <em>rejected certificates</em> store, move this gateway's certificate into the
+                        <em>trusted</em> store, then press Test connection again. A new rejected entry
+                        appears after every test, so trust the most recent one.
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        To rule out the address and the network first, set Security mode to
+                        <strong>None</strong> and test again — that path needs no certificate.
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Server reported: @_probeResult.ErrorMessage (@_probeResult.ErrorCode)
+                    </MudText>
+                }
+                else
+                {
+                    <strong>Connection failed (@_probeResult.ErrorCode).</strong>
+                    <MudText Typo="Typo.body2">@_probeResult.ErrorMessage</MudText>
+                    @if (!string.IsNullOrWhiteSpace(_probeResult.RemediationHint))
+                    {
+                        <MudText Typo="Typo.body2">
+                            <strong>Next step:</strong> @_probeResult.RemediationHint
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">
+                            <strong>Next step:</strong> re-check the endpoint URL, then confirm the OPC UA
+                            server is running and reachable from this gateway.
+                        </MudText>
+                    }
+                }
+            </MudAlert>
+        }
+    </WizardSection>
+
+    @* ── 4. Browse tags (TagBrowseTreeView + live summary) ────── *@
+    <WizardSection Index="4" Title="@($"Browse tags ({_model.MonitoredItems.Count})")">
+        @* Amendment #3 — Live sticky selection summary *@
+        <MudPaper Class="pa-3 mb-3" Elevation="1"
+                  Style="position:sticky; top:0; z-index:2;"
+                  data-testid="opcua-selection-summary">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudText Typo="Typo.body2">
+                    Selected: <strong>@_model.MonitoredItems.Count.ToString("N0")</strong> tags
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    Expected subscriptions: <strong>@_model.SelectionSummary.ExpectedSubscriptions</strong>
+                </MudText>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small"
+                         Color="@SeverityToChipColor(_model.SelectionSummary.Severity)"
+                         Variant="Variant.Filled">
+                    @_model.SelectionSummary.ProfileAlignmentLabel
+                </MudChip>
+            </MudStack>
+        </MudPaper>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(_browseBusy || string.IsNullOrWhiteSpace(_model.EndpointUrl))"
+                       StartIcon="@Icons.Material.Filled.AccountTree"
+                       OnClick="@(() => BrowseAsync(startingNodeId: null))"
+                       data-testid="opcua-browse-connect">
+                Connect &amp; browse
+            </MudButton>
+            <MudSpacer />
+            @* Manual entry — amendment #2 (canonical de-dup) *@
+            <MudTextField @bind-Value="_manualNodeId" Label="Tag address (NodeId)" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Style="min-width:280px;"
+                          Placeholder="ns=2;s=Line3.Spindle.Speed"
+                          HelperText="Copy it exactly from the server, including case. Format ns=NUMBER;s=TEXT-ID or ns=NUMBER;i=NUMERIC-ID. Examples: ns=2;s=Channel1.Device1.Tag1 · ns=3;i=1005"
+                          data-testid="opcua-manual-node-id" />
+            <MudTextField @bind-Value="_manualDisplayName" Label="Display name" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Style="min-width:180px;"
+                          Placeholder="spindle_speed"
+                          HelperText="Name shown in EdgeConnect. Blank reuses the NodeId." />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@AddManualMonitoredItem"
+                       data-testid="opcua-add-manual">
+                Add
+            </MudButton>
+        </MudStack>
+
+        @if (_browseResult is not null)
+        {
+            <TagBrowseTreeView Result="@_browseResult"
+                               Model="@_browseTreeModel"
+                               OnLazyExpand="@OnBrowseLazyExpand"
+                               OnAddSelected="@OnBrowseAdd"
+                               OnAutoLoad="@OnBrowseAutoLoad" />
+        }
+
+        @if (_browseError is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3">
+                <MudText Typo="Typo.body2"><strong>Browse failed.</strong> @_browseError</MudText>
+            </MudAlert>
+        }
+
+        @if (_model.MonitoredItems.Count > 0)
+        {
+            <MudSimpleTable Dense="true" Hover="false" Bordered="false" Class="mt-3" Style="overflow:auto;">
+                <thead>
+                    <tr>
+                        <th>NodeId</th>
+                        <th>Display name</th>
+                        <th>Sampling override (ms)</th>
+                        <th>Queue size</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < _model.MonitoredItems.Count; i++)
+                    {
+                        var idx = i;
+                        var row = _model.MonitoredItems[idx];
+                        <tr data-testid="opcua-monitored-item-row">
+                            <td><code>@row.NodeId</code></td>
+                            <td><MudTextField @bind-Value="row.DisplayName" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                            <td><MudNumericField T="int?" @bind-Value="row.SamplingIntervalMs" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                            <td><MudNumericField T="uint?" @bind-Value="row.QueueSize" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                            <td>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               aria-label="@($"Remove tag {row.NodeId}")"
+                                               OnClick="@(() => _model.RemoveMonitoredItemAt(idx))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </WizardSection>
+
+    @* ── 5. Tuning (locked knobs + Advanced toggle — amendment #4) ── *@
+    <WizardSection Index="5" Title="Tuning">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudSwitch @bind-Value="_model.AdvancedModeUnlocked"
+                       Label="Advanced mode"
+                       Color="Color.Warning"
+                       data-testid="opcua-advanced-toggle" />
+        </MudStack>
+        @if (_model.AdvancedModeUnlocked)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+                <MudText Typo="Typo.body2">
+                    Locked tuning knobs unlocked. v2.1 §2.5 benchmark profiles assume these defaults;
+                    changes may affect benchmark validity.
+                </MudText>
+            </MudAlert>
+        }
+        <MudGrid Spacing="2">
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PublishingIntervalMs" Label="Publishing interval (ms)"
+                                 Min="10" Max="60000" Variant="Variant.Outlined"
+                                 Disabled="@(!_model.AdvancedModeUnlocked)" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.SamplingIntervalMs" Label="Sampling interval (ms)"
+                                 Min="10" Max="60000" Variant="Variant.Outlined"
+                                 Disabled="@(!_model.AdvancedModeUnlocked)" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="uint" @bind-Value="_model.KeepAliveCount" Label="Keep-alive count"
+                                 Min="1u" Max="1000u" Variant="Variant.Outlined"
+                                 Disabled="@(!_model.AdvancedModeUnlocked)" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="uint" @bind-Value="_model.LifetimeCount" Label="Lifetime count"
+                                 Min="1u" Max="10000u" Variant="Variant.Outlined"
+                                 Disabled="@(!_model.AdvancedModeUnlocked)" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.NotificationChannelCapacity"
+                                 Label="Notification channel capacity"
+                                 Min="@OpcUaClientSourceConfiguration.MinimumNotificationChannelCapacity"
+                                 Max="@OpcUaClientSourceConfiguration.MaximumNotificationChannelCapacity"
+                                 Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+    </WizardSection>
+
+    @* ── 6. Review (Operational Expectations — amendment #5) ────── *@
+    <WizardSection Index="6" Title="Review">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Configuration</MudText>
+                <MudList T="string" Dense="true">
+                    <MudListItem Icon="@Icons.Material.Filled.Tag">
+                        Instance: <strong>@_model.InstanceId</strong>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Link">
+                        Endpoint: <code>@_model.EndpointUrl</code>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Security">
+                        Security: <strong>@_model.SecurityMode</strong> / Auth: <strong>@_model.AuthMode</strong>
+                    </MudListItem>
+                </MudList>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Operational expectations</MudText>
+                <MudList T="string" Dense="true">
+                    <MudListItem Icon="@Icons.Material.Filled.PlaylistAddCheck">
+                        Selected tags: <strong>@_model.MonitoredItems.Count.ToString("N0")</strong>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Layers">
+                        Expected subscriptions: <strong>@_model.SelectionSummary.ExpectedSubscriptions</strong>
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.SettingsEthernet">
+                        Estimated monitored items: <strong>@_model.MonitoredItems.Count.ToString("N0")</strong>
+                    </MudListItem>
+                    <MudListItem Icon="@(_model.SelectionSummary.BlocksSave ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)">
+                        Profile alignment:
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@SeverityToChipColor(_model.SelectionSummary.Severity)"
+                                 Variant="Variant.Filled">
+                            @_model.SelectionSummary.ProfileAlignmentLabel
+                        </MudChip>
+                    </MudListItem>
+                </MudList>
+            </MudItem>
+        </MudGrid>
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="7" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route). Edit the source later and add a route to activate.
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route is added linking this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" Label="Route id *"
+                                      HelperText="Auto-suggested from instance id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a
+                                route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId"
+                                             Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+    }
+
+    <WizardActions Busy="@_busy"
+                   CanSave="@_model.CanSave"
+                   SaveLabel="Save changes"
+                   OnSave="@OnSaveAsync"
+                   OnCancel="@OnCancel" />
+    </ChildContent>
+</WizardShell>
+
+@code {
+    /// <summary>Render context — supplied by SourceEditRouter; null in Add mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Existing source instance in Edit mode (hydrated by SourceEditRouter).</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embed inside Onboarding meta-wizard.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>
+    /// EmbeddedMode: fired whenever the source config becomes buildable (or stops
+    /// being), so the Onboarding meta-wizard can collect it for the bundled apply.
+    /// Emits <c>null</c> while the model is not yet valid.
+    /// </summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    /// <summary>Debounce for OnInstanceBuilt so it fires only on a validity transition.</summary>
+    private bool _lastNotifiedValid;
+
+    private OpcUaClientSourceWizardModel _model = new();
+    private readonly OpcUaTestConnectionCooldownFsm _probeFsm = new();
+    private readonly TagBrowseTreeViewModel _browseTreeModel = new();
+
+    private bool _isEdit;
+    private bool _busy;
+    private bool _browseBusy;
+    private string? _loadError;
+    private bool _loading;
+
+    // Wiring state — Modbus parity.
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private List<string> _availableSinks = new();
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private GatewayConfiguration? _currentConfig;
+    private string? _browseError;
+    private string? _manualNodeId;
+    private string? _manualDisplayName;
+
+    private OpcUaClientTestConnectionResultDto? _probeResult;
+    private BrowseResult? _browseResult;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private CancellationTokenSource? _probeCts;
+
+    protected override void OnInitialized()
+    {
+        if (EditMode is { Mode: WizardMode.Edit } && HydratedConfig is not null)
+        {
+            _isEdit = true;
+            try
+            {
+                _model = OpcUaClientSourceWizardModel.BuildFromExisting(HydratedConfig);
+            }
+            catch (Exception ex)
+            {
+                _loadError = $"Failed to hydrate from existing config: {ex.Message}";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add-mode initialiser — pulls the current GatewayConfiguration so
+    /// the wiring section can render the list of available destinations
+    /// (sinks) as checkboxes. Matches AddModbusSource.OnInitializedAsync.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var msgs = new List<WizardValidationMessage>();
+        foreach (var issue in _model.ValidateCoherenceIssues())
+        {
+            msgs.Add(new WizardValidationMessage(
+                Code: issue.Code,
+                Path: issue.Path ?? "$",
+                Message: issue.Message));
+        }
+        return msgs;
+    }
+
+    // ─── Test Connection (cooldown FSM) ──────────────────────────────
+
+    private async Task ProbeTestConnectionAsync()
+    {
+        if (!_probeFsm.ButtonEnabled) return;
+        _probeFsm.BeginProbe();
+        _probeResult = null;
+
+        _probeCts = new CancellationTokenSource();
+        try
+        {
+            var request = new OpcUaClientTestConnectionRequest
+            {
+                EndpointUrl = _model.EndpointUrl,
+                ApplicationUri = _model.ApplicationUri,
+                SecurityMode = _model.SecurityMode,
+                AuthMode = _model.AuthMode,
+                Username = _model.Username,
+                Password = _model.Password,
+                CertificatePath = _model.CertificatePath,
+            };
+            var resp = await HttpClient.PostAsJsonAsync(
+                "/api/v1/sources/test-connection/opcua-client", request, _probeCts.Token);
+            _probeResult = await resp.Content.ReadFromJsonAsync<OpcUaClientTestConnectionResultDto>(
+                cancellationToken: _probeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Amendment #1 — cancelled: state already moved to Idle in CancelTestConnection.
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test Connection failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _probeFsm.CompleteProbe(DateTime.UtcNow);
+            _probeCts?.Dispose();
+            _probeCts = null;
+        }
+
+        // Drive the 1s cooldown using a Task.Delay (model + razor are
+        // single-threaded; this is fine for short cooldowns).
+        await Task.Delay(OpcUaTestConnectionCooldownFsm.DefaultCooldownDuration);
+        _probeFsm.TickCooldown(DateTime.UtcNow);
+        StateHasChanged();
+    }
+
+    private void CancelTestConnection()
+    {
+        _probeCts?.Cancel();
+        _probeFsm.CancelProbe();   // Amendment #1 — no cooldown
+    }
+
+    // ─── Browse ──────────────────────────────────────────────────────
+
+    private async Task BrowseAsync(string? startingNodeId)
+    {
+        _browseBusy = true;
+        _browseError = null;
+        try
+        {
+            var request = new OpcUaClientBrowseRequest
+            {
+                SourceConfigJson = BuildSourceConfigJsonForBrowse(),
+                StartingNodeId = startingNodeId,
+                MaxDepth = 1,
+                MaxNodes = 1_000,
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/opcua-client", request);
+            var result = await resp.Content.ReadFromJsonAsync<OpcUaClientBrowseResultDto>();
+            if (result is null || !result.Success)
+            {
+                _browseError = result?.ErrorMessage ?? "Browse returned no result.";
+                return;
+            }
+            _browseResult = result.Result;
+        }
+        catch (Exception ex)
+        {
+            _browseError = ex.Message;
+        }
+        finally
+        {
+            _browseBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Build a JSON payload matching the wire shape
+    /// <see cref="OpcUaClientSourceConfiguration"/> expects when
+    /// <see cref="OpcUaClientBrowseService"/> deserialises it on the
+    /// other side of the Browse API. The wizard's
+    /// <c>BuildSourceInstance().Connection</c> alone is only the inner
+    /// block — the protocol-side deserialiser requires <c>instanceId</c>
+    /// + <c>protocolName</c> + <c>endpointUrl</c> at the top level.
+    /// </summary>
+    private string BuildSourceConfigJsonForBrowse()
+    {
+        var instanceId = string.IsNullOrWhiteSpace(_model.InstanceId)
+            ? "opcua-wizard-browse"
+            : _model.InstanceId;
+        var payload = new
+        {
+            instanceId,
+            protocolName = OpcUaClientSourceConfiguration.ProtocolNameConstant,
+            deviceId = string.IsNullOrWhiteSpace(_model.DeviceId) ? instanceId : _model.DeviceId,
+            endpointUrl = _model.EndpointUrl,
+            applicationUri = _model.ApplicationUri,
+            applicationName = _model.ApplicationName,
+            sessionTimeoutMs = _model.SessionTimeoutMs,
+            securityMode = _model.SecurityMode.ToString(),
+            securityPolicyUri = _model.SecurityPolicyUri,
+            authMode = _model.AuthMode.ToString(),
+            autoAcceptUntrustedServerCertificate = _model.AutoAcceptUntrustedServerCertificate,
+            credentials = _model.AuthMode != OpcUaAuthMode.Anonymous ? new
+            {
+                username = _model.Username,
+                password = _model.Password,
+                certificatePath = _model.CertificatePath,
+            } : null,
+            publishingIntervalMs = _model.PublishingIntervalMs,
+            samplingIntervalMs = _model.SamplingIntervalMs,
+            keepAliveCount = _model.KeepAliveCount,
+            lifetimeCount = _model.LifetimeCount,
+            maxNotificationsPerPublish = _model.MaxNotificationsPerPublish,
+            defaultAnalogQueueSize = _model.DefaultAnalogQueueSize,
+            defaultDiscreteQueueSize = _model.DefaultDiscreteQueueSize,
+            notificationChannelCapacity = _model.NotificationChannelCapacity,
+        };
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private Task OnBrowseLazyExpand(BrowseNode node) => BrowseAsync(node.NodeId);
+
+    private void OnBrowseAdd(TagBrowseTreeView.TagBrowseAddRequest request)
+    {
+        foreach (var node in request.Nodes)
+        {
+            // Amendment #2 — model.TryAddMonitoredItem de-dups by canonical NodeId.
+            _model.TryAddMonitoredItem(node.NodeId, node.DisplayName);
+        }
+    }
+
+    private void OnBrowseAutoLoad(TagBrowseTreeView.TagBrowseAddRequest request)
+    {
+        if (request.ExceedsConfirmationThreshold && !EmbeddedMode)
+        {
+            Snackbar.Add($"Auto-loading {request.Nodes.Count} tags…", Severity.Info);
+        }
+        foreach (var node in request.Nodes)
+        {
+            _model.TryAddMonitoredItem(node.NodeId, node.DisplayName);
+        }
+    }
+
+    private void AddManualMonitoredItem()
+    {
+        if (string.IsNullOrWhiteSpace(_manualNodeId)) return;
+        var added = _model.TryAddMonitoredItem(_manualNodeId!, _manualDisplayName ?? string.Empty);
+        if (added)
+        {
+            _manualNodeId = null;
+            _manualDisplayName = null;
+        }
+        else if (!EmbeddedMode)
+        {
+            Snackbar.Add(
+                $"NodeId '{_manualNodeId}' already in the list (canonical match) or is invalid.",
+                Severity.Warning);
+        }
+    }
+
+    // ─── Save ────────────────────────────────────────────────────────
+
+    private async Task OnSaveAsync()
+    {
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    /// <summary>
+    /// EmbeddedMode only: notify the Onboarding meta-wizard whenever the source
+    /// config's buildability changes, handing it the built instance (or null).
+    /// Mirrors the S7 / MTConnect embedded pattern.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = _model.CanSave;
+        if (_lastNotifiedValid == isValid) return;
+        _lastNotifiedValid = isValid;
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; _lastNotifiedValid = false; }
+        }
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!_model.CanSave || EditMode?.BaseVersionId is null) return;
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct)
+                    && ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Save failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add($"Source '{updatedSource.InstanceId}' updated.", Severity.Success);
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        // Inline UX check that matches Modbus's wizard semantics — if the
+        // operator picked "Create a new route" but didn't fill in the id
+        // or pick any sinks, show a friendly Snackbar BEFORE we hit Core's
+        // engineer-language validator.
+        if (_wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId))
+            {
+                Snackbar.Add("Pick a route id for the new route, or choose 'Do not wire yet'.", Severity.Warning);
+                return;
+            }
+            if (_selectedSinkIds.Count == 0)
+            {
+                Snackbar.Add(
+                    "Select at least one destination for the new route, or choose 'Do not wire yet'.",
+                    Severity.Warning);
+                return;
+            }
+        }
+
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+
+            // "Do not wire yet" path — Core's startup validator requires
+            // every enabled source to be referenced by an enabled route.
+            // Creating the source as DISABLED sidesteps that gate and
+            // matches the Modbus wizard's "create-and-edit-later" UX.
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig { Mode = BufferMode.InMemory, MaxDepth = 100 },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            // We need the current config to merge into. Pull from API.
+            // (Endpoint is /api/v1/config — matches AddModbusSource.)
+            _currentConfig ??= await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is null)
+            {
+                Snackbar.Add("Could not load current config.", Severity.Error);
+                return;
+            }
+            var newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnCancel()
+    {
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+    private static Color SeverityToChipColor(TagCountSeverity severity) => severity switch
+    {
+        TagCountSeverity.None => Color.Success,
+        TagCountSeverity.Informational => Color.Success,
+        TagCountSeverity.Warning => Color.Warning,
+        TagCountSeverity.StrongWarning => Color.Warning,
+        TagCountSeverity.Blocked => Color.Error,
+        _ => Color.Default,
+    };
+
+    /// <summary>
+    /// True for the probe error codes that mean "the certificate / security
+    /// negotiation was rejected" rather than a network or credential fault.
+    /// Codes match Api/OpcUaClientTestConnectionService.RemediationHintFor:
+    /// OPCUA.SERVER_CERT_UNTRUSTED, OPCUA.SERVER_CERT_HOSTNAME_INVALID and
+    /// OPCUA.SECURITY_CHECKS_FAILED.
+    /// </summary>
+    private static bool IsSecurityFailure(string? errorCode) =>
+        errorCode is not null
+        && (errorCode.StartsWith("OPCUA.SERVER_CERT", StringComparison.Ordinal)
+            || errorCode == "OPCUA.SECURITY_CHECKS_FAILED");
+}

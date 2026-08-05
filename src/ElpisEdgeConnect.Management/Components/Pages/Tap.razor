@@ -1,0 +1,527 @@
+@*
+    Live Data Tap — Stream mode (ADR-0018, M4).
+
+    Observes what's flowing through one route in real time: source-side
+    captures (post-filter, PRE-transform) on the left; sink-side captures
+    (what each sink received) on the right. Demand-driven (ADR-0017): the page
+    opens the tap SSE stream on entry and aborts it on dispose, so capture runs
+    only while someone is watching. Values are masked at capture (ADR-0018A) —
+    this page never receives cleartext sensitive data.
+
+    Architecture: Razor components consume the management REST API ONLY (the
+    Management↔Core isolation rule). So the page is a pure HTTP consumer of
+    GET /api/v1/diagnostics/tap/{routeId} (Server-Sent Events) — it does NOT
+    inject IRouteTap. Opening/closing the HTTP stream is the subscriber
+    lifecycle.
+
+    Compare / Inspect modes are scaffolded (disabled) — separate milestones.
+*@
+@page "/diagnostics/tap"
+@inject HttpClient Http
+@implements IDisposable
+
+<PageTitle>Live Stream · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.Sensors" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        @* Named to match the button on Diagnostics that leads here. "Tap" was
+           network-engineering jargon; this says what the page shows. *@
+        <MudText Typo="Typo.h5">Live Stream</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            What the route received from the source (before transforms) on the left;
+            what each sink received on the right. Capture runs only while this page is open.
+        </MudText>
+    </div>
+</MudStack>
+
+<MudPaper Class="pa-3 mb-3" Elevation="0" Outlined="true">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+        <MudSelect T="string" Label="Route" Value="_selectedRouteId" ValueChanged="OnRouteChanged"
+                   Dense="true" Variant="Variant.Outlined" Style="min-width:320px;">
+            @foreach (var r in _routes)
+            {
+                <MudSelectItem T="string" Value="@r.Id">@r.Label</MudSelectItem>
+            }
+        </MudSelect>
+
+        @* Latest-per-tag collapses the append-only stream to ONE row per tag
+           (the most recent capture), so a machine with 11 configured tags shows
+           11 rows instead of 11 x every poll cycle. Stream keeps the raw feed. *@
+        <MudButtonGroup OverrideStyles="false" Variant="Variant.Outlined" Size="Size.Small">
+            <MudButton Color="Color.Primary"
+                       Variant="@(_latestPerTag ? Variant.Filled : Variant.Outlined)"
+                       OnClick="@(() => _latestPerTag = true)"
+                       data-testid="tap-mode-latest">Latest per tag</MudButton>
+            <MudButton Color="Color.Primary"
+                       Variant="@(_latestPerTag ? Variant.Outlined : Variant.Filled)"
+                       OnClick="@(() => _latestPerTag = false)"
+                       data-testid="tap-mode-stream">Stream</MudButton>
+            <MudButton Disabled="true" title="Coming soon">Compare</MudButton>
+            <MudButton Disabled="true" title="Coming soon">Inspect</MudButton>
+        </MudButtonGroup>
+
+        <MudSpacer />
+
+        @if (_status.Active)
+        {
+            <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.FiberManualRecord">
+                Capturing
+            </MudChip>
+        }
+        else
+        {
+            <MudChip T="string" Color="Color.Default" Size="Size.Small">Connecting…</MudChip>
+        }
+
+        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                   StartIcon="@(_paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                   OnClick="TogglePause">
+            @(_paused ? "Resume" : "Pause")
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_status.Truncated)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+        Showing the most recent captures — the buffer is filling faster than it can be shown,
+        so older captures were evicted. (Capture ring: 1,000 points per side, per sink.)
+    </MudAlert>
+}
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="6">
+        <MudPaper Outlined="true" Elevation="0">
+            <div class="tap-col-header">
+                <span>SOURCE-SIDE</span>
+                <span class="tap-col-sub">
+                    @if (_latestPerTag)
+                    {
+                        @($"{DistinctTagCount(_source)} tag(s) · captured: {_status.SourceCaptured:N0}")
+                    }
+                    else
+                    {
+                        @($"captured: {_status.SourceCaptured:N0}")
+                    }
+                </span>
+            </div>
+            <div class="tap-stream">
+                @if (_source.Count == 0)
+                {
+                    <div class="tap-empty">No source-side captures yet.</div>
+                }
+                else
+                {
+                    @foreach (var c in View(_source))
+                    {
+                        @CaptureRow(c)
+                    }
+                }
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Outlined="true" Elevation="0">
+            <div class="tap-col-header">
+                <span>SINK-SIDE</span>
+                <span class="tap-col-sub">
+                    @if (_latestPerTag)
+                    {
+                        @($"{_sinkCaptures.Values.Sum(DistinctTagCount)} tag(s) · captured: {_status.SinkCaptured:N0}")
+                    }
+                    else
+                    {
+                        @($"captured: {_status.SinkCaptured:N0}")
+                    }
+                </span>
+            </div>
+            <div class="tap-stream">
+                @if (_sinkCaptures.Count == 0)
+                {
+                    <div class="tap-empty">No sink-side captures yet.</div>
+                }
+                else
+                {
+                    @foreach (var sink in _sinkCaptures)
+                    {
+                        @if (_sinkCaptures.Count > 1)
+                        {
+                            <div class="tap-sink-chip">@sink.Key</div>
+                        }
+                        @foreach (var c in View(sink.Value))
+                        {
+                            @CaptureRow(c)
+                        }
+                    }
+                }
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3 d-block">
+    Demand-driven — capture stops shortly after you leave this page.
+    Sensitive-tagged values are shown as <code>***</code> (masked at capture).
+</MudText>
+
+@code {
+    private sealed record RouteOption(string Id, string Label);
+
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
+    private List<RouteOption> _routes = new();
+    private string? _selectedRouteId;
+    private bool _paused;
+
+    /// <summary>
+    /// When true (default) the columns show ONE row per tag — the most recent
+    /// capture for that tag — so a machine with N configured tags shows N rows.
+    /// The raw append-only feed re-emits every tag on every poll, which reads as
+    /// "duplicate tags" when the operator only wants current values.
+    /// </summary>
+    private bool _latestPerTag = true;
+
+    /// <summary>
+    /// Project a capture list for display: the raw stream, or collapsed to the
+    /// latest capture per tag (ordered by tag name for a stable, scannable list).
+    /// The lists are newest-first (captures are inserted at index 0), so the
+    /// first occurrence of each tag name IS its most recent value.
+    /// </summary>
+    private IEnumerable<TapCaptureDto> View(List<TapCaptureDto> captures) =>
+        _latestPerTag
+            ? captures
+                .GroupBy(c => c.TagName, StringComparer.Ordinal)
+                .Select(g => g.First())
+                .OrderBy(c => c.TagName, StringComparer.Ordinal)
+            : captures;
+
+    /// <summary>Number of distinct tags seen in a capture list.</summary>
+    private static int DistinctTagCount(List<TapCaptureDto> captures) =>
+        captures.Select(c => c.TagName).Distinct(StringComparer.Ordinal).Count();
+
+    private readonly List<TapCaptureDto> _source = new();
+    private readonly Dictionary<string, List<TapCaptureDto>> _sinkCaptures = new(StringComparer.Ordinal);
+    private TapStatusDto _status = Inactive();
+
+    private CancellationTokenSource? _cts;
+    private Task? _streamTask;
+
+    private const int RenderCap = 150; // bounded DOM rows per column
+
+    private static TapStatusDto Inactive() =>
+        new() { Active = false, SourceCaptured = 0, SinkCaptured = 0, Truncated = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync("/api/v1/routes");
+            var routes = JsonSerializer.Deserialize<List<RouteSummaryDto>>(json, JsonOpts) ?? new();
+            _routes = routes
+                .Select(r => new RouteOption(
+                    r.RouteId,
+                    r.Source is { } s ? $"{r.RouteId}  ·  {s.SourceInstanceId}" : r.RouteId))
+                .OrderBy(r => r.Id, StringComparer.Ordinal)
+                .ToList();
+        }
+        catch
+        {
+            _routes = new();
+        }
+
+        if (_routes.Count > 0)
+        {
+            Start(_routes[0].Id);
+        }
+    }
+
+    private void OnRouteChanged(string routeId)
+    {
+        if (routeId != _selectedRouteId)
+        {
+            Start(routeId);
+        }
+    }
+
+    private void Start(string routeId)
+    {
+        Stop();
+        _selectedRouteId = routeId;
+        _paused = false;
+        _source.Clear();
+        _sinkCaptures.Clear();
+        _status = Inactive();
+        _cts = new CancellationTokenSource();
+        _streamTask = StreamAsync(routeId, _cts.Token);
+        // Continuously drop sink-side captures for destinations that have been
+        // removed from this route's config while the tap is open, so a deleted
+        // destination's stale captures stop lingering on the sink side.
+        _ = PruneRemovedSinksLoopAsync(routeId, _cts.Token);
+    }
+
+    private void Stop()
+    {
+        try { _cts?.Cancel(); } catch { }
+        _cts?.Dispose();
+        _cts = null;
+        // _streamTask unwinds on its own once the request aborts.
+    }
+
+    // Periodically drop sink-side captures for destinations that are no longer in
+    // the route's config. The route summary's Sinks list is already reconciled to
+    // the configured SinkInstanceIds (RouteInventoryBuilder), so it is the source
+    // of truth for "which destinations still belong to this route". This is the
+    // Tap-side analogue of that reconciliation, so a destination deleted while the
+    // tap is open stops lingering on the sink side.
+    private async Task PruneRemovedSinksLoopAsync(string routeId, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(TimeSpan.FromSeconds(4), ct); }
+            catch (OperationCanceledException) { break; }
+            await PruneRemovedSinksAsync(routeId, ct);
+        }
+    }
+
+    private async Task PruneRemovedSinksAsync(string routeId, CancellationToken ct)
+    {
+        HashSet<string> configured;
+        try
+        {
+            var json = await Http.GetStringAsync("/api/v1/routes", ct);
+            var routes = JsonSerializer.Deserialize<List<RouteSummaryDto>>(json, JsonOpts) ?? new();
+            var route = routes.FirstOrDefault(r => string.Equals(r.RouteId, routeId, StringComparison.Ordinal));
+            // Unknown route or a transient empty sink list -> don't prune (avoid
+            // wiping the sink side on a momentary read).
+            if (route?.Sinks is not { Count: > 0 } sinks) return;
+            configured = new HashSet<string>(
+                sinks.Where(s => s?.SinkInstanceId is not null).Select(s => s.SinkInstanceId!),
+                StringComparer.Ordinal);
+        }
+        catch { return; }
+
+        await InvokeAsync(() =>
+        {
+            // Keep the "(sink)" fallback bucket (captures with no sink id — can't be
+            // matched to config); only drop keys that name a now-removed destination.
+            var stale = _sinkCaptures.Keys
+                .Where(k => !string.Equals(k, "(sink)", StringComparison.Ordinal) && !configured.Contains(k))
+                .ToList();
+            if (stale.Count == 0) return;
+            foreach (var k in stale) _sinkCaptures.Remove(k);
+            StateHasChanged();
+        });
+    }
+
+    // Consume the SSE endpoint. Aborting the request (Stop/Dispose) triggers
+    // RequestAborted server-side, which unsubscribes the route (cooldown).
+    private async Task StreamAsync(string routeId, CancellationToken ct)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(
+                HttpMethod.Get, $"/api/v1/diagnostics/tap/{Uri.EscapeDataString(routeId)}");
+            using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            resp.EnsureSuccessStatusCode();
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var reader = new StreamReader(stream);
+
+            string? evt = null;
+            string? data = null;
+            string? line;
+            while (!ct.IsCancellationRequested && (line = await reader.ReadLineAsync(ct)) is not null)
+            {
+                if (line.StartsWith("event:", StringComparison.Ordinal))
+                {
+                    evt = line[6..].Trim();
+                }
+                else if (line.StartsWith("data:", StringComparison.Ordinal))
+                {
+                    data = line[5..].Trim();
+                }
+                else if (line.Length == 0)
+                {
+                    await DispatchAsync(evt, data);
+                    evt = null;
+                    data = null;
+                }
+            }
+        }
+        catch (OperationCanceledException) { /* page left / route changed */ }
+        catch
+        {
+            // Stream dropped (server restart, etc.). Show "Connecting…".
+            _status = Inactive();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DispatchAsync(string? evt, string? data)
+    {
+        if (data is null) { return; }
+        try
+        {
+            if (evt == "capture")
+            {
+                if (!_paused && JsonSerializer.Deserialize<TapCaptureDto>(data, JsonOpts) is { } c)
+                {
+                    Add(c); // accumulate; render is batched on the next status frame
+                }
+            }
+            else if (evt == "status")
+            {
+                if (JsonSerializer.Deserialize<TapStatusDto>(data, JsonOpts) is { } s)
+                {
+                    _status = s;
+                    await InvokeAsync(StateHasChanged); // ~4/sec — flushes accumulated captures
+                }
+            }
+        }
+        catch
+        {
+            // Ignore a malformed frame; the stream continues.
+        }
+    }
+
+    private void Add(TapCaptureDto c)
+    {
+        if (string.Equals(c.Side, "Source", StringComparison.Ordinal))
+        {
+            _source.Insert(0, c);
+            Trim(_source);
+        }
+        else
+        {
+            var key = c.SinkInstanceId ?? "(sink)";
+            if (!_sinkCaptures.TryGetValue(key, out var list))
+            {
+                list = new List<TapCaptureDto>();
+                _sinkCaptures[key] = list;
+            }
+            list.Insert(0, c);
+            Trim(list);
+        }
+    }
+
+    private static void Trim(List<TapCaptureDto> list)
+    {
+        if (list.Count > RenderCap)
+        {
+            list.RemoveRange(RenderCap, list.Count - RenderCap);
+        }
+    }
+
+    private void TogglePause() => _paused = !_paused;
+
+    private static RenderFragment CaptureRow(TapCaptureDto c) => __builder =>
+    {
+        var ts = DateTime.TryParse(
+            c.DeviceTimestampUtc, null,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
+            ? dt.ToString("HH:mm:ss.fff")
+            : c.DeviceTimestampUtc;
+        <div class="tap-point">
+            <div class="tap-point-ts">@ts</div>
+            <div class="tap-point-tag">
+                @c.TagName
+                @if (c.SinkInstanceId is not null)
+                {
+                    @* Rides the tag line, not its own line under the timestamp.
+                       Stacked there it made column 1 two lines deep on the
+                       destination side and one on the source side, so the two
+                       streams never lined up row for row. *@
+                    <span class="tap-point-sink">@c.SinkInstanceId</span>
+                }
+            </div>
+            <div class="tap-point-val">
+                value:
+                @if (c.Redacted)
+                {
+                    <strong title="masked at capture (sensitive tag)">*** 🔒</strong>
+                }
+                else
+                {
+                    <strong>@(c.Value ?? "null")</strong>
+                }
+                <span class="tap-point-meta"> &nbsp; @c.Quality &nbsp; @c.ValueType</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(c.QualityReason))
+            {
+                <div class="tap-point-reason" title="@c.QualityReason">⚠ @c.QualityReason</div>
+            }
+        </div>
+    };
+
+    public void Dispose() => Stop();
+}
+
+@* This page is the only one carrying its own <style> block, so it does not
+   inherit the palette or the weight scale from wwwroot/css/site.css — it had
+   drifted onto raw Material greys (#424242, #9e9e9e, #616161) instead of the
+   product's own tokens, which is why it read as a different application.
+   Colours below now reference the MudTheme variables, and the weights use the
+   same 400/600 scale as every other page. Do NOT rename .tap-stream:
+   site.css:290 sizes it against the fixed app shell. *@
+<style>
+    .tap-col-header {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px;
+        padding: 10px 14px; border-bottom: 1px solid var(--mud-palette-lines-default);
+        font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+        color: var(--mud-palette-text-primary);
+    }
+    .tap-col-sub { font-weight: 400; color: var(--mud-palette-text-secondary); }
+    .tap-stream { max-height: 60vh; overflow-y: auto; padding: 4px 0; }
+    .tap-empty { padding: 24px 14px; color: var(--mud-palette-text-secondary); font-size: 13px; }
+    .tap-sink-chip {
+        padding: 4px 14px; font-size: 11px; font-weight: 600;
+        color: var(--mud-palette-text-secondary); background: var(--mud-palette-background-grey);
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        position: sticky; top: 0;
+    }
+    .tap-point {
+        display: grid; grid-template-columns: 8.5rem minmax(0, 1fr);
+        column-gap: 12px; align-items: baseline;
+        padding: 8px 14px; border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+    /* Timestamps sit in their own fixed column with tabular figures, so the
+       tag names line up down the stream instead of stepping left and right
+       as the clock ticks past a wider digit. */
+    /* Column 1 is the timestamp and nothing else, on BOTH sides — that is what
+       keeps the two streams the same height row for row. The destination name
+       used to live here too; putting it back would make this column two lines
+       deep on the destination side only. */
+    .tap-point-ts {
+        font-family: Consolas, 'Segoe UI Mono', monospace;
+        font-variant-numeric: tabular-nums;
+        font-size: 11px; color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+    /* Destination name rides the tag line. Column 2 is minmax(0, 1fr) and the
+       tag line truncates, so a long name can no longer spill over its
+       neighbour the way it did when this sat in the fixed-width column. */
+    .tap-point-sink {
+        color: var(--mud-palette-primary);
+        font-weight: 400;
+        font-size: 11px;
+        margin-left: .5rem;
+    }
+    .tap-point-reason {
+        grid-column: 2;
+        font-size: 11px; color: var(--mud-palette-warning-darken); margin-top: 3px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tap-point-tag {
+        grid-column: 2; font-weight: 600; font-size: 13px;
+        min-width: 0;                 /* let the grid item shrink to its column */
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tap-point-val {
+        grid-column: 2; font-size: 13px; color: var(--mud-palette-text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+    .tap-point-meta { color: var(--mud-palette-text-secondary); font-size: 12px; }
+</style>

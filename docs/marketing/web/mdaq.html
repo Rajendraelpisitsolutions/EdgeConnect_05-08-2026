@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/mdaq.html
+  Purpose:     Static HTML mockup of the /mdaq PRODUCT page — second hardware
+               product page on the LOCKED §18.B hardware ProductDetail variant.
+               Inherits the /edge-gateway shape-setter (same 11-section
+               composition, scaffolding verbatim); only the copy/specs swap in.
+  Companion:   ./styles.css (reused — homepage visual system / brand tokens)
+               ./edge-gateway.html (§18.B shape-setter — scaffolding source)
+               ../page-product-mdaq-spec-v1.md (LOCKED — verbatim copy)
+  Governance:  NO formal certification claims; IP65 / IP67-COMPATIBLE only (never
+               "certified" / "rated"); cert / IP / site-compliance handled
+               case-by-case during BOM scope (§18.B.0). mDAQ is the
+               FIELD-REPLACEMENT product — direct sensor acquisition, NO PLC in
+               the loop (contrast with Edge Gateway, which BRIDGES PLCs). It does
+               NOT replace PLC control / safety / sequencing / interlock. VAS is
+               built on the mDAQ hardware platform. Plant-engineer buyer (§2.5)
+               → "Get hardware specifications" / "Request a BOM scope" CTA (P-H).
+  Version:     v1 (mockup for sign-off)
+  Date:        2026-06-05
+  NOTE: visual shape demonstrator. Copy lifted from the LOCKED page spec. Specs
+        trace to hardware-ecosystem-map v3 §3.1 — verify before external publish.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mDAQ — Ruggedized Field Data Acquisition · Elpis</title>
+  <meta name="description" content="Acquire sensor signals directly from the field — no PLC. 4 analog (0–10 V / 4–20 mA), digital I/O, Modbus TCP/RTU, cellular publish, 24 V, −10 to +85 °C.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/mdaq">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="mDAQ">
+  <meta property="og:description" content="Acquire sensor signals directly from the field — no PLC. 4 analog (0–10 V / 4–20 mA), digital I/O, Modbus TCP/RTU, cellular publish, 24 V, −10 to +85 °C.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/mdaq">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="mDAQ">
+  <meta name="twitter:description" content="Acquire sensor signals directly from the field — no PLC. 4 analog (0–10 V / 4–20 mA), digital I/O, Modbus TCP/RTU, cellular publish, 24 V, −10 to +85 °C.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=8">
+
+  <!-- ProductDetail-specific layout (§18 / §18.A / §18.B). Token-only; no new colors. -->
+  <style>
+    .prose { max-width: 68ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display: block; margin-bottom: var(--space-3); }
+    .section-title {
+      font-size: var(--size-xl); font-weight: var(--weight-semibold);
+      line-height: var(--line-snug); letter-spacing: var(--tracking-tight);
+    }
+
+    /* §3 feature grid */
+    .feature-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-5); margin-top: var(--space-8);
+    }
+    .feature-card {
+      border: 1px solid var(--color-border-subtle); border-radius: 10px;
+      padding: var(--space-6); background: var(--color-bg-raised);
+    }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .accent { display:block; width:28px; height:3px; background:var(--color-brand-teal); margin-bottom:var(--space-4); }
+
+    /* BOM-elimination list */
+    .bom-list { margin-top: var(--space-8); max-width: 76ch; }
+    .bom-list__intro { color: var(--color-text-muted-dark); font-size: var(--size-md); margin-bottom: var(--space-4); }
+    .bom-list ul { list-style: none; padding: 0; }
+    .bom-list li { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle); color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .bom-list li::before { content: "✕"; color: var(--color-brand-teal); font-weight: var(--weight-bold); margin-right: var(--space-3); }
+
+    /* §18.A spec-table */
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: var(--space-6); font-size: var(--size-sm); }
+    .spec-table caption { text-align: left; color: var(--color-text-muted-light); font-size: var(--size-sm); margin-bottom: var(--space-3); }
+    .spec-table th, .spec-table td {
+      text-align: left; padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border-light-subtle); vertical-align: top;
+    }
+    .spec-table thead th {
+      border-bottom: 2px solid var(--color-brand-teal); color: var(--color-text-heading-light);
+      font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose);
+      text-transform: uppercase; font-size: var(--size-xs);
+    }
+    .spec-table tbody tr:nth-child(even) td { background: var(--color-surface-light-secondary); }
+    .spec-table .proto { font-weight: var(--weight-semibold); color: var(--color-text-heading-light); white-space: nowrap; }
+
+    /* §7 how-to-buy */
+    .buy-note { margin-top: var(--space-6); color: var(--color-text-muted-dark); line-height: var(--line-body); max-width: 74ch; }
+
+    /* §8 trust cue / field-readiness */
+    .trust-cue { border-left: 2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 74ch; }
+    .trust-cue h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §9 FAQ */
+    .faq { margin-top: var(--space-8); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §10 cross-lens */
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style: italic; max-width: 74ch; }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration: none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner {
+      background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center;
+      font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2);
+    }
+    /* polish: un-cramp the §6 architecture diagram (was capped by .prose ~68ch) + lift sub-text contrast */
+    #architecture .prose { max-width: 100%; }
+    #architecture text[fill="#5E6B78"] { fill: #2C3540; }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <!-- NAV (reused from homepage reference) -->
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero__inner">
+          <div class="hero__copy">
+          <span class="eyebrow eyebrow--teal">PRODUCT · DATA ACQUISITION — HARDWARE</span>
+          <h1 id="hero-heading" class="hero__headline">mDAQ</h1>
+          <p class="hero__subhead">
+            The ruggedized field data-acquisition device that captures industrial sensor signals — pressure, flow, level, temperature — <strong>directly from the field, with no PLC in the loop</strong>. Four analog channels, digital I/O, cellular publish, on a 24 V box sized for the field.
+          </p>
+          <div class="cta-group">
+            <a href="#cta" class="btn btn--primary btn--lg">Get hardware specifications <span class="arrow" aria-hidden="true">→</span></a>
+            <a href="#cta" class="btn btn--secondary btn--lg">Request a BOM scope</a>
+          </div>
+          <p class="trust-strip">
+            4 analog (0–10 V / 4–20 mA, 16-bit) · 8 + 8 digital I/O (24 V) · Modbus TCP/RTU acquisition · HTTPS / MQTT publish · 4G / Wi-Fi / GPS · −10 to +85 °C · optional battery · IP65 / IP67-compatible (BOM-scoped).
+          </p>
+          </div><!-- /hero__copy -->
+
+          <div class="hero__composite" aria-hidden="true">
+            <div class="hero__composite-dashboard">
+              <svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="mDAQ: a ruggedized field data-acquisition device with four analog channels, 8+8 digital I/O, 24 V power, and 4G / Wi-Fi / GPS connectivity">
+                <defs>
+                  <linearGradient id="mdHeroBg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#1E2937" stop-opacity="0.96"/>
+                    <stop offset="100%" stop-color="#151B23" stop-opacity="0.96"/>
+                  </linearGradient>
+                </defs>
+                <rect x="1" y="1" width="398" height="258" rx="10" fill="url(#mdHeroBg)" stroke="#00A0E0" stroke-width="1"/>
+                <line x1="12" y1="2" x2="388" y2="2" stroke="#00A0E0" stroke-width="0.5" opacity="0.4"/>
+                <rect x="20" y="22" width="32" height="3" fill="#00A0E0"/>
+                <text x="20" y="44" font-size="9" font-weight="600" fill="#00A0E0" letter-spacing="2.5" font-family="Inter, sans-serif">mDAQ — FIELD DATA ACQUISITION</text>
+
+                <!-- sensor field -->
+                <text x="40" y="74" font-size="7.5" fill="#8A94A0" font-family="Inter, sans-serif" letter-spacing="1">SENSORS → mDAQ (NO PLC)</text>
+                <g stroke="#3A4049" stroke-width="0.8" fill="none">
+                  <circle cx="48" cy="120" r="6" stroke="#4FBBC9"/>
+                  <circle cx="48" cy="150" r="6" stroke="#4FBBC9"/>
+                  <line x1="54" y1="120" x2="70" y2="124" stroke="#5E6B78"/>
+                  <line x1="54" y1="150" x2="70" y2="146" stroke="#5E6B78"/>
+                </g>
+
+                <!-- Device enclosure -->
+                <rect x="70" y="86" width="160" height="104" rx="6" fill="#252D36" stroke="#00A0E0" stroke-width="1.5"/>
+                <!-- ventilation lines -->
+                <g stroke="#3A4049" stroke-width="1">
+                  <line x1="84" y1="100" x2="216" y2="100"/>
+                  <line x1="84" y1="108" x2="216" y2="108"/>
+                  <line x1="84" y1="116" x2="216" y2="116"/>
+                </g>
+                <!-- status LEDs -->
+                <circle cx="90" cy="135" r="3.5" fill="#4FBBC9"/>
+                <circle cx="104" cy="135" r="3.5" fill="#00A0E0"/>
+                <circle cx="118" cy="135" r="3.5" fill="#3A4049"/>
+                <!-- terminal blocks -->
+                <rect x="84" y="160" width="20" height="16" rx="2" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                <rect x="110" y="160" width="20" height="16" rx="2" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                <rect x="136" y="160" width="20" height="16" rx="2" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                <text x="170" y="148" font-size="11" font-weight="700" fill="#FFFFFF" font-family="Inter, sans-serif">mDAQ</text>
+                <text x="170" y="162" font-size="8" font-weight="600" fill="#8A94A0" font-family="Inter, sans-serif">field DAQ</text>
+
+                <!-- spec callout panel -->
+                <g font-family="Inter, sans-serif">
+                  <rect x="268" y="86" width="112" height="104" rx="6" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="280" y="104" font-size="7.5" font-weight="600" fill="#00A0E0" letter-spacing="1.5">SPECIFICATIONS</text>
+                  <text x="280" y="124" font-size="9" font-weight="600" fill="#C8D0D8">4 × AI · 16-bit</text>
+                  <text x="280" y="140" font-size="9" font-weight="600" fill="#C8D0D8">8 + 8 DI / DO · 24 V</text>
+                  <text x="280" y="156" font-size="9" font-weight="600" fill="#C8D0D8">4G · Wi-Fi · GPS</text>
+                  <text x="280" y="172" font-size="9" font-weight="600" fill="#C8D0D8">−10 to +85 °C</text>
+                </g>
+              </svg>
+            </div>
+            <p class="hero__composite-caption" style="text-align:center; color: var(--color-text-muted-dark); font-size: var(--size-xs); margin-top: var(--space-3);">Field DAQ device — illustrative; specs confirmed at quoting time.</p>
+          </div>
+        </div><!-- /hero__inner -->
+      </div>
+    </section>
+
+    <!-- §2 WHAT IT IS -->
+    <section class="section" data-mode="light" aria-labelledby="what-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHAT IT IS</span>
+          <h2 id="what-heading" class="section-title">Sensor signals, straight from the field — no PLC required.</h2>
+        </div>
+        <p style="font-size: var(--size-md); line-height: var(--line-body);">
+          mDAQ is a ruggedized field data-acquisition device. It captures industrial sensor signals — pressure, flow, level, temperature, and more — directly from the field over its analog and digital inputs, with no PLC in the loop, and publishes them over cellular or Wi-Fi. It is the <strong>field-replacement</strong> product: where the Edge Gateway <em>bridges</em> an existing PLC fleet, mDAQ <em>removes the need for a PLC when the job is direct sensor acquisition and publishing</em>. (It is an acquisition device — it does not replace a PLC's control, safety, sequencing, or interlock functions.)
+        </p>
+        <p style="margin-top: var(--space-5); color: var(--color-text-muted-light); line-height: var(--line-body);">
+          It is the <strong>Data Acquisition</strong> pillar — see the capability story → <a class="pillar-link" href="index.html#capabilities-heading">/capabilities/data-acquisition</a>. Combined with EdgeConnect and EREMOS V2, mDAQ completes an Elpis-only path from the sensor to the dashboard, with no third-party hardware in the chain. (The <strong>VAS</strong> vibration analyser is built on the mDAQ hardware platform, configured for specialized vibration acquisition and analytics — see <a class="pillar-link" href="vas">Condition Monitoring</a>.)
+        </p>
+      </div>
+    </section>
+
+    <!-- §3 WHAT IT DOES + WHAT IT REPLACES -->
+    <section class="section" data-mode="dark" aria-labelledby="cap-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">WHAT IT DOES</span>
+          <h2 id="cap-heading" class="section-title">What it does — and what it removes from your BOM.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><span class="accent"></span><h3>Direct sensor acquisition</h3><p>Four analog channels (0–10 V or 4–20 mA, 16-bit) capture pressure, flow, level, temperature, and similar signals straight from the field.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Digital I/O</h3><p>Eight 24 V digital inputs and eight 24 V digital outputs for status, counts, alarms, enables, and simple discrete signals.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Acquires and publishes</h3><p>Modbus TCP/RTU acquisition where a device speaks it; HTTPS / MQTT publish to your broker or to EREMOS V2.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Remote-ready</h3><p>4G, Wi-Fi, GPS, and an optional battery for sites without power or cable.</p></div>
+        </div>
+
+        <div class="bom-list">
+          <p class="bom-list__intro">One mDAQ removes from the customer BOM:</p>
+          <ul>
+            <li>a <strong>standalone PLC</strong> for sensor acquisition;</li>
+            <li>a separate <strong>cellular modem and edge appliance</strong>;</li>
+            <li>a <strong>site-specific battery backup</strong> (available as an mDAQ option).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 HARDWARE SPECIFICATIONS + I/O (§18.A hardware) -->
+    <section class="section" data-mode="light" aria-labelledby="spec-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">HARDWARE SPECIFICATIONS</span>
+          <h2 id="spec-heading" class="section-title">The device, in numbers.</h2>
+        </div>
+        <table class="spec-table">
+          <caption>Channel counts, ranges, sampling, and environmental figures trace to the hardware ecosystem map and are confirmed at quoting time. Sensor type, loop power, and signal-conditioning per channel are confirmed during BOM scope.</caption>
+          <tbody>
+            <tr><td class="proto">Analog inputs</td><td>4 channels, 0–10 V or 4–20 mA, 16-bit, up to 860 S/s (per-channel / aggregate behavior + reporting interval confirmed during BOM scope)</td></tr>
+            <tr><td class="proto">Digital I/O</td><td>8 × 24 V digital inputs · 8 × 24 V digital outputs</td></tr>
+            <tr><td class="proto">Acquisition protocols</td><td>Modbus TCP / Modbus RTU</td></tr>
+            <tr><td class="proto">Publish</td><td>HTTPS · MQTT</td></tr>
+            <tr><td class="proto">Connectivity</td><td>4G (cellular) · Wi-Fi · GPS · optional Ethernet</td></tr>
+            <tr><td class="proto">Power</td><td>24 V; <strong>optional battery</strong> for sites without power. Current draw, terminal type, and circuit-protection recommendation confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Environmental</td><td>−10 °C to +85 °C operating range</td></tr>
+            <tr><td class="proto">Enclosure</td><td>Ruggedized, 180 × 150 × 60 mm</td></tr>
+            <tr><td class="proto">Ingress protection</td><td>IP65 / IP67-<strong>compatible</strong> configurations can be scoped where a site requires it; final protection level, enclosure approach, and any certification requirements confirmed during BOM scope. <em>(Compatibility, not a certified rating — no formal IP certification is currently claimed.)</em></td></tr>
+            <tr><td class="proto">Mounting</td><td>Field mount; cabinet clearance, cable routing, and antenna placement confirmed during BOM scope</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top: var(--space-8); font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light);">DAQ details confirmed during BOM scope</h3>
+        <table class="spec-table">
+          <caption>The deployment-specific electrical / mechanical detail a DAQ buyer expects — surfaced here in one place. No invented numbers.</caption>
+          <thead>
+            <tr><th>Item</th><th>Confirmed during BOM scope</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="proto">Analog input configuration</td><td>Per-channel voltage / current mode, loop power / excitation, signal conditioning, input protection, accuracy assumptions</td></tr>
+            <tr><td class="proto">Sampling + reporting</td><td>Whether 860 S/s is per-channel or aggregate, report interval, timestamping, buffering / offline retention; GPS as geo-context and/or time source</td></tr>
+            <tr><td class="proto">Digital I/O</td><td>Input thresholds, output type / current rating, sink / source behavior, protection</td></tr>
+            <tr><td class="proto">Power</td><td>Supply tolerance, current draw, battery runtime / charging, circuit protection</td></tr>
+            <tr><td class="proto">Mechanical</td><td>Mounting hardware, terminals / connectors, cable glands, antenna placement, enclosure approach, weight</td></tr>
+            <tr><td class="proto">Environment</td><td>Humidity / condensation, exposure, ingress-protection approach (IP65 / IP67-compatible), site compliance</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- §5 DEPLOYMENT IN THE FIELD -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="deploy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">IN THE FIELD</span>
+          <h2 id="deploy-heading" class="section-title">How it installs.</h2>
+        </div>
+        <table class="spec-table">
+          <tbody>
+            <tr><td class="proto">Field wiring</td><td>Sensors wire directly to the analog/digital inputs — no PLC in between. Per-channel sensor type, loop power, and signal conditioning confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Power</td><td>24 V; optional battery for sites without mains power. Current draw / terminal / protection confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Connectivity</td><td>4G cellular for remote sites; Wi-Fi where available; GPS for location/geo-context. SIM / carrier / antenna and network/firewall assumptions confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Environment</td><td>−10 °C to +85 °C operating range. Exposure, humidity, and enclosure approach confirmed during BOM scope; IP65 / IP67-compatible configurations can be scoped where the placement requires it (no certified rating claimed).</td></tr>
+            <tr><td class="proto">Offline</td><td>Acquires locally and publishes when connectivity returns.</td></tr>
+            <tr><td class="proto">Mounting + site fit</td><td>Enclosure dimensions, mounting, cabinet clearance, and antenna/cabling confirmed during BOM scope.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- §6 ARCHITECTURE -->
+    <section class="section" data-mode="light" id="architecture" aria-labelledby="arch-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="arch-heading" class="section-title">The device in the stack.</h2>
+        </div>
+        <figure class="arch-figure" style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 210" width="100%" role="img"
+               aria-label="mDAQ in the stack: field sensors connect directly to mDAQ with no PLC, which publishes over HTTPS / MQTT to EREMOS V2, with EdgeConnect optional in the path.">
+            <defs>
+              <marker id="md-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/>
+              </marker>
+            </defs>
+            <!-- Field sensors -->
+            <rect x="8" y="55" width="180" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="15" fill="#0F1419">Field sensors</text>
+            <text x="98" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">no PLC</text>
+            <line x1="192" y1="105" x2="246" y2="105" stroke="#5E6B78" stroke-width="2" marker-end="url(#md-arrow)"/>
+            <!-- mDAQ (highlighted) -->
+            <rect x="250" y="45" width="200" height="120" rx="12" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="350" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="16" fill="#0F1419">mDAQ</text>
+            <text x="350" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Direct acquisition · no PLC</text>
+            <text x="350" y="126" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Ruggedized field device</text>
+            <text x="350" y="144" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">4G · GPS · optional battery</text>
+            <line x1="454" y1="105" x2="508" y2="105" stroke="#5E6B78" stroke-width="2" marker-end="url(#md-arrow)"/>
+            <!-- publish -->
+            <rect x="512" y="55" width="180" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="602" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">HTTPS · MQTT</text>
+            <text x="602" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">publish from remote sites</text>
+            <line x1="696" y1="105" x2="750" y2="105" stroke="#5E6B78" stroke-width="2" marker-end="url(#md-arrow)"/>
+            <!-- consumer -->
+            <rect x="754" y="45" width="198" height="120" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="853" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">EREMOS V2</text>
+            <text x="853" y="116" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">+ EdgeConnect optional</text>
+            <text x="853" y="140" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" font-weight="600">Elpis-only path</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">
+            Static product-annotated subset. The final page uses the design-system §5.A <code>ArchitecturePanel.interactive</code> variant.
+          </figcaption>
+        </figure>
+        <p class="deploy-note">For PLC-fronted floors, the <strong>Edge Gateway</strong> bridges existing PLCs instead — see → <a class="pillar-link" href="edge-gateway">/edge-gateway</a>. The full stack → <a class="pillar-link" href="architecture">/architecture</a>.</p>
+      </div>
+    </section>
+
+    <!-- §7 HOW TO BUY -->
+    <section class="section" data-mode="dark" aria-labelledby="buy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">HOW TO BUY</span>
+          <h2 id="buy-heading" class="section-title">One device, plus the path to the dashboard.</h2>
+        </div>
+        <p style="color: var(--color-text-muted-dark); font-size: var(--size-sm); max-width: 74ch;"><em>Packaging labels are illustrative until commercial packaging is approved; this section describes how the unit is bought + what it pairs with, not pricing.</em></p>
+        <p class="buy-note">
+          mDAQ is a hardware unit, <strong>scoped against channel count + sensor types, site connectivity, power/battery needs, field environment, and mounting</strong>. On its own it acquires and publishes; combined with EdgeConnect and EREMOS V2 it completes an Elpis-only sensor-to-dashboard path. Bring the sensor list (signal types + ranges), the site connectivity (cellular vs. wired), power availability, and the environment; we'll scope the BOM. Contact Elpis for unit availability and BOM scoping; detailed pricing follows the BOM review. No pricing tables, SKU grids, or per-unit pricing on this page.
+        </p>
+      </div>
+    </section>
+
+    <!-- §8 FIELD-READINESS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="field-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">FIELD-READINESS</span>
+          <h2 id="field-heading" class="section-title">Built for the field, not the office.</h2>
+        </div>
+        <div class="trust-cue">
+          <h3>Built for the field, not the office.</h3>
+          <p>Ruggedized 180 × 150 × 60 mm enclosure, 24 V power with an optional battery, −10 °C to +85 °C operating range. Wires straight to the sensors it reads.</p>
+        </div>
+        <div class="trust-cue">
+          <h3>Remote-ready, offline-capable.</h3>
+          <p>4G + Wi-Fi + GPS for sites without cable; acquires locally and publishes on reconnect. No PLC or industrial PC in the loop.</p>
+        </div>
+        <p class="deploy-note">Formal third-party certifications are not currently claimed. Certification, ingress-protection, and site-compliance requirements are handled case-by-case during BOM scope; IP65 / IP67-compatible configurations can be scoped where required, but certified/rated claims are published only when formal evidence exists for the specific product/configuration.</p>
+      </div>
+    </section>
+
+    <!-- §9 FAQ -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">COMMON QUESTIONS</span>
+          <h2 id="faq-heading" class="section-title">What plant engineers ask.</h2>
+        </div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">What sensors can it read?</p><p class="faq__a">Four analog channels accept 0–10 V or 4–20 mA signals (16-bit, up to 860 S/s; per-channel / aggregate behavior + reporting interval confirmed during BOM scope) — pressure, flow, level, temperature, and similar. Eight 24 V digital inputs and eight 24 V digital outputs handle status, counts, alarms, enables, and simple discrete signals. Per-channel sensor type, loop power, and signal conditioning are confirmed during BOM scope.</p></div>
+          <div class="faq__item"><p class="faq__q">How is mDAQ different from the Edge Gateway?</p><p class="faq__a">Edge Gateway <strong>bridges existing PLCs</strong> (Modbus TCP) to the network. mDAQ <strong>reads sensors directly with no PLC in the acquisition path</strong> — it removes the need for a PLC when the job is acquisition and publishing (it does not replace PLC control, safety, sequencing, or interlock functions). If you already have PLCs controlling the process, scope <a class="pillar-link" style="color:var(--color-brand-teal-light)" href="edge-gateway">Edge Gateway</a>; if you have sensors and no PLC — or want a separate acquisition path that bypasses the PLC — scope mDAQ. They can also be used together.</p></div>
+          <div class="faq__item"><p class="faq__q">How does the data reach a dashboard?</p><p class="faq__a">mDAQ publishes over HTTPS or MQTT to your broker or to EREMOS V2. With EdgeConnect + EREMOS V2 it forms an Elpis-only sensor-to-dashboard path with no third-party hardware in the chain.</p></div>
+          <div class="faq__item"><p class="faq__q">Can it run without mains power or a network?</p><p class="faq__a">Yes. An optional battery covers sites without power; 4G cellular publishes from remote sites. It acquires locally and publishes when connectivity returns.</p></div>
+          <div class="faq__item"><p class="faq__q">What's the operating temperature and enclosure?</p><p class="faq__a">−10 °C to +85 °C, in a ruggedized 180 × 150 × 60 mm enclosure. Exposure and ingress-protection requirements are confirmed during BOM scope.</p></div>
+          <div class="faq__item"><p class="faq__q">Is it certified? What about IP65 / IP67?</p><p class="faq__a">No formal third-party certifications are currently claimed. Certification, ingress-protection, and site-compliance requirements are handled case-by-case during BOM scope. Where a site requires IP65 / IP67-compatible protection, Elpis can scope an IP65 / IP67-compatible configuration or enclosure approach; formal certification or rating claims are published only when the specific product/configuration has the required certification or test evidence.</p></div>
+          <div class="faq__item"><p class="faq__q">How does it relate to VAS?</p><p class="faq__a">VAS — the Vibration Analyser System — is built on the mDAQ hardware platform, configured for specialized vibration acquisition and analytics. If you need rotating-machinery vibration monitoring, see <a class="pillar-link" style="color:var(--color-brand-teal-light)" href="vas">Condition Monitoring (VAS)</a>.</p></div>
+          <div class="faq__item"><p class="faq__q">Can it be mounted outside an enclosure / exposed?</p><p class="faq__a">Cabinet placement, exposure, temperature, humidity, antenna placement, and ingress-protection requirements are confirmed during BOM scope. IP65 / IP67-compatible configurations can be scoped where required, but no formal certified IP rating is claimed unless evidence exists for the specific configuration.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 RELATED (cross-lens §18.3) -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">RELATED</span>
+          <h2 id="rel-heading" class="section-title">Looking at this from another angle?</h2>
+        </div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="index.html#capabilities-heading"><span class="eyebrow">CAPABILITY · DATA ACQUISITION</span><span class="cl-desc">The Pillar 2 capability story.</span></a>
+          <a class="crosslens-card" href="vas"><span class="eyebrow">CAPABILITY · CONDITION MONITORING</span><span class="cl-desc">VAS is built on the mDAQ platform.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §11 CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size: var(--size-2xl); margin-top: var(--space-3);">Bring us your sensors and your site.</h2>
+        <p class="hero__subhead" style="margin-left:auto; margin-right:auto;">
+          A sensor list (signal types + ranges), your site connectivity and power, and the environment it'll sit in — that's what we scope a BOM against. We confirm the channels, power, and mounting for your site, not for a brochure.
+        </p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=mDAQ%20hardware%20specifications" class="btn btn--primary btn--lg">Get hardware specifications <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=mDAQ%20BOM%20scope" class="btn btn--secondary btn--lg">Request a BOM scope</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER (standardized — links every product page) -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

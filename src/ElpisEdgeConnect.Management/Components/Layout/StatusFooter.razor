@@ -1,0 +1,192 @@
+@*
+    Bottom status bar — live rollup so operators always know whether
+    the gateway is healthy without leaving the current page.
+
+    Polls every 3 seconds via PeriodicTimer started on first render
+    (interactive Blazor Server circuit). Reads only the locally-loaded
+    API client — no direct DI access to Core (locked rule).
+*@
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+<MudPaper Elevation="2" Square="true" Class="status-footer px-4 py-1"
+          role="status" aria-live="polite"
+          Style="position:fixed; bottom:0; left:0; right:0; height:32px;
+                 display:flex; align-items:center; gap:16px;
+                 border-top:1px solid var(--mud-palette-lines-default);">
+    @* Each state gets its own glyph, not just its own colour — the footer is
+       32px of chrome an operator reads peripherally, and roughly 1 in 12 of
+       them cannot separate the green from the red. *@
+    <MudIcon Icon="@OverallIcon"
+             Size="Size.Small"
+             Color="@OverallColor" />
+    <MudText Typo="Typo.caption">@OverallLabel</MudText>
+
+    <MudDivider Vertical="true" FlexItem="true" />
+
+    <MudText Typo="Typo.caption">
+        <strong>@_routesUp</strong>/@_routesTotal routes running
+    </MudText>
+
+    @if (_degradedSinks > 0)
+    {
+        <MudDivider Vertical="true" FlexItem="true" />
+        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Warning" />
+        <MudText Typo="Typo.caption">@_degradedSinks degraded destination@(_degradedSinks == 1 ? "" : "s")</MudText>
+    }
+
+    <MudSpacer />
+
+    <MudText Typo="Typo.caption" Style="opacity:0.6;" data-testid="footer-version">
+        Elpis EdgeConnect @AppVersion
+    </MudText>
+    <MudDivider Vertical="true" FlexItem="true" />
+    @* A frozen clock is worse than no clock: it looks like a fresh reading.
+       This counts up on its own, so a stalled poll is visible as the number
+       climbing rather than as a timestamp that silently stopped moving. *@
+    <MudText Typo="Typo.caption"
+             Style="@(_pollFailed ? "color:var(--mud-palette-warning);" : "opacity:0.6;")"
+             title="@OperatorFormat.Absolute(_lastSuccessUtc)"
+             data-testid="footer-freshness">
+        @if (_pollFailed)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.SyncProblem" Size="Size.Small" Class="mr-1" />
+            <text>Not updating — last reading @OperatorFormat.Ago(_lastSuccessUtc). Reload the page; if it persists the gateway service has stopped.</text>
+        }
+        else
+        {
+            <text>Updated @OperatorFormat.Ago(_lastSuccessUtc)</text>
+        }
+    </MudText>
+</MudPaper>
+
+@code {
+    // Application version shown in the footer — read from the assembly, which is
+    // stamped from Directory.Build.props (<Version>). Matches the installer version.
+    private static readonly string AppVersion =
+        "v" + (typeof(StatusFooter).Assembly.GetName().Version?.ToString(3) ?? "?");
+
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+    private int _routesTotal;
+    private int _routesUp;
+    private int _degradedSinks;
+    private DateTime? _lastSuccessUtc;
+    private bool _pollFailed;
+
+    private Color OverallColor => _routesTotal == 0
+        ? Color.Default
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? Color.Success
+            : _routesUp == 0
+                ? Color.Error
+                : Color.Warning;
+
+    // Glyph carries the same meaning as the colour, so state never depends
+    // on colour alone.
+    private string OverallIcon => _routesTotal == 0
+        ? Icons.Material.Filled.RadioButtonUnchecked
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? Icons.Material.Filled.CheckCircle
+            : _routesUp == 0
+                ? Icons.Material.Filled.Error
+                : Icons.Material.Filled.Warning;
+
+    private string OverallLabel => _routesTotal == 0
+        ? "No routes configured"
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? "All systems healthy"
+            : _routesUp == 0
+                ? "All routes down"
+                : "Degraded";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on dispose
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var routes = await HttpClient.GetFromJsonAsync<RouteSummaryDto[]>("/api/v1/routes");
+            if (routes is null) return;
+            _routesTotal = routes.Length;
+            _routesUp = 0;
+            _degradedSinks = 0;
+            foreach (var r in routes)
+            {
+                if (string.Equals(r.StateName, "Running", StringComparison.Ordinal)) _routesUp++;
+                foreach (var s in r.Sinks)
+                {
+                    if (s.IsDegraded) _degradedSinks++;
+                }
+            }
+            _lastSuccessUtc = DateTime.UtcNow;
+            _pollFailed = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component scope torn down between ticks; loop will exit.
+        }
+        catch
+        {
+            // Footer never throws, but it must not keep asserting health it can
+            // no longer confirm. Flag the stall and let the operator see it.
+            _pollFailed = true;
+            try
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+            catch
+            {
+                // Circuit already gone; nothing left to render to.
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null)
+            {
+                await _pollLoop;
+            }
+        }
+        catch
+        {
+            // best-effort
+        }
+        finally
+        {
+            _cts?.Dispose();
+        }
+    }
+}

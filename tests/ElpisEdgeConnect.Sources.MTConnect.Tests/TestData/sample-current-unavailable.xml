@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
+  <Streams>
+    <DeviceStream name="CNC-1" uuid="urn:example:cnc-1">
+      <ComponentStream component="Controller" componentId="ctrl" name="controller">
+        <Events>
+          <Execution dataItemId="exec" timestamp="2026-04-22T00:00:00Z" sequence="1">UNAVAILABLE</Execution>
+          <ControllerMode dataItemId="mode" timestamp="2026-04-22T00:00:00Z" sequence="2">UNAVAILABLE</ControllerMode>
+        </Events>
+        <Samples>
+          <PathFeedrate dataItemId="feed" timestamp="2026-04-22T00:00:00Z" sequence="3">UNAVAILABLE</PathFeedrate>
+        </Samples>
+      </ComponentStream>
+    </DeviceStream>
+  </Streams>
+</MTConnectStreams>

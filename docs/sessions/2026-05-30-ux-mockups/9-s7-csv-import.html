@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — S7 wizard: Import CSV affordance (v1.1)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+    <style>
+        .mono { font-family:'Roboto Mono', monospace; }
+        .drop { border:2px dashed #bdbdbd; border-radius:10px; background:#fafafa; padding:22px; text-align:center; color:#616161; }
+        .drop strong { color:#424242; }
+        .schema { font-size:11px; color:#9e9e9e; margin-top:8px; }
+        .panel { border:1px solid #e0e0e0; border-radius:8px; padding:12px 14px; margin-top:14px; }
+        .ok { border-left:4px solid #2e7d32; }
+        .err { border-left:4px solid #d32f2f; }
+        .warn { border-left:4px solid #ef6c00; }
+        .issues { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+        .issues th, .issues td { text-align:left; padding:5px 8px; border-bottom:1px solid #eee; }
+        .issues th { color:#616161; font-weight:600; }
+        .pill { display:inline-block; font-size:11px; padding:1px 7px; border-radius:10px; background:#eee; color:#555; }
+        .design-only { border:1px dashed #ce93d8; background:#faf4fb; }
+        .states-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .state-card { border:1px solid #e0e0e0; border-radius:8px; padding:12px 14px; font-size:12px; background:#fff; }
+        .state-card h4 { margin:0 0 6px 0; font-size:12px; font-weight:600; color:#616161; }
+        .x-mut { color:#9e9e9e; }
+        .row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    </style>
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Sources</a> / <a href="#">Add source</a> / Siemens S7 / Import CSV</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">⤓</div>
+        <div>
+            <h1>Import S7 tags from CSV</h1>
+            <div class="subtitle">
+                Bulk-add tags from a spreadsheet export. Each row becomes one tag; the same
+                validation as manual entry runs on every row, so anything the importer accepts
+                is safe to save.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — S7 "Import CSV" affordance (M.2b.2 v1.1, sign-off gate).</strong>
+        Re-adds the CSV affordance the v1 wizard intentionally omitted. Backend
+        <code>S7TagCsvImporter</code> (schema <code class="mono">Name,Address,Datatype,ScanRateMs,Unit,Scale,Offset</code>)
+        is built + tested. This mockup is for sign-off BEFORE the Razor wiring. The purple-dashed
+        <em>Design reference</em> card shows the result states; the live dialog shows one state at a time.
+    </div>
+
+    <!-- ── In-wizard entry point ─────────────────────────────────────── -->
+    <div class="card">
+        <div class="toolbar">
+            <div class="card-title" style="margin:0;">Tags (0)</div>
+            <div class="spacer"></div>
+            <button class="btn btn-text">⤓ Import CSV</button>
+            <button class="btn btn-outlined">+ Add tag</button>
+        </div>
+        <p class="x-mut" style="font-size:12px;margin:8px 2px 0;">
+            "Import CSV" opens the dialog below. Imported rows are added to the tag table, where the
+            normal per-row status (✓ / ⚠ / ✗) and editing still apply.
+        </p>
+    </div>
+
+    <!-- ── The import dialog ─────────────────────────────────────────── -->
+    <div class="card">
+        <div class="card-title">Import tags from CSV</div>
+
+        <div class="drop">
+            <div style="font-size:26px;">⤓</div>
+            <div><strong>Drop a .csv file here</strong> or <a href="#">browse</a></div>
+            <div class="schema">
+                Expected columns: <code class="mono">Name, Address, Datatype, ScanRateMs, Unit, Scale, Offset</code>.
+                Only <strong>Name</strong> and <strong>Address</strong> are required — datatype is derived from the
+                address width when blank, scan rate defaults to 1000 ms. <a href="#">Download template</a>.
+            </div>
+        </div>
+
+        <!-- After a file is parsed, ONE of the result panels below renders. -->
+        <div class="panel ok">
+            <div class="row">
+                <span class="chip chip-success"><span class="dot dot-green"></span> Imported 12 tags</span>
+                <span class="x-mut">· 2 comment rows and 1 blank row ignored</span>
+            </div>
+            <div class="row" style="margin-top:10px;">
+                <label><input type="radio" name="merge" checked> Add to existing tags</label>
+                <label><input type="radio" name="merge"> Replace all existing tags</label>
+                <div class="spacer"></div>
+                <button class="btn btn-filled">Add 12 tags</button>
+                <button class="btn btn-text">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Design reference — result states ──────────────────────────── -->
+    <div class="card design-only">
+        <div class="card-title">Design reference — import result states (one shown at a time in the live dialog)</div>
+        <div class="states-grid">
+            <div class="state-card">
+                <h4>Success</h4>
+                <span class="chip chip-success"><span class="dot dot-green"></span> Imported 12 tags</span>
+                <p class="x-mut">Then choose Add-to-existing vs Replace-all, and confirm. Rows land in the tag table.</p>
+            </div>
+            <div class="state-card">
+                <h4>Errors — nothing imported</h4>
+                <span class="chip chip-error">⛔ 3 problems found — nothing imported. Fix the file and re-upload.</span>
+                <table class="issues">
+                    <thead><tr><th>Line</th><th>Column</th><th>Problem</th></tr></thead>
+                    <tbody>
+                        <tr><td>4</td><td>address</td><td>'DB1.DBZ0' is not a valid S7 address.</td></tr>
+                        <tr><td>7</td><td>address</td><td>Timer addresses are not supported this release. Use DB, M, I, or Q.</td></tr>
+                        <tr><td>9</td><td>datatype</td><td>Real needs 4 bytes, but DB1.DBW0 is a 2-byte word address.</td></tr>
+                    </tbody>
+                </table>
+                <p class="x-mut">All problems listed at once (not one-at-a-time). Strict: any error → no partial import.</p>
+            </div>
+            <div class="state-card">
+                <h4>Warnings — imported with notes</h4>
+                <span class="chip chip-success"><span class="dot dot-green"></span> Imported 8 tags</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-warning-outline">⚠ DB1.DBW0 is read by 2 tags — allowed, but usually unintended</span>
+                <p class="x-mut">Duplicate addresses warn (non-blocking). Duplicate tag <em>names</em> are an error (blocks).</p>
+            </div>
+            <div class="state-card">
+                <h4>Bad file</h4>
+                <span class="chip chip-error">⛔ Unknown column 'Bogus'.</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-error">⛔ Required column 'Address' is missing from the header.</span>
+                <p class="x-mut">Header validated before rows. CSV file empty / header-only → "nothing to import".</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note" style="margin-top:14px;">
+        <strong>Open questions for sign-off:</strong>
+        <ol style="margin:6px 0 0 18px; padding:0; font-size:13px;">
+            <li><strong>Add vs Replace default</strong> — mockup defaults to <em>Add to existing</em>. OK, or default to Replace?</li>
+            <li><strong>"Download template"</strong> — include a one-click sample CSV download? (small add)</li>
+            <li><strong>Entry placement</strong> — "Import CSV" as a text button in the Tags toolbar next to "Add tag" (shown), vs a menu.</li>
+        </ol>
+    </div>
+
+</div>
+
+</body>
+</html>

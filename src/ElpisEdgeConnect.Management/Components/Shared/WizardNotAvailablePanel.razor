@@ -1,0 +1,56 @@
+@*
+    WizardNotAvailablePanel — read-only "protocol is registered but no
+    Razor wizard exists" panel for the M.2d.2 SourceEditRouter.
+
+    Rendered when ProtocolName matches a registered source adapter but
+    no wizard component handles it (future case: adapter ships before
+    the wizard, e.g. OPC UA M.5).
+
+    Same escape-hatch shape as UnsupportedProtocolPanel — different
+    copy + different testid.
+
+    Reference: docs/sessions/2026-05-22-m2d2-source-wizards-plan-v2.md §5.2
+*@
+
+<MudPaper Class="pa-6 my-4" Outlined="true" data-testid="wizard-not-available-panel">
+    <MudStack Spacing="3">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Build" Color="Color.Info" Size="Size.Large" />
+            <MudText Typo="Typo.h5">No wizard available for @ProtocolDisplayName</MudText>
+        </MudStack>
+
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            <strong>Source <code>@InstanceId</code> uses protocol <code>@ProtocolName</code>,
+            which runs on this gateway but does not yet have a typed editor in this
+            Studio version.</strong>
+            The runtime still respects the source's configuration; you just need
+            to edit it through the raw config surface for now.
+        </MudAlert>
+
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Href="/config"
+                       data-testid="wizard-not-available-config-link">
+                Open raw config
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Href="/sources"
+                       data-testid="wizard-not-available-back-link">
+                Back to sources
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>The protocol name (lowercase, e.g. "opcua-client").</summary>
+    [Parameter, EditorRequired] public string ProtocolName { get; set; } = string.Empty;
+
+    /// <summary>Operator-readable display name (e.g. "OPC UA Client").</summary>
+    [Parameter, EditorRequired] public string ProtocolDisplayName { get; set; } = string.Empty;
+
+    /// <summary>The source instance id.</summary>
+    [Parameter, EditorRequired] public string InstanceId { get; set; } = string.Empty;
+}

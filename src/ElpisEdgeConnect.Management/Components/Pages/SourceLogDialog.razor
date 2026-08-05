@@ -1,0 +1,158 @@
+@*
+    Per-source diagnostic-log viewer + opt-in toggle. Opened from the Overview
+    route card. When logging is enabled the source adapter records device
+    connect/disconnect and each data read to logs\<source>.txt; this dialog
+    toggles that and tails the file live.
+*@
+@using System.Net.Http.Json
+@using ElpisEdgeConnect.Management.Contracts
+@inject HttpClient HttpClient
+@implements IDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Article" />
+            <div>
+                <MudText Typo="Typo.h6">Device log — @SourceId</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Every connect, disconnect and read this device reports. Newest at the bottom.
+                </MudText>
+            </div>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Spacing="2">
+            <MudCheckBox T="bool" Value="_enabled" ValueChanged="OnToggle"
+                         Color="Color.Primary" Label="Enable logging" Dense="true"
+                         data-testid="source-log-enable-toggle" />
+            @* State never by colour alone: icon + word. *@
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center"
+                      data-testid="source-log-state">
+                <MudIcon Icon="@(_enabled ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Block)"
+                         Size="Size.Small"
+                         Color="@(_enabled ? Color.Success : Color.Default)" />
+                <MudText Typo="Typo.caption">@(_enabled ? "Recording" : "Not recording")</MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Saved to <code>ProgramData\EdgeConnect\logs\@(SourceId).txt</code>
+            </MudText>
+        </MudStack>
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-2"
+                      data-testid="source-log-error">
+                Cannot reach the gateway, so these lines have stopped updating.
+                Next: check the EdgeConnect service is running, then press Refresh now.
+            </MudAlert>
+        }
+
+        <MudPaper Elevation="0"
+                  Style="max-height:52vh; overflow:auto; background:#F8FAFC; border:1px solid #E5E7EB; border-radius:6px;"
+                  Class="pa-3">
+            @if (_lines is null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Loading…</MudText>
+            }
+            else if (_lines.Length == 0 && _enabled)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Recording is on and nothing has been written yet. Lines appear the next time
+                    this device connects or is read — within seconds if it is healthy.
+                </MudText>
+            }
+            else if (_lines.Length == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Recording is off, so nothing is being written.
+                    Next: tick <strong>Enable logging</strong> above, then make the problem happen again.
+                </MudText>
+            }
+            else
+            {
+                <pre style="margin:0; color:#1F2937; font-family:Consolas,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word;">@string.Join("\n", _lines)</pre>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-auto ml-2"
+                 data-testid="source-log-line-count">
+            @OperatorFormat.Count(_lines?.Length ?? 0) line@(_lines?.Length == 1 ? "" : "s") shown
+            · newest 300 kept · refreshes every 2 s
+        </MudText>
+        <MudButton OnClick="Refresh" Style="text-transform:none;">Refresh now</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="@(() => MudDialog.Close())" Style="text-transform:none;">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string SourceId { get; set; } = string.Empty;
+
+    private string[]? _lines;
+    private bool _enabled;
+    private Timer? _timer;
+    private bool _disposed;
+    // Set when a poll fails. Without it a stopped gateway looked exactly like
+    // a quiet device: the lines simply stopped and nothing said why.
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        _timer = new Timer(async _ => { if (!_disposed) { await InvokeAsync(Refresh); } },
+                           null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            var dto = await HttpClient.GetFromJsonAsync<SourceLogDto>(
+                $"/api/v1/sources/{Uri.EscapeDataString(SourceId)}/log?tail=300");
+            if (dto is not null)
+            {
+                _enabled = dto.Enabled;
+                _lines = dto.Lines is null ? Array.Empty<string>() : System.Linq.Enumerable.ToArray(dto.Lines);
+            }
+            _error = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Swallowing this left the operator staring at frozen lines with no
+            // hint that the feed itself had stopped — indistinguishable from a
+            // device that simply went quiet, which is what they came to check.
+            _error = ex.Message;
+            try { StateHasChanged(); } catch { /* dialog already closed */ }
+        }
+    }
+
+    private async Task OnToggle(bool value)
+    {
+        _enabled = value;
+        var state = value ? "enable" : "disable";
+        try
+        {
+            await HttpClient.PostAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(SourceId)}/logging/{state}", content: null);
+        }
+        catch
+        {
+            // ignore — the next Refresh reflects the true state
+        }
+        await Refresh();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _timer?.Dispose();
+    }
+}

@@ -1,0 +1,51 @@
+<!--
+  ElpisEdgeConnect.Core — Protocol-agnostic runtime foundation
+  Reference: docs/ARCHITECTURE_BLUEPRINT.md Sections 4, 5, 6, 8, 9, 19
+  No references to any protocol module. Core is the foundation everything depends on.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Core</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Core</AssemblyName>
+    <Description>Elpis EdgeConnect Core — protocol-agnostic runtime for the Industrial Edge Integration Platform</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CA1720: Identifier contains type name — false positive for the
+              CanonicalValueType enum whose members are domain-correct names
+              (Integer, Long, Float, Double, String, Object).
+      CA1822: "Mark members as static when they don't access instance state"
+              — disabled because Core uses singleton-with-instance-method
+              patterns intentionally (CrossRecordValidator.Instance,
+              ConfigurationDiffer.Instance) so tests and DI can substitute.
+              Forcing static would break the substitutability.
+      CS1591 is NOT suppressed: every public member in Core must carry an
+      XML doc comment (per CLAUDE.md §7). Enforcing this at compile time
+      prevents silent documentation drift.
+    -->
+    <NoWarn>$(NoWarn);CA1720;CA1822</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Core.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Benchmarks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- C2a: serialization and compression for the Buffer subsystem.
+         2.5.302 clears the MessagePack NU1902/NU1903 advisories (fixed in
+         2.5.301) — an in-line 2.5.x patch, not a 2.x->3.x migration. See
+         docs/sessions/2026-06-30-nuget-nu1902-messagepack-remediation-proposal.md -->
+    <PackageReference Include="MessagePack" Version="2.5.302" />
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+    <!-- C2b: durable SqliteBuffer backing store. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

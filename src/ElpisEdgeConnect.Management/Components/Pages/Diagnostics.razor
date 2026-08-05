@@ -1,0 +1,523 @@
+@*
+    System-wide Diagnostics page (M.1c.2). Two surfaces in one screen:
+
+       1. Audit chain banner — re-verifies the configuration-audit
+          SHA-256 hash chain. Green ✓ when intact, red ✗ with the
+          broken-entry detail otherwise. Auditors expect to see the
+          ✓ explicitly; silence is suspect.
+
+       2. Event timeline — MudDataGrid over the normalized
+          DiagnosticsEventDto stream merged across every route and
+          (gateway-scoped) the configuration audit log. Server-side
+          filtering by route / event code(s) / severity / time window.
+
+    The events table is the same wire shape as M.1c.1's route-scoped
+    timeline — DiagnosticsEventsResponse envelope so retention metadata
+    rides along. "147 of ~12,000" is meaningfully different from "147
+    of 147", and the page surfaces both honestly.
+
+    Polling cadences:
+       Events       refresh every 5s
+       Audit chain  refresh every 60s (expensive — full audit re-scan)
+*@
+@page "/diagnostics"
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+<PageTitle>Diagnostics · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.Troubleshoot" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">Diagnostics</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            System-wide event timeline across every route, plus the configuration audit log.
+        </MudText>
+    </div>
+    <MudSpacer />
+    @* "Tap" is network-engineering jargon — a maintenance engineer cannot guess
+       what it opens. The button now names the destination in plain language,
+       and matches that page's own heading so the two agree. The /diagnostics/tap
+       URL is unchanged: only what the operator reads is renamed. *@
+    <MudButton Href="/diagnostics/tap"
+               Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Sensors"
+               Style="text-transform:none;"
+               data-testid="btn-live-stream">
+        Live Stream
+    </MudButton>
+</MudStack>
+
+@* ---- Audit chain banner ---- *@
+@if (_auditChain is null)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+        Verifying configuration audit chain…
+    </MudAlert>
+}
+else if (_auditChain.Verified)
+{
+    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4">
+        <strong>Audit chain verified.</strong>
+        SHA-256 chain intact through @_auditChain.EntriesChecked.ToString("N0") entr@(_auditChain.EntriesChecked == 1 ? "y" : "ies")
+        — checked @FormatRelative(_auditChain.CheckedAtUtc).
+    </MudAlert>
+}
+else
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        <strong>Audit chain verification FAILED.</strong>
+        Verified @_auditChain.EntriesChecked.ToString("N0") entr@(_auditChain.EntriesChecked == 1 ? "y" : "ies") before the chain broke.
+        @if (_auditChain.FailureReason is { } reason)
+        {
+            <br />
+            <span style="font-family:monospace; font-size:0.9em;">@reason</span>
+        }
+    </MudAlert>
+}
+
+@* ---- Configuration faults panel (M.P2.1 phase 3b) ---- *@
+@* Renders only when faults are registered. The audit chain holds the *@
+@* durable record (ADR-0006); this panel is the live view (ADR-0005). *@
+@if (_faults is { Count: > 0 })
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4"
+              Style="border-left:4px solid var(--mud-palette-warning);">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Size="Size.Small" Color="Color.Warning" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;">
+                Configuration faults (@_faults.Count)
+            </MudText>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                from gateway startup — fix in Configuration to clear
+            </MudText>
+        </MudStack>
+        <MudTable T="ConfigurationFaultDto" Items="@_faults" Dense="true" Hover="true" Bordered="false">
+            <HeaderContent>
+                <MudTh>Kind</MudTh>
+                <MudTh>Instance</MudTh>
+                <MudTh>Code</MudTh>
+                <MudTh>Message</MudTh>
+                <MudTh>Observed</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Color="@FaultKindColor(context.Kind)" Style="text-transform:none;">
+                        @context.Kind
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    @{
+                        var href = FaultInstanceHref(context);
+                    }
+                    @if (href is not null)
+                    {
+                        <MudLink Href="@href" Underline="Underline.Hover" Style="font-family:monospace; font-weight:500;">
+                            @context.InstanceId
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="font-family:monospace; font-weight:500;">
+                            @context.InstanceId
+                        </MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                        @context.ErrorCode
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Message</MudText>
+                </MudTd>
+                <MudTd Style="white-space:nowrap;">
+                    <MudTooltip Text="@FormatAbsolute(context.ObservedAtUtc)">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @FormatRelative(context.ObservedAtUtc)
+                        </MudText>
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@* ---- Filter bar ---- *@
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" Label="Route" Value="@_filterRoute"
+                       ValueChanged="@(v => { _filterRoute = v; _ = RefreshEventsAsync(); })"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true">
+                <MudSelectItem T="string" Value="@(null)">All routes</MudSelectItem>
+                @if (_routeOptions is not null)
+                {
+                    @foreach (var rid in _routeOptions)
+                    {
+                        <MudSelectItem T="string" Value="@rid">@rid</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" Label="Event code" Value="@_filterCode"
+                       ValueChanged="@(v => { _filterCode = v; _ = RefreshEventsAsync(); })"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true">
+                <MudSelectItem T="string" Value="@(null)">All codes</MudSelectItem>
+                @foreach (var c in AllCodes)
+                {
+                    <MudSelectItem T="string" Value="@c">@c</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudSelect T="DiagnosticsSeverity?" Label="Severity" Value="@_filterSeverity"
+                       ValueChanged="@(v => { _filterSeverity = v; _ = RefreshEventsAsync(); })"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true">
+                <MudSelectItem T="DiagnosticsSeverity?" Value="@((DiagnosticsSeverity?)null)">All severities</MudSelectItem>
+                <MudSelectItem T="DiagnosticsSeverity?" Value="@((DiagnosticsSeverity?)DiagnosticsSeverity.Info)">Info</MudSelectItem>
+                <MudSelectItem T="DiagnosticsSeverity?" Value="@((DiagnosticsSeverity?)DiagnosticsSeverity.Warning)">Warning</MudSelectItem>
+                <MudSelectItem T="DiagnosticsSeverity?" Value="@((DiagnosticsSeverity?)DiagnosticsSeverity.Error)">Error</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" Label="Time window" Value="@_filterWindow"
+                       ValueChanged="@(v => { _filterWindow = v; _ = RefreshEventsAsync(); })"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("1h")">Last 1 hour</MudSelectItem>
+                <MudSelectItem Value="@("24h")">Last 24 hours</MudSelectItem>
+                <MudSelectItem Value="@("7d")">Last 7 days</MudSelectItem>
+                <MudSelectItem Value="@("all")">All retained</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="1" Class="d-flex justify-end">
+            <MudTooltip Text="Refresh now">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                               OnClick="@(() => _ = RefreshEventsAsync())"
+                               Size="Size.Small"
+                               aria-label="Refresh diagnostics now"
+                               data-testid="diagnostics-refresh" />
+            </MudTooltip>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* ---- Events table ---- *@
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not load events.</strong> @_loadError
+    </MudAlert>
+}
+else if (_response is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_response.Events.Count == 0)
+{
+    <MudPaper Class="pa-8" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No events match the current filter</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                Either nothing has happened in the selected window, or your filters narrowed the
+                set to zero. Try widening the time window or clearing the route/code filter.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="1" Class="rounded-lg">
+        <MudTable T="DiagnosticsEventDto" Items="@_response.Events" Dense="true" Hover="true" Bordered="false">
+            <ToolBarContent>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                    Showing @_response.Events.Count.ToString("N0") of
+                    @(_response.ApproximateTotalEvents?.ToString("N0") ?? "?") events
+                </MudText>
+                <MudSpacer />
+                @if (_response.RetainedSinceUtc is { } ret)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        retained since @FormatAbsolute(ret) (@FormatRelative(ret))
+                    </MudText>
+                }
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>When</MudTh>
+                <MudTh>Severity</MudTh>
+                <MudTh>Code</MudTh>
+                <MudTh>Route</MudTh>
+                <MudTh>Actor</MudTh>
+                <MudTh>Detail</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd Style="white-space:nowrap;">
+                    <MudTooltip Text="@FormatAbsolute(context.OccurredAtUtc)">
+                        <MudText Typo="Typo.body2">@FormatRelative(context.OccurredAtUtc)</MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@SeverityColor(context.Severity)" Variant="Variant.Filled">
+                        @context.Severity.ToString()
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                        @context.EventCode
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    @if (context.RouteId is { } rid)
+                    {
+                        <MudLink Href="@($"/routes/{rid}")" Underline="Underline.Hover">@rid</MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.5;">gateway</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @(context.Actor ?? "—")
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Summary</MudText>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private DiagnosticsEventsResponse? _response;
+    private AuditChainStatus? _auditChain;
+    private IReadOnlyList<ConfigurationFaultDto>? _faults;
+    private string[]? _routeOptions;
+    private string? _loadError;
+
+    // Filter state
+    private string? _filterRoute;
+    private string? _filterCode;
+    private DiagnosticsSeverity? _filterSeverity;
+    private string _filterWindow = "1h";   // sensible default per ChatGPT review
+
+    private CancellationTokenSource? _cts;
+    private Task? _eventsLoop;
+    private Task? _chainLoop;
+
+    /// <summary>
+    /// Static list of every code the API can emit today. Keep in sync
+    /// with <see cref="DiagnosticsEventCodes"/>; missing entries here
+    /// just mean operators can't filter to them from the dropdown
+    /// (the API itself still accepts any string).
+    /// </summary>
+    private static readonly string[] AllCodes = new[]
+    {
+        DiagnosticsEventCodes.RouteStateChanged,
+        DiagnosticsEventCodes.SinkDegraded,
+        DiagnosticsEventCodes.SinkDraining,
+        DiagnosticsEventCodes.SinkRecovered,
+        DiagnosticsEventCodes.BackpressureDropped,
+        DiagnosticsEventCodes.ConfigApplied,
+        DiagnosticsEventCodes.ConfigRolledBack,
+        DiagnosticsEventCodes.ConfigDraftCreated,
+        DiagnosticsEventCodes.ConfigDraftDiscarded,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // First fetch — events, chain banner, and Configuration-faults panel.
+        // Background loops in OnAfterRenderAsync keep them fresh.
+        await RefreshRouteOptionsAsync();
+        await RefreshEventsAsync();
+        await RefreshAuditChainAsync();
+        await RefreshFaultsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _eventsLoop = EventsLoopAsync(_cts.Token);
+        _chainLoop = ChainLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task EventsLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshEventsAsync();
+                await RefreshFaultsAsync();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task ChainLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(60));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAuditChainAsync();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task RefreshRouteOptionsAsync()
+    {
+        try
+        {
+            var routes = await HttpClient.GetFromJsonAsync<RouteSummaryDto[]>("/api/v1/routes");
+            _routeOptions = routes?.Select(r => r.RouteId).ToArray() ?? Array.Empty<string>();
+        }
+        catch { /* dropdown will just be empty; not fatal */ }
+    }
+
+    private async Task RefreshEventsAsync()
+    {
+        try
+        {
+            var url = BuildEventsUrl();
+            _response = await HttpClient.GetFromJsonAsync<DiagnosticsEventsResponse>(url);
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private async Task RefreshAuditChainAsync()
+    {
+        try
+        {
+            _auditChain = await HttpClient.GetFromJsonAsync<AuditChainStatus>("/api/v1/diagnostics/audit-chain");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch
+        {
+            // Leave whatever the last status was; don't flicker the banner.
+        }
+    }
+
+    private async Task RefreshFaultsAsync()
+    {
+        try
+        {
+            var faults = await HttpClient.GetFromJsonAsync<ConfigurationFaultDto[]>(
+                "/api/v1/diagnostics/configuration-faults");
+            _faults = faults ?? Array.Empty<ConfigurationFaultDto>();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch
+        {
+            // Don't flicker the panel on transient failures — leave the
+            // last-known state in place. The events surface itself will
+            // raise an error alert if the API is fully unreachable.
+        }
+    }
+
+    private string BuildEventsUrl()
+    {
+        var qp = new List<string> { "limit=200" };
+        if (!string.IsNullOrWhiteSpace(_filterRoute))
+        {
+            qp.Add($"route={Uri.EscapeDataString(_filterRoute)}");
+        }
+        if (!string.IsNullOrWhiteSpace(_filterCode))
+        {
+            qp.Add($"code={Uri.EscapeDataString(_filterCode)}");
+        }
+        if (_filterSeverity is { } sev)
+        {
+            qp.Add($"severity={sev}");
+        }
+
+        var sinceUtc = WindowToSinceUtc(_filterWindow);
+        if (sinceUtc is { } since)
+        {
+            qp.Add($"since={Uri.EscapeDataString(since.ToString("o"))}");
+        }
+        return "/api/v1/diagnostics/events?" + string.Join("&", qp);
+    }
+
+    private static DateTime? WindowToSinceUtc(string window) => window switch
+    {
+        "1h" => DateTime.UtcNow.AddHours(-1),
+        "24h" => DateTime.UtcNow.AddHours(-24),
+        "7d" => DateTime.UtcNow.AddDays(-7),
+        _ => null,  // "all"
+    };
+
+    private static Color SeverityColor(DiagnosticsSeverity sev) => sev switch
+    {
+        DiagnosticsSeverity.Info => Color.Info,
+        DiagnosticsSeverity.Warning => Color.Warning,
+        DiagnosticsSeverity.Error => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static Color FaultKindColor(string kind) => kind switch
+    {
+        "Source" => Color.Info,
+        "Sink" => Color.Secondary,
+        "Route" => Color.Tertiary,
+        "Gateway" => Color.Error, // gateway-level (e.g. data-root not writable) — most serious
+        _ => Color.Default,
+    };
+
+    // Deep-link a faulted instance to the page where it can be inspected
+    // and (once Configuration apply lands for the operator) fixed.
+    private static string? FaultInstanceHref(ConfigurationFaultDto f) => f.Kind switch
+    {
+        "Source" => $"/sources/{f.InstanceId}",
+        "Sink" => $"/sinks/{f.InstanceId}",
+        "Route" => $"/routes/{f.InstanceId}",
+        _ => null,
+    };
+
+    private static string FormatRelative(DateTime utc)
+    {
+        // Razor's parser misreads `< N` in switch expressions as HTML; use if/else.
+        var age = DateTime.UtcNow - utc;
+        var seconds = age.TotalSeconds;
+        if (seconds < 0) return "just now";
+        if (seconds < 5) return "just now";
+        if (seconds < 60) return $"{(int)seconds}s ago";
+        if (seconds < 3600) return $"{(int)age.TotalMinutes}m ago";
+        if (seconds < 86400) return $"{(int)age.TotalHours}h ago";
+        return $"{(int)age.TotalDays}d ago";
+    }
+
+    private static string FormatAbsolute(DateTime utc) =>
+        utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_eventsLoop is not null) await _eventsLoop;
+            if (_chainLoop is not null) await _chainLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

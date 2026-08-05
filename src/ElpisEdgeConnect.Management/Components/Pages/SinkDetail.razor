@@ -1,0 +1,506 @@
+@*
+    Sink detail page (one sink). Header strip with kind + state,
+    Activity + Last-error cards, then a per-kind panel:
+
+       * opcua-server  → live "active client sessions" table.
+                         This is the H.2 marquee feature finally
+                         visible — KepServer/Matrikon-style
+                         "which SCADA/HMI clients are subscribed
+                         and what are they reading?" panel.
+
+       * mqtt          → publishing card (honest placeholder for
+                         M.x — publish counters and broker URL
+                         display aren't on SinkHealthSnapshot yet).
+
+       * unknown / other → generic state strip only.
+
+    URL pattern: /sinks/{sinkInstanceId}
+    Polls /api/v1/sinks/{id} every 2s.
+*@
+@page "/sinks/{SinkInstanceId}"
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>@(_data?.Sink.SinkInstanceId ?? SinkInstanceId) · Destinations · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudTooltip Text="Back to Destinations">
+        <MudIconButton aria-label="Back to the Destinations list"
+                       Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/sinks"))"
+                       Size="Size.Small" />
+    </MudTooltip>
+    <MudIcon Icon="@Icons.Material.Filled.Output" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">@(_data?.Sink.SinkInstanceId ?? SinkInstanceId)</MudText>
+        @if (_data is not null)
+        {
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@_data.SinkKind</MudText>
+                @if (_data.RouteIds.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">· not on any route</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">· serving</MudText>
+                    @foreach (var rid in _data.RouteIds)
+                    {
+                        <MudLink Href="@($"/routes/{rid}")" Underline="Underline.Hover">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                     Color="Color.Default" Style="text-transform:none;">
+                                @rid
+                            </MudChip>
+                        </MudLink>
+                    }
+                }
+            </MudStack>
+        }
+    </div>
+    <MudSpacer />
+    @if (_data is not null)
+    {
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+            @{
+                var stateName = _data.Sink.AdapterStateName;
+                var headerTooltip = FaultedTooltip(stateName, _data.Sink);
+            }
+            @if (_data.Sink.IsDegraded)
+            {
+                <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled">degraded</MudChip>
+            }
+            <MudIcon Icon="@Icons.Material.Filled.Circle"
+                     Size="Size.Medium"
+                     Color="@StateColor(_data.Sink)" />
+            <MudTooltip Text="@headerTooltip" Disabled="@(headerTooltip is null)">
+                <MudChip T="string" Color="@StateColor(_data.Sink)" Variant="Variant.Filled">
+                    @(stateName ?? "unknown")
+                </MudChip>
+            </MudTooltip>
+        </MudStack>
+    }
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not load destination.</strong> @_loadError
+    </MudAlert>
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+        Destination <code>@SinkInstanceId</code> is not in the current configuration.
+        It may have been removed from <code>gateway.json</code> — open Configuration to confirm.
+    </MudAlert>
+}
+else if (_data is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @* Operator verdict — the one-line answer to "is data arriving here?".
+       Reached only when _data is non-null (the branch above returns on null).
+       No @{ } wrapper: this is already inside an else code block, so plain C#
+       statements are C# and only the tags below switch back to markup. *@
+    var v = _data.Sink;
+    var verdictHint = DeliveryHint(v);
+
+    <MudAlert Severity="@DeliverySeverity(v)" Variant="Variant.Outlined" Class="mb-4"
+              Icon="@DeliveryIcon(v)" data-testid="destination-verdict">
+        <MudText Typo="Typo.body1" Style="font-weight:600;">@DeliveryLabel(v)</MudText>
+        @if (!string.IsNullOrEmpty(verdictHint))
+        {
+            <MudText Typo="Typo.body2" Class="mt-1">@verdictHint</MudText>
+        }
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 d-block">
+            @OperatorFormat.SinkKindLabel(_data.SinkKind) · refreshed every 2 seconds
+        </MudText>
+    </MudAlert>
+
+    <MudGrid Spacing="3">
+        @* ---- Activity ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.QueryStats" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Activity</MudText>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Degradation events</MudText>
+                        <MudText Typo="Typo.h6">@_data.Sink.DegradationEventCount.ToString("N0")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Recovery events</MudText>
+                        <MudText Typo="Typo.h6">@_data.Sink.RecoveryEventCount.ToString("N0")</MudText>
+                    </MudItem>
+                    @if (_data.Sink.ActiveSessionCount is { } n)
+                    {
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Active sessions</MudText>
+                            <MudText Typo="Typo.h6">@n.ToString("N0")</MudText>
+                        </MudItem>
+                    }
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Draining</MudText>
+                        <MudText Typo="Typo.h6">@(_data.Sink.IsDraining ? "yes" : "no")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Last error — live fault vs. historical note (stale ≠ live) ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                @{
+                    var errCode = _data.Sink.LastErrorCode;
+                    var errAt = _data.Sink.LastErrorAtUtc;
+                    var errStale = errAt is not null && OperatorFormat.IsStale(errAt);
+                    var errIcon = errCode is null
+                        ? Icons.Material.Filled.CheckCircle
+                        : errStale ? Icons.Material.Filled.History : Icons.Material.Filled.Error;
+                    var errColor = errCode is null
+                        ? Color.Success
+                        : errStale ? Color.Default : Color.Error;
+                    var errTitle = errCode is null
+                        ? "No errors reported"
+                        : errStale ? "Last error — no longer live" : "Live error";
+                }
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@errIcon" Size="Size.Small" Color="@errColor" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">@errTitle</MudText>
+                </MudStack>
+                @if (errCode is { } code)
+                {
+                    @* Parenthesised on purpose: a bare @@code is the Razor
+                       directive, not the local variable. *@
+                    <MudText Typo="Typo.body2"><strong>@(code)</strong></MudText>
+                    @if (_data.Sink.LastErrorMessage is { } msg)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">@msg</MudText>
+                    }
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 d-block"
+                             title="@OperatorFormat.Absolute(errAt)">
+                        @OperatorFormat.Ago(errAt)
+                    </MudText>
+                    @if (errStale)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            <strong>Next:</strong> this has not repeated recently. If the verdict at the top of
+                            this page says data is arriving, treat this as history — no action needed.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            <strong>Next:</strong> check the destination endpoint is running and reachable from
+                            this gateway, then open
+                            <MudLink Href="/diagnostics" Underline="Underline.Always">Diagnostics</MudLink>
+                            for the full event trail.
+                        </MudText>
+                    }
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        No errors reported since the gateway started.
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Per-kind panel ---- *@
+        <MudItem xs="12">
+            @if (_data.SinkKind == "opcua-server")
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Active client sessions</MudText>
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            updates every 2s
+                        </MudText>
+                    </MudStack>
+
+                    @if (_data.Sessions is null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Waiting for the first session poll (every 5s)…
+                        </MudText>
+                    }
+                    else if (_data.Sessions.Count == 0)
+                    {
+                        <MudPaper Class="pa-6" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" Color="Color.Default" />
+                                <MudText Typo="Typo.body1">No clients connected</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                    The OPC UA Server endpoint is listening. Once a SCADA, HMI, or
+                                    historian client subscribes, its session will appear here with
+                                    live subscription and monitored-item counts.
+                                </MudText>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudTable T="SinkSessionSummaryDto" Items="@_data.Sessions" Dense="true" Hover="true" Bordered="false">
+                            <HeaderContent>
+                                <MudTh>Session</MudTh>
+                                <MudTh>Client app URI</MudTh>
+                                <MudTh>Auth</MudTh>
+                                <MudTh>Connected</MudTh>
+                                <MudTh>Last activity</MudTh>
+                                <MudTh Style="text-align:right;">Subs</MudTh>
+                                <MudTh Style="text-align:right;">Items</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudText Typo="Typo.body2" Style="font-family:monospace;">
+                                        @(string.IsNullOrEmpty(context.SessionName) ? context.SessionId : context.SessionName)
+                                    </MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @(context.ClientApplicationUri ?? "—")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Color="@AuthColor(context.UserTokenType)"
+                                             Style="text-transform:none;">
+                                        @(context.UserTokenType ?? "—")
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd title="@OperatorFormat.Absolute(context.ConnectedAtUtc)">
+                                    <MudText Typo="Typo.body2">@OperatorFormat.Ago(context.ConnectedAtUtc)</MudText>
+                                </MudTd>
+                                <MudTd title="@OperatorFormat.Absolute(context.LastActivityUtc)">
+                                    @* A client can hold a session open while reading nothing —
+                                       pair the age with a glyph so idle is visibly different. *@
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        @if (OperatorFormat.IsStale(context.LastActivityUtc))
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty"
+                                                     Size="Size.Small" Color="Color.Warning" />
+                                        }
+                                        <MudText Typo="Typo.body2">@OperatorFormat.Ago(context.LastActivityUtc)</MudText>
+                                    </MudStack>
+                                </MudTd>
+                                <MudTd Style="text-align:right;">
+                                    <MudText Typo="Typo.body2">@context.SubscriptionCount</MudText>
+                                </MudTd>
+                                <MudTd Style="text-align:right;">
+                                    <MudText Typo="Typo.body2">@context.MonitoredItemCount.ToString("N0")</MudText>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+            else if (_data.SinkKind == "mqtt")
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Publish" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Publishing</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Per-publish counters (attempts / successes / failures) and broker config display
+                        (broker URI, topic mode, QoS) land in a future milestone — surfacing these requires
+                        extending the diagnostics snapshot on the Core side. For now, the State strip above
+                        and the Last-error card on the right reflect the broker connection's live health.
+                    </MudText>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Destination kind: @_data.SinkKind</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Per-kind detail panels for this destination protocol haven't been built yet.
+                        The state strip and Activity / Last-error cards above show the same
+                        generic diagnostics the Overview card surfaces.
+                    </MudText>
+                </MudPaper>
+            }
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string SinkInstanceId { get; set; } = string.Empty;
+
+    private SinkListItemDto? _data;
+    private string? _loadError;
+    private bool _notFound;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _data = null;
+        _loadError = null;
+        _notFound = false;
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            using var resp = await HttpClient.GetAsync($"/api/v1/sinks/{Uri.EscapeDataString(SinkInstanceId)}");
+            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+                _data = null;
+            }
+            else
+            {
+                resp.EnsureSuccessStatusCode();
+                _data = await resp.Content.ReadFromJsonAsync<SinkListItemDto>();
+                _notFound = false;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private static Color StateColor(RouteSinkSummaryDto s)
+    {
+        if (s.IsDegraded) return Color.Warning;
+        return s.AdapterStateName switch
+        {
+            "Running" => Color.Success,
+            "Degraded" => Color.Warning,
+            "Stopped" or "Failed" or "Faulted" => Color.Error,
+            "Disabled" => Color.Dark,
+            "Configured" => Color.Info,
+            "Configured / Not running" => Color.Warning,
+            _ => Color.Default,
+        };
+    }
+
+    private static string? FaultedTooltip(string? stateName, RouteSinkSummaryDto s)
+    {
+        if (stateName != "Faulted" && stateName != "Failed") return null;
+        if (s.LastErrorCode is null) return null;
+        if (s.LastErrorMessage is null) return s.LastErrorCode;
+        return $"{s.LastErrorCode}: {s.LastErrorMessage}";
+    }
+
+    private static Color AuthColor(string? tokenType) => tokenType switch
+    {
+        "Certificate" => Color.Success,
+        "UserName" => Color.Info,
+        "Anonymous" => Color.Warning,
+        _ => Color.Default,
+    };
+
+    // ─── Operator triage helpers ────────────────────────────────────────
+    // Mirrors Sinks.razor so the list and the detail page never disagree.
+    // Colour is ALWAYS paired with an icon and a word, never used alone.
+    // Ages come from Components/Shared/OperatorFormat; the local
+    // FormatRelative copy that used to sit here has been removed.
+
+    // Repeated break-then-recover is a flapping broker, not a healthy link.
+    private static bool IsFlapping(RouteSinkSummaryDto s) =>
+        !s.IsDegraded && s.DegradationEventCount >= 3 && s.RecoveryEventCount >= 2;
+
+    private static string DeliveryLabel(RouteSinkSummaryDto s)
+    {
+        if (s.IsDraining) return "Draining — no new data accepted";
+        if (s.IsDegraded) return "Rejecting data";
+        if (s.AdapterStateName == "Disabled") return "Turned off";
+        if (s.AdapterStateName != "Running") return "Not delivering";
+        return IsFlapping(s) ? "Delivering, but unstable" : "Delivering";
+    }
+
+    private static Color DeliveryColor(RouteSinkSummaryDto s)
+    {
+        if (s.IsDraining) return Color.Warning;
+        if (s.IsDegraded) return Color.Error;
+        if (s.AdapterStateName == "Disabled") return Color.Dark;
+        if (s.AdapterStateName != "Running") return Color.Error;
+        return IsFlapping(s) ? Color.Warning : Color.Success;
+    }
+
+    private static Severity DeliverySeverity(RouteSinkSummaryDto s)
+    {
+        if (s.IsDraining) return Severity.Warning;
+        if (s.IsDegraded) return Severity.Error;
+        if (s.AdapterStateName == "Disabled") return Severity.Info;
+        if (s.AdapterStateName != "Running") return Severity.Error;
+        return IsFlapping(s) ? Severity.Warning : Severity.Success;
+    }
+
+    private static string DeliveryIcon(RouteSinkSummaryDto s)
+    {
+        if (s.IsDraining) return Icons.Material.Filled.HourglassEmpty;
+        if (s.IsDegraded) return Icons.Material.Filled.Block;
+        if (s.AdapterStateName == "Disabled") return Icons.Material.Filled.PowerSettingsNew;
+        if (s.AdapterStateName != "Running") return Icons.Material.Filled.Cancel;
+        return IsFlapping(s) ? Icons.Material.Filled.Sync : Icons.Material.Filled.CheckCircle;
+    }
+
+    // Anything that is not healthy states the next step.
+    private static string DeliveryHint(RouteSinkSummaryDto s)
+    {
+        if (s.IsDraining)
+            return "It is finishing queued messages before it stops. Wait for Stopped before editing it.";
+        if (s.IsDegraded)
+            return "The endpoint is refusing data and messages are buffering. See the Last error card below.";
+        if (s.AdapterStateName == "Disabled")
+            return "Switched off in configuration. Enable it on the Destinations page to resume delivery.";
+        if (s.AdapterStateName != "Running")
+            return "Not started. Check it is enabled and that a route sends data to it.";
+        if (IsFlapping(s))
+            return $"It has broken and recovered {OperatorFormat.Count(s.RecoveryEventCount)} times — treat the broker or network as unstable.";
+        return "Data is being accepted at this destination.";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

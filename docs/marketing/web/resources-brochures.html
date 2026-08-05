@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/resources-brochures.html
+  Purpose:     Static mockup of /resources/brochures — a ResourceListing
+               instance. Structure copied verbatim from the pattern-setter
+               (resources-datasheets.html); only per-category copy replaced.
+               Faithful to page-resources-spec-v2.md (LOCKED) §4.2 + §1.4.
+               Honest card state per §2 inventory: brochure content is now
+               LOCKED (v2) and produced as A4 PDFs in assets/, so all 5 cards
+               are DOWNLOAD — gated via gate.js (gate-every-download).
+               Filters are VISUAL ONLY (Phase 4 wires them).
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brochures · Elpis Resources</title>
+  <meta name="description" content="Hardware brochures (PDF) for Edge Gateway, mDAQ, mTracker, VAS, and E-IDOS — download the field sheet for each acquisition product.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/resources-brochures">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Brochures">
+  <meta property="og:description" content="Hardware brochures (PDF) for Edge Gateway, mDAQ, mTracker, VAS, and E-IDOS — download the field sheet for each acquisition product.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/resources-brochures">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Brochures">
+  <meta name="twitter:description" content="Hardware brochures (PDF) for Edge Gateway, mDAQ, mTracker, VAS, and E-IDOS — download the field sheet for each acquisition product.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .crumb { color: var(--color-text-muted-light); font-size: var(--size-sm); margin-bottom: var(--space-3); }
+    .crumb a { color: var(--color-brand-teal); text-decoration:none; font-weight: var(--weight-semibold); }
+    /* filter bar — visual only */
+    .filterbar { display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center; margin-bottom: var(--space-6); }
+    .filterbar .chip { border:1px solid var(--color-border-light-strong); border-radius:999px; padding:4px 14px; font-size:var(--size-sm); color: var(--color-text-muted-light); background:#fff; }
+    .filterbar .chip.active { background: var(--color-brand-teal); color: var(--color-bg-deep); border-color: var(--color-brand-teal); font-weight: var(--weight-semibold); }
+    .filterbar .fnote { color: var(--color-text-muted-light); font-size: var(--size-xs); font-style:italic; margin-left: var(--space-2); }
+    /* resource cards */
+    .res-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--space-5); }
+    .res-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background:#fff; display:flex; flex-direction:column; }
+    .res-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .res-card p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); flex:1; }
+    .res-tags { display:flex; gap: var(--space-2); flex-wrap:wrap; margin: var(--space-3) 0; }
+    .res-tags span { font-size: var(--size-xs); color: var(--color-text-muted-light); border:1px solid var(--color-border-light-subtle); border-radius:999px; padding:1px 9px; }
+    .res-action { margin-top: var(--space-4); }
+    .state-soon { display:inline-block; background:transparent; color: var(--color-text-muted-light); border:1px dashed var(--color-border-light-strong); border-radius:999px; padding:4px 14px; font-size:var(--size-sm); font-weight:var(--weight-semibold); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .lens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .lens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .lens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-5); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <p class="crumb" style="color:var(--color-text-muted-dark);"><a href="resources">Resources</a> / Brochures</p>
+        <span class="eyebrow eyebrow--teal">BROCHURES</span>
+        <h1 id="hero-heading" class="hero__headline">The hardware line at a glance.</h1>
+        <p class="hero__subhead">Field-ready overviews of the acquisition products.</p>
+      </div>
+    </section>
+
+    <!-- LISTING -->
+    <section class="section" data-mode="light" aria-labelledby="list-heading">
+      <div class="container">
+        <h2 id="list-heading" class="section-title" style="margin-bottom:var(--space-5);">Brochures</h2>
+        <div class="filterbar" role="group" aria-label="Categories">
+          <span class="chip active">All</span>
+          <span class="chip">Edge Gateway</span>
+          <span class="chip">mDAQ</span>
+          <span class="chip">mTracker</span>
+          <span class="chip">VAS</span>
+          <span class="chip">E-IDOS</span>
+        </div>
+        <div class="res-grid">
+          <div class="res-card">
+            <h3>Edge Gateway brochure</h3>
+            <p>Turnkey DIN-rail edge appliance overview. Full detail on the <a class="footer__link" style="color:var(--color-brand-teal)" href="edge-gateway">Edge Gateway</a> page.</p>
+            <div class="res-tags"><span>Hardware</span><span>Edge Gateway</span></div>
+            <div class="res-action"><a class="btn btn--primary btn--sm" href="assets/brochure-edge-gateway-a4.pdf">Download &rarr;</a></div>
+          </div>
+          <div class="res-card">
+            <h3>mDAQ brochure</h3>
+            <p>Ruggedized acquisition unit overview. Full detail on the <a class="footer__link" style="color:var(--color-brand-teal)" href="mdaq">mDAQ</a> page.</p>
+            <div class="res-tags"><span>Hardware</span><span>mDAQ</span></div>
+            <div class="res-action"><a class="btn btn--primary btn--sm" href="assets/brochure-mdaq-a4.pdf">Download &rarr;</a></div>
+          </div>
+          <div class="res-card">
+            <h3>mTracker brochure</h3>
+            <p>Equipment utilization tracker overview. Full detail on the <a class="footer__link" style="color:var(--color-brand-teal)" href="mtracker">mTracker</a> page.</p>
+            <div class="res-tags"><span>Hardware</span><span>mTracker</span></div>
+            <div class="res-action"><a class="btn btn--primary btn--sm" href="assets/brochure-mtracker-a4.pdf">Download &rarr;</a></div>
+          </div>
+          <div class="res-card">
+            <h3>VAS brochure</h3>
+            <p>Vibration Analyser System overview. Full detail on the <a class="footer__link" style="color:var(--color-brand-teal)" href="vas">VAS</a> page.</p>
+            <div class="res-tags"><span>Hardware</span><span>VAS</span></div>
+            <div class="res-action"><a class="btn btn--primary btn--sm" href="assets/brochure-vas-a4.pdf">Download &rarr;</a></div>
+          </div>
+          <div class="res-card">
+            <h3>E-IDOS brochure</h3>
+            <p>Hydraulic &amp; lubrication monitor overview. Full detail on the <a class="footer__link" style="color:var(--color-brand-teal)" href="e-idos">E-IDOS</a> page.</p>
+            <div class="res-tags"><span>Hardware</span><span>E-IDOS</span></div>
+            <div class="res-action"><a class="btn btn--primary btn--sm" href="assets/brochure-e-idos-a4.pdf">Download &rarr;</a></div>
+          </div>
+        </div>
+        <p class="deploy-note">Each brochure is a one- to two-page field sheet (PDF). Specifications are confirmed during BOM scope; no formal certifications are claimed (IP65 / IP67-compatible only). Full product detail lives on each product page.</p>
+      </div>
+    </section>
+
+    <!-- CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">MORE RESOURCES</span></div>
+        <div class="crosslens-grid">
+          <a class="lens-card" href="resources-datasheets"><span class="eyebrow">DATASHEETS</span><span class="cl-desc">The technical one-pager for a reviewer.</span></a>
+          <a class="lens-card" href="resources-whitepapers"><span class="eyebrow">WHITEPAPERS</span><span class="cl-desc">Deeper technical reads.</span></a>
+          <a class="lens-card" href="resources"><span class="eyebrow">ALL RESOURCES</span><span class="cl-desc">Back to the resource center.</span></a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

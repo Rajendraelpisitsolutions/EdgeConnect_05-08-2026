@@ -1,0 +1,266 @@
+@*
+    MELSEC source diagnostics panel (Slice 1 UI, 4b).
+
+    Consumes GET /api/v1/sources/{id}/melsec-diagnostics — the observational
+    bridge that resolves the RUNNING MELSEC adapter and returns its snapshot.
+    OBSERVATIONAL ONLY (platform principle P1): rendering never affects polling,
+    backoff, quality, or retirement. Degrades gracefully when the source is
+    missing / stopped / unlicensed / not-a-MELSEC-source (typed unavailable DTO).
+
+    Contract: the live diagnostics DTO carries NO raw request/response payloads —
+    raw bytes stay probe-only / Advanced-only in the wizard. This panel renders
+    only the fields the snapshot exposes.
+
+    Reference: docs/sessions/2026-07-01-melsec-wizard-ui-plan-v2.md (§Δ3, Δ9)
+*@
+@using System.Text.Json.Serialization
+@using ElpisEdgeConnect.Management.Api
+@using ElpisEdgeConnect.Sources.Melsec.Diagnostics
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+<MudPaper Elevation="1" Class="pa-4" data-testid="melsec-diagnostics-panel">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.DeveloperBoard" Size="Size.Small" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">MELSEC diagnostics</MudText>
+        @* A-2O — profile context pills (approved mockup). Frame/transport are the
+           fixed Slice-1 envelope; the profile pill comes from the live snapshot. *@
+        @if (_dto?.Snapshot?.ProfileDisplayName is { Length: > 0 } profileName)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined"
+                     data-testid="melsec-diagnostics-profile">@profileName</MudChip>
+        }
+        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">MC 3E binary · TCP</MudChip>
+        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">read-only</MudChip>
+        <MudSpacer />
+        <MudTooltip Text="Refresh diagnostics">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                           OnClick="RefreshAsync" aria-label="Refresh MELSEC diagnostics" />
+        </MudTooltip>
+    </MudStack>
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="display:block;">
+        Hardware field qualification pending.
+    </MudText>
+
+    @if (_dto is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!_dto.Available || _dto.Snapshot is null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" data-testid="melsec-diagnostics-unavailable">
+            <strong>Diagnostics unavailable.</strong> @(_dto.Reason ?? "The source is not currently running.")
+        </MudAlert>
+    }
+    else
+    {
+        var snap = _dto.Snapshot;
+
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Connection</MudText>
+                <MudText Typo="Typo.body1">
+                    <span style="color:@(snap.Connected ? "var(--mud-palette-success)" : "var(--mud-palette-error)");font-weight:600;">
+                        @(snap.Connected ? "Connected" : "Disconnected")
+                    </span>
+                </MudText>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Circuit breaker</MudText>
+                <MudText Typo="Typo.body1">@snap.BreakerState</MudText>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Consecutive failures</MudText>
+                <MudText Typo="Typo.body1">@snap.ConsecutiveFailures</MudText>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Last read latency</MudText>
+                <MudText Typo="Typo.body1">@(snap.LastRequestLatencyMs is { } ms ? $"{ms} ms" : "—")</MudText>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">3E route header</MudText>
+        <MudText Typo="Typo.body2" Class="mb-3 mono" data-testid="melsec-diagnostics-route">
+            Network 0x@(snap.Route.NetworkNo.ToString("X2")) ·
+            PC 0x@(snap.Route.PcNo.ToString("X2")) ·
+            Dest. I/O 0x@(snap.Route.RequestDestModuleIoNo.ToString("X4")) ·
+            Dest. station 0x@(snap.Route.RequestDestModuleStationNo.ToString("X2"))
+        </MudText>
+
+        @if (snap.LastEndCode is { } endCode)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-3"
+                      data-testid="melsec-diagnostics-endcode">
+                <strong>Last MELSEC end code: 0x@(endCode.ToString("X4"))</strong>
+                @if (!string.IsNullOrWhiteSpace(snap.LastEndCodeDescription))
+                {
+                    <MudText Typo="Typo.body2">@snap.LastEndCodeDescription</MudText>
+                }
+            </MudAlert>
+        }
+
+        @if (snap.AffectedTags.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">Affected tags</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3" data-testid="melsec-diagnostics-affected">
+                @string.Join(", ", snap.AffectedTags)
+            </MudText>
+        }
+
+        <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mt-2 mb-1">
+            Scan blocks (@snap.ScanBlocks.Count)
+        </MudText>
+        @if (snap.ScanBlocks.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No scan blocks planned yet.</MudText>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Bordered="false" Style="overflow:auto;" data-testid="melsec-diagnostics-blocks">
+                <thead>
+                    <tr>
+                        <th>Block</th>
+                        <th>Words</th>
+                        <th>Scan (ms)</th>
+                        <th>Tags</th>
+                        <th>Last result</th>
+                        <th>End code</th>
+                        <th>Detail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var b in snap.ScanBlocks)
+                {
+                    <tr>
+                        <td class="mono">@b.DeviceSymbol@b.HeadDeviceNumber</td>
+                        <td>@b.WordCount</td>
+                        <td>@b.ScanRateMs</td>
+                        <td>@string.Join(", ", b.TagNames)</td>
+                        <td>
+                            <span style="color:@BlockResultColor(b.LastResult);font-weight:600;">@b.LastResult</span>
+                        </td>
+                        <td class="mono">@(b.LastEndCode is { } ec ? $"0x{ec:X4}" : "—")</td>
+                        <td>@(b.LastMessage ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+        }
+
+        @if (snap.TagQuality.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mt-4 mb-1">
+                Per-tag quality (@snap.TagQuality.Count)
+            </MudText>
+            <MudSimpleTable Dense="true" Bordered="false" Style="overflow:auto;" data-testid="melsec-diagnostics-quality">
+                <thead>
+                    <tr><th>Tag</th><th>Address</th><th>Quality</th><th>Reason</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var q in snap.TagQuality)
+                {
+                    <tr>
+                        <td>@q.TagName</td>
+                        <td class="mono">@q.Address</td>
+                        <td><span style="color:@QualityColor(q.Quality);font-weight:600;">@q.Quality</span></td>
+                        <td>@(q.Reason ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+        }
+    }
+</MudPaper>
+
+@code {
+    /// <summary>Source instance id whose live MELSEC diagnostics to render.</summary>
+    [Parameter] public string SourceInstanceId { get; set; } = string.Empty;
+
+    private MelsecDiagnosticsDto? _dto;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+    private string? _loadedFor;
+
+    // MelsecBlockResult is emitted as a stable string by the API — parse it back
+    // with a string-enum-aware option set (the Web defaults do not enable it).
+    private static readonly JsonSerializerOptions DiagJson = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedFor != SourceInstanceId)
+        {
+            _loadedFor = SourceInstanceId;
+            _dto = null;
+            await RefreshAsync();
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SourceInstanceId)) return;
+        try
+        {
+            var dto = await HttpClient.GetFromJsonAsync<MelsecDiagnosticsDto>(
+                $"/api/v1/sources/{Uri.EscapeDataString(SourceInstanceId)}/melsec-diagnostics", DiagJson);
+            if (dto is not null)
+            {
+                _dto = dto;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception)
+        {
+            // Diagnostics are best-effort and observational — a transient fetch
+            // failure must never surface as a page error. Keep the last snapshot.
+        }
+    }
+
+    private static string BlockResultColor(MelsecBlockResult result) => result switch
+    {
+        MelsecBlockResult.Good => "var(--mud-palette-success)",
+        MelsecBlockResult.ProtocolError or MelsecBlockResult.CommunicationError => "var(--mud-palette-error)",
+        _ => "var(--mud-palette-text-secondary)",
+    };
+
+    private static string QualityColor(string quality) => quality switch
+    {
+        "Good" => "var(--mud-palette-success)",
+        "Bad" => "var(--mud-palette-error)",
+        _ => "var(--mud-palette-text-secondary)",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

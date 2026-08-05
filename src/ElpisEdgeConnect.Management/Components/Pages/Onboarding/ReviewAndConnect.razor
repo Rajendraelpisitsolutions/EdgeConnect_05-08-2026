@@ -1,0 +1,436 @@
+@*
+    ReviewAndConnect — final step of the Onboarding meta-wizard.
+
+    Shows a summary card of the three entities about to be created, plus
+    the optional gateway-identity change from the Welcome step.
+
+    Two SEPARATE ceremonies, not two exits from one (operator feedback
+    2026-07-31 — "make it seperate"):
+
+      * [Save changes] POSTs /api/v1/onboarding/apply with source, sink and
+        route forced to Enabled = false. The configuration is persisted
+        through the normal draft -> validate -> apply pipeline but the
+        runtime starts nothing (RuntimeReloadCoordinator and every adapter
+        registration skip !Enabled entities). Same "created but not wired
+        up yet" mechanism the standalone wizards use for "Do not wire yet".
+
+      * [Connect] brings the pipeline up. On a fresh review it POSTs the
+        same bundled apply with the wizards' Enabled values (true) and
+        shows the success screen. After a Save changes the entities already
+        exist, so it enables them via the inline enable verbs instead —
+        source, destination, then route, the order EnableDisablePlanner
+        requires — and moves the operator to live data.
+
+    Each button owns its own busy flag so only the clicked button reports
+    progress; the other is disabled but never looks like it is working.
+
+    On 400 / 409 → inline error banner; operator clicks Back to fix the
+    offending step.
+
+    Reference: docs/decisions/0016-onboarding-meta-wizard.md Rule 6
+               docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md §3.6
+*@
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+@if (_applied is not null)
+{
+    @* ─── Success screen ─────────────────────────────────────────────────── *@
+    <MudPaper Elevation="1" Class="pa-6 mb-4" Style="border-left:6px solid var(--mud-palette-success);"
+              data-testid="onboarding-success">
+        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+            <MudText Typo="Typo.h5">Connected.</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Source <code>@Source!.InstanceId</code>, destination <code>@Sink!.InstanceId</code>,
+            and route <code>@Route!.RouteId</code> are running.
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Applied as configuration version <code>@_applied.NewVersionId</code>.
+            @if (_applied.Reload?.Status is { Length: > 0 } reload)
+            {
+                <span> Reload status: <code>@reload</code>.</span>
+            }
+        </MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Insights"
+                       OnClick="@GoToSourceDetail"
+                       Style="text-transform:none;">
+                See live data
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       OnClick="@(() => Nav.NavigateTo("/onboard", forceLoad: true))"
+                       Style="text-transform:none;">
+                Connect another device
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    @* ─── Review summary ────────────────────────────────────────────────── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4" data-testid="onboarding-review">
+        <MudText Typo="Typo.h6" Class="mb-3">Review &amp; connect</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Save changes stores this configuration without starting it.
+            Connect stores it and brings the pipeline up. Either way all three
+            entities apply as a single atomic transaction — if anything fails
+            validation the running config is untouched and you can go back to
+            the offending step and fix it.
+        </MudText>
+
+        <MudList T="object" Dense="true" Class="mb-2">
+            @if (GatewayIdOverride is not null
+                 && !string.IsNullOrWhiteSpace(GatewayIdOverride)
+                 && !string.Equals(GatewayIdOverride, CurrentGatewayId, StringComparison.Ordinal))
+            {
+                <MudListItem T="object" Icon="@Icons.Material.Filled.Badge">
+                    <strong>Update gateway identity</strong> from
+                    <code>@CurrentGatewayId</code> to <code>@GatewayIdOverride</code>.
+                </MudListItem>
+            }
+            <MudListItem T="object" Icon="@Icons.Material.Filled.SettingsInputComponent">
+                <strong>Add source</strong> <code>@Source?.InstanceId</code>
+                <span style="opacity:0.7;"> · @Source?.ProtocolName</span>
+            </MudListItem>
+            <MudListItem T="object" Icon="@Icons.Material.Filled.Cloud">
+                <strong>Add destination</strong> <code>@Sink?.InstanceId</code>
+                <span style="opacity:0.7;"> · @Sink?.ProtocolName</span>
+            </MudListItem>
+            <MudListItem T="object" Icon="@Icons.Material.Filled.AltRoute">
+                <strong>Add route</strong> <code>@Route?.RouteId</code>
+                <span style="opacity:0.7;"> · @Source?.InstanceId → @Sink?.InstanceId</span>
+            </MudListItem>
+        </MudList>
+
+        @* Operator-feedback bug 2026-05-28 — surface "no tags configured" one
+           more time before the Connect button so the operator can't miss it.
+           This is in addition to the in-wizard warnings on Modbus / FOCAS2 /
+           Brother HTTP. *@
+        @if (Source is not null && CountSourceTags(Source) == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3"
+                      Icon="@Icons.Material.Filled.WarningAmber"
+                      data-testid="onboarding-no-tags-warning">
+                <strong>Source has no tags configured.</strong>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    The pipeline will land Running but produce zero data points.
+                    Click <strong>Back</strong> to add tags to <code>@Source.InstanceId</code>,
+                    or proceed anyway (e.g. to stage the wiring first).
+                </MudText>
+            </MudAlert>
+        }
+
+        @* Saved-but-not-started state — the config is on disk and nothing is
+           running, so tell the operator what the remaining click does. *@
+        @if (_savedDisabled)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3"
+                      data-testid="onboarding-saved-not-started">
+                <strong>Configuration saved, not started.</strong>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    Source <code>@Source?.InstanceId</code>, destination
+                    <code>@Sink?.InstanceId</code> and route <code>@Route?.RouteId</code>
+                    exist but are disabled. Click <strong>Connect</strong> to start them,
+                    or leave them disabled and enable them later from the Sources page.
+                </MudText>
+            </MudAlert>
+        }
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3"
+                      data-testid="onboarding-apply-error">
+                <strong>Apply failed.</strong> @_error
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    Click <strong>Back</strong> to fix the offending step, then try again.
+                </MudText>
+            </MudAlert>
+        }
+
+        @* Independent busy flags: the clicked button reports progress, the
+           other is disabled (one ceremony at a time) but keeps its own label
+           so it never looks like it is working too. *@
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="@SaveOnlyAsync"
+                       Disabled="@(_saving || _connecting || _savedDisabled || !CanConnect())"
+                       Style="text-transform:none;"
+                       data-testid="onboarding-save">
+                @(_saving ? "Saving…" : _savedDisabled ? "Saved" : "Save changes")
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       OnClick="@ConnectAsync"
+                       Disabled="@(_saving || _connecting || !CanConnect())"
+                       Style="text-transform:none;"
+                       data-testid="onboarding-connect">
+                @(_connecting ? "Connecting…" : "Connect")
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public SourceInstanceConfig? Source { get; set; }
+    [Parameter] public SinkInstanceConfig? Sink { get; set; }
+    [Parameter] public RouteConfig? Route { get; set; }
+
+    /// <summary>Optional GatewayId override from the Welcome step (may equal current — review skips rendering it then).</summary>
+    [Parameter] public string? GatewayIdOverride { get; set; }
+    [Parameter] public string? GatewayNameOverride { get; set; }
+    [Parameter] public string? CurrentGatewayId { get; set; }
+
+    /// <summary>Fired on successful apply so the parent flow can flip its busy / completed state.</summary>
+    [Parameter] public EventCallback OnApplied { get; set; }
+
+    // Per-button busy state. Save and Connect are separate operations, so a
+    // click on one must never put the other into a working-looking state.
+    private bool _saving;
+    private bool _connecting;
+
+    private string? _error;
+    private ApplyResultDto? _applied;
+
+    // True once Save changes committed the trio with Enabled = false. The
+    // configuration exists but nothing is running, so Connect's job becomes
+    // "enable what is already there" — a second bundled apply would 400 on
+    // the now-duplicate instance ids.
+    private bool _savedDisabled;
+
+    private bool CanConnect() => Source is not null && Sink is not null && Route is not null;
+
+    /// <summary>
+    /// Connect = persist AND start. A fresh review applies the trio with the
+    /// Enabled values the wizards built (true) and renders the success screen.
+    /// After a Save changes the entities already exist, so this enables them
+    /// in place and jumps to the source's live data.
+    /// </summary>
+    private async Task ConnectAsync()
+    {
+        if (_saving || _connecting || !CanConnect())
+        {
+            return;
+        }
+
+        _connecting = true;
+        _error = null;
+        try
+        {
+            if (_savedDisabled)
+            {
+                if (!await EnableSavedEntitiesAsync())
+                {
+                    return;
+                }
+                Snackbar.Add(
+                    $"Connected. Route '{Route!.RouteId}' is running.",
+                    Severity.Success);
+                if (OnApplied.HasDelegate)
+                {
+                    await OnApplied.InvokeAsync();
+                }
+                GoToSourceDetail();
+                return;
+            }
+
+            if (!await ApplyAsync(enabled: true))
+            {
+                return;
+            }
+            if (OnApplied.HasDelegate)
+            {
+                await OnApplied.InvokeAsync();
+            }
+            // _applied is set → the success screen renders above.
+        }
+        finally
+        {
+            _connecting = false;
+        }
+    }
+
+    /// <summary>
+    /// Save changes = persist the configuration WITHOUT bringing it up.
+    /// Applies the same atomic transaction with source, destination and route
+    /// forced to <c>Enabled = false</c> — the "created but not wired up yet"
+    /// mechanism the standalone wizards already use for "Do not wire yet" —
+    /// then stays on this page.
+    /// </summary>
+    private async Task SaveOnlyAsync()
+    {
+        if (_saving || _connecting || _savedDisabled || !CanConnect())
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            if (!await ApplyAsync(enabled: false))
+            {
+                return;
+            }
+            // Keep the review page visible instead of the success screen —
+            // nothing is connected yet.
+            _applied = null;
+            _savedDisabled = true;
+            Snackbar.Add(
+                $"Saved. Source '{Source!.InstanceId}', destination '{Sink!.InstanceId}', "
+                    + $"and route '{Route!.RouteId}' were created but not started. "
+                    + "Click Connect when you're ready to start them.",
+                Severity.Success);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    /// <summary>
+    /// Bundled atomic apply through <c>POST /api/v1/onboarding/apply</c>.
+    /// <paramref name="enabled"/> = <c>false</c> lands the trio disabled so the
+    /// runtime starts nothing. Returns <c>true</c> on success, <c>false</c>
+    /// with <see cref="_error"/> populated on a validation / apply failure.
+    /// Callers own the busy flag.
+    /// </summary>
+    private async Task<bool> ApplyAsync(bool enabled)
+    {
+        try
+        {
+            var body = new OnboardingApplyRequestDto
+            {
+                Source = enabled ? Source! : (Source! with { Enabled = false }),
+                Sink = enabled ? Sink! : (Sink! with { Enabled = false }),
+                Route = enabled ? Route! : (Route! with { Enabled = false }),
+                GatewayIdOverride = GatewayIdOverride,
+                GatewayNameOverride = GatewayNameOverride,
+                Actor = "onboarding-flow",
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/onboarding/apply", body);
+
+            if (resp.StatusCode == HttpStatusCode.OK)
+            {
+                _applied = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return true;
+            }
+
+            // 400 or 409 — surface server message
+            var raw = await resp.Content.ReadAsStringAsync();
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                _error = doc.RootElement.TryGetProperty("error", out var err)
+                    ? err.GetString()
+                    : raw;
+            }
+            catch
+            {
+                _error = raw;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Bring an already-saved (disabled) trio up via the existing inline
+    /// enable verbs. Source and destination go first: <c>EnableDisablePlanner</c>
+    /// refuses to enable a route whose source or sink is still disabled.
+    /// Short-circuits on the first failure with <see cref="_error"/> set.
+    /// </summary>
+    private async Task<bool> EnableSavedEntitiesAsync() =>
+        await EnableAsync("sources", "source", Source!.InstanceId)
+        && await EnableAsync("sinks", "destination", Sink!.InstanceId)
+        && await EnableAsync("routes", "route", Route!.RouteId);
+
+    private async Task<bool> EnableAsync(string collection, string label, string id)
+    {
+        try
+        {
+            var resp = await HttpClient.PostAsJsonAsync(
+                $"/api/v1/{collection}/{Uri.EscapeDataString(id)}/enable",
+                new EnableDisableRequestDto());
+
+            EnableDisableResponseDto? dto = null;
+            try { dto = await resp.Content.ReadFromJsonAsync<EnableDisableResponseDto>(); }
+            catch { /* leave dto null for the fallback below */ }
+
+            // Applied and NoOp (already enabled) both mean "it is up".
+            if (dto is not null
+                && dto.Outcome is EnableDisableOutcome.Applied or EnableDisableOutcome.NoOp)
+            {
+                return true;
+            }
+
+            _error = dto?.Error?.Message
+                ?? $"Could not enable {label} '{id}' ({(int)resp.StatusCode}).";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return false;
+        }
+    }
+
+    private void GoToSourceDetail()
+    {
+        if (Source is not null)
+        {
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(Source.InstanceId)}");
+        }
+        else
+        {
+            Nav.NavigateTo("/sources");
+        }
+    }
+
+    /// <summary>
+    /// Count the tags / data-points configured on a source, in a protocol-
+    /// aware way. Reads the protocol-specific Connection JSON because each
+    /// adapter stores its tag list under a different key:
+    ///   Modbus       → Connection.tagDefinitions (array)
+    ///   FOCAS2       → Connection.dataPoints (array of strings)
+    ///   BrotherHttp  → Connection.dataPoints (array of strings)
+    /// Unknown protocols return 1 (assume tags are present) so we don't
+    /// false-positive-warn on protocols whose tag count isn't in this shape.
+    /// </summary>
+    private static int CountSourceTags(SourceInstanceConfig source)
+    {
+        if (source.Connection is null) return 0;
+        var conn = source.Connection.Value;
+
+        // Try the known tag-array property names per protocol.
+        foreach (var key in new[] { "tagDefinitions", "TagDefinitions", "dataPoints", "DataPoints" })
+        {
+            if (conn.ValueKind == System.Text.Json.JsonValueKind.Object
+                && conn.TryGetProperty(key, out var arr)
+                && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                return arr.GetArrayLength();
+            }
+        }
+
+        // Unknown protocol shape — don't false-positive-warn.
+        return 1;
+    }
+}

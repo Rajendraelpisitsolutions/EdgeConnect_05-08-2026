@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/capabilities-asset-intelligence.html
+  Purpose:     Static mockup of /capabilities/asset-intelligence — Pillar 3
+               (mTracker) deep dive. Inherits the CapabilityDeepDive (§14)
+               9-section structure from the pattern-setter
+               (capabilities-connectivity-edge.html). Faithful to
+               page-capabilities-asset-intelligence-spec-v1.md (v2 LOCKED).
+               Per-pillar copy lifted verbatim from spec §3 + §1.4.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       HONESTY (spec §3.2 + anti-patterns): mTracker reports OEE
+               *inputs* (production / downtime / idle time, output quantity)
+               from equipment-level digital signals. EREMOS V2 computes OEE.
+               No fabricated specs; no customer/competitor names.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Intelligence — fleet visibility &amp; utilization · Elpis</title>
+  <meta name="description" content="mTracker for multi-site asset visibility, utilization tracking, and OEE telemetry. Plant-manager and OEM fleet-program use cases. Customer-respecting telemetry.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/capabilities-asset-intelligence">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Asset Intelligence">
+  <meta property="og:description" content="mTracker for multi-site asset visibility, utilization tracking, and OEE telemetry. Plant-manager and OEM fleet-program use cases. Customer-respecting telemetry.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/capabilities-asset-intelligence">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Asset Intelligence">
+  <meta name="twitter:description" content="mTracker for multi-site asset visibility, utilization tracking, and OEE telemetry. Plant-manager and OEM fleet-program use cases. Customer-respecting telemetry.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .feature-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--space-5); margin-top: var(--space-8); }
+    .feature-card { border:1px solid var(--color-border-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-bg-raised); border-top: 3px solid var(--pillar-accent); }
+    .feature-card .eyebrow { display:block; color: var(--pillar-accent); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); margin-bottom: var(--space-2); }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .ftr { display:block; margin-top: var(--space-3); color: var(--color-text-caption); font-size: var(--size-xs); font-weight: var(--weight-semibold); }
+    .feature-card a { color: var(--pillar-accent); font-weight: var(--weight-semibold); text-decoration:none; font-size: var(--size-sm); }
+    .feature-card .link-pending { color: var(--color-text-caption); font-weight: var(--weight-semibold); font-size: var(--size-sm); font-style:italic; }
+    .bom-list { margin-top: var(--space-6); max-width: 78ch; list-style:none; padding:0; }
+    .bom-list li { padding: var(--space-3) 0 var(--space-3) var(--space-6); border-bottom:1px solid var(--color-border-light-subtle); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .bom-list li::before { content:"✕"; position:absolute; left:0; color: var(--pillar-accent); font-weight: var(--weight-bold); }
+    .adj-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .adj-grid h3 { font-size: var(--size-sm); font-weight: var(--weight-semibold); color: var(--pillar-accent-dark); letter-spacing: var(--tracking-loose); text-transform:uppercase; margin-bottom: var(--space-3); }
+    .adj-grid ul { list-style:none; padding:0; }
+    .adj-grid li { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); padding: var(--space-1) 0; }
+    .callout { border-left:3px solid var(--pillar-accent); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .trust-cue { border-left:2px solid var(--pillar-accent); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .pillar-link { color: var(--pillar-accent-dark); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--pillar-accent); }
+    .mock-banner { background: var(--pillar-accent); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+    /* Pillar-3 (Asset Intelligence) accent */
+    :root { --pillar-accent: #F2A33C; --pillar-accent-dark: #C77A12; }
+    .eyebrow--teal { color: var(--pillar-accent); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">CAPABILITY · ASSET INTELLIGENCE</span>
+        <h1 id="hero-heading" class="hero__headline">Know which assets are productive, which are idle, and where they're deployed — across every site and shift.</h1>
+        <p class="hero__subhead" style="font-style:italic;">"How do I track utilization, location, and OEE on equipment I've shipped or deployed across multiple sites?"</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Bring us your fleet <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Talk to an engineer about Asset Intelligence</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 PRODUCTS IN THIS PILLAR -->
+    <section class="section" data-mode="dark" aria-labelledby="products-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">PRODUCTS IN THIS PILLAR</span>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <span class="eyebrow">ASSET UTILIZATION + OEE TELEMETRY</span>
+            <h3>mTracker — Miniature GSM/GPS asset-tracking and OEE telemetry</h3>
+            <p>Tracks utilization of industrial assets — fixed and mobile — and reports OEE inputs (production time, downtime, idle time, output quantity) directly from equipment-level digital signals. Built-in GSM/GPS 4G with battery backup. Geo-fence alerts for asset-presence and movement. Equipment-level digital inputs for runtime / cycle counts. Designed for retrofit attachment to existing equipment without re-engineering the host.</p>
+            <span class="ftr">HARDWARE APPLIANCE · GSM/GPS 4G + BATTERY · GEO-FENCE ALERTS · RETROFIT-FRIENDLY</span>
+            <p style="margin-top:var(--space-3);"><a href="mtracker">See the mTracker product page →</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §3 BOM ELIMINATION -->
+    <section class="section" data-mode="light" aria-labelledby="bom-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHAT THIS PILLAR ELIMINATES FROM YOUR BOM</span>
+          <h2 id="bom-heading" class="section-title">Asset Intelligence consolidates utilization, location, and OEE telemetry into one device — instead of three or four overlapping point tools.</h2>
+        </div>
+        <ul class="bom-list">
+          <li>Manual production-hour spreadsheets (operator fills in start-of-shift; supervisor stitches at end-of-week)</li>
+          <li>Separate GPS / geo-fence trackers (a different device + a different subscription for the same asset)</li>
+          <li>Service-hours odometers wired in just to trigger warranty / maintenance reminders</li>
+          <li>Annual asset-presence audits to confirm equipment is still where the records say it is</li>
+          <li>The reporting effort to reconcile "what the spreadsheet says" with "what the GPS tracker says" with "what the operator remembers"</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §4 STRATEGIC ADJACENCIES -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="adj-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHO IT'S FOR · WHERE IT DEPLOYS</span></div>
+        <div class="adj-grid">
+          <div>
+            <h3>Buyers</h3>
+            <ul>
+              <li><strong>Plant manager / Ops VP</strong> — multi-site visibility, utilization patterns, OEE accountability</li>
+              <li><strong>OEM machine builder</strong> — service-hours billing, warranty triggers, fleet visibility on shipped equipment</li>
+              <li><strong>Plant engineer (retrofit)</strong> — sizing mTracker installs onto existing equipment without re-engineering the host</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Industries</h3>
+            <ul>
+              <li>Manufacturing — multi-site operators tracking idle assets across plants</li>
+              <li>OEM machine monitoring (machine builders with installed-base service programs)</li>
+              <li>Mining &amp; Construction (mobile heavy equipment, fleet visibility)</li>
+              <li>Logistics-adjacent industrial (geo-fenced asset compliance)</li>
+              <li>Aerospace ground-support equipment (utilization tracking on tow tractors, pushback rigs, ground-power units)</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Deployment footprint</h3>
+            <ul>
+              <li>Operating across India and the Middle East</li>
+              <li>Per-gateway identity + customer/site binding established at first start — clean fleet identity from day one</li>
+              <li>Retrofit-attachable: no re-engineering of the host equipment required</li>
+              <li>Battery-backed: deployable on equipment without continuous mains power</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 WHERE IT FITS -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="fit-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="fit-heading" class="section-title">Asset Intelligence is the equipment-level telemetry layer of the Industrial Intelligence Stack.</h2>
+        </div>
+        <div class="callout">
+          <p><strong>How this differs from controller monitoring.</strong> Controller monitoring tells you what a machine is doing right now — spindle load, axis position, alarm state. Asset Intelligence tells you <strong>where each asset is, how often it's used, whether it's productive, and how it performs across sites</strong> — even when the equipment has no PLC, when the controller is locked behind a vendor's proprietary boundary, or when the question isn't <em>"what is this machine doing"</em> but <em>"is this asset earning its keep."</em></p>
+        </div>
+        <p style="color:var(--color-text-body-light); font-size:var(--size-md); line-height:var(--line-body); max-width:80ch;">
+          Pillar 3 captures equipment-level utilization, location, and OEE inputs — the signals that don't come from controllers (because the equipment doesn't have a PLC) or from sensors (because the question is "is this asset running" not "what's the pressure"). mTracker publishes via MQTT through Pillar 1 (Connectivity &amp; Edge) into Pillar 5 (Operational Intelligence) where utilization rolls into OEE Segments, geo-fence events become incident records, and service-hours feed warranty / maintenance reporting.
+        </p>
+        <figure style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 150" width="100%" role="img" aria-label="Pillar 3 telemetry layer: industrial equipment and mobile assets feed mTracker, which publishes utilization, location, and OEE inputs over cellular / MQTT to EREMOS V2.">
+            <defs><marker id="ai-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <rect x="8" y="40" width="180" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="15" fill="#0F1419">Equipment &amp; assets</text>
+            <text x="98" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">fixed · mobile · no-PLC</text>
+            <line x1="192" y1="75" x2="246" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#ai-arr)"/>
+            <rect x="250" y="30" width="220" height="90" rx="10" fill="#FDF1E1" stroke="#F2A33C" stroke-width="2"/>
+            <text x="360" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">mTracker</text>
+            <text x="360" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">utilization · location</text>
+            <text x="360" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">OEE inputs · geo-fence</text>
+            <line x1="474" y1="75" x2="528" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#ai-arr)"/>
+            <rect x="532" y="40" width="180" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="622" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Cellular · MQTT</text>
+            <text x="622" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">GSM/GPS 4G publish</text>
+            <line x1="716" y1="75" x2="770" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#ai-arr)"/>
+            <rect x="774" y="40" width="178" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="863" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">EREMOS V2</text>
+            <text x="863" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">OEE · fleet rollup</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">Pillar 3 captures equipment-level intelligence — utilization, location, OEE inputs. See the full Industrial Intelligence Stack → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §6 TRUST POSTURE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span><h2 id="trust-heading" class="section-title">Unambiguous fleet identity. Customer-controlled routing.</h2></div>
+        <div class="trust-cue">
+          <p>Each mTracker carries a stable gateway UUID and customer/site binding established at first start. Fleet identity is unambiguous from day one. Acquisitions, divestitures, plant transfers, name changes — the identity model survives them all. For OEMs shipping equipment with mTracker embedded: customer-controlled routing means the customer decides which utilization / location / OEE signals route back to the OEM service organization, which stay local to the customer's operations, and which are exposed to no one.</p>
+        </div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §7 RELATED SOLUTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED SOLUTIONS</span></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="solutions-multi-site-operations"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">One operational view across every plant. For multi-plant operators consolidating utilization, OEE, and asset visibility — mTracker captures the equipment-level signals; EREMOS V2 aggregates across sites.</span></a>
+          <a class="crosslens-card" href="solutions-oem-machine-monitoring"><span class="eyebrow">SOLUTION · OEM MACHINE MONITORING</span><span class="cl-desc">Ship connected equipment that customers actually accept. For OEMs embedding mTracker in shipped equipment — service-hours billing, warranty triggers, fleet visibility, without compromising customer-IT trust.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How does this pillar fit the data flow?</span></a>
+          <a class="crosslens-card" href="solutions-multi-site-operations"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">The outcome-organised version for plant operators.</span></a>
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">Back to all 5 pillars.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §9 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your fleet. We'll scope visibility.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're a plant operator wanting utilization visibility across sites, or an OEM scoping fleet visibility on shipped equipment — bring us the asset list and we'll scope what mTracker delivers and where it fits with the rest of your operational stack.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Asset%20Intelligence%20scoping" class="btn btn--primary btn--lg">Bring us your fleet <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Asset%20Intelligence%20engineering" class="btn btn--secondary btn--lg">Talk to an engineer about Asset Intelligence</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

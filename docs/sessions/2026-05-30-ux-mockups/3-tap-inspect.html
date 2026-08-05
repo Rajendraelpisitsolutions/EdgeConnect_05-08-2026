@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Live Data Tap (Inspect mode)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Diagnostics</a> / <a href="2-tap-compare.html">Live Data Tap</a> / Inspect <code>Tag11</code></span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">🔍</div>
+        <div>
+            <h1>Inspect a single point</h1>
+            <div class="subtitle">
+                Field-level drill-down for a single source/sink pair. Reach this view
+                by clicking any row in <a href="1-tap-stream.html">Stream</a> or
+                <a href="2-tap-compare.html">Compare</a>. To inspect a different
+                point, use the picker below — Inspect always focuses on
+                <strong>one pair at a time</strong>.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Revision (round 2):</strong> clarified the entry flow + added the
+        "currently inspecting" picker so the operator can switch pairs without
+        going back to Compare. The picker shows the 20 most recently captured
+        pairs that are still in the ring buffer.
+    </div>
+
+    <!-- Currently inspecting picker -->
+    <div class="card">
+        <div class="toolbar">
+            <label style="display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: #757575; text-transform: uppercase; letter-spacing: 0.06em;">Currently inspecting</span>
+                <select class="select" style="min-width: 320px;">
+                    <option>cor-Tag11-340 &nbsp; · &nbsp; Tag11 &nbsp; · &nbsp; ✓ Exact &nbsp; · &nbsp; 10:53:01</option>
+                    <option>cor-Tag14-320 &nbsp; · &nbsp; Tag14 &nbsp; · &nbsp; ✓ Exact &nbsp; · &nbsp; 10:53:01</option>
+                    <option>cor-Tag11-302 &nbsp; · &nbsp; Tag11 &nbsp; · &nbsp; ⚠ Transform &nbsp; · &nbsp; 10:53:01</option>
+                    <option>cor-Tag18-280 &nbsp; · &nbsp; Tag18 &nbsp; · &nbsp; ✓ Exact &nbsp; · &nbsp; 10:53:01</option>
+                    <option>cor-Tag07-870 &nbsp; · &nbsp; Tag07 &nbsp; · &nbsp; ⛔ Missing on sink &nbsp; · &nbsp; 10:52:49</option>
+                    <option>cor-Tag16-840 &nbsp; · &nbsp; Tag16 &nbsp; · &nbsp; ✓ Exact &nbsp; · &nbsp; 10:52:48</option>
+                </select>
+            </label>
+            <span style="font-size: 11px; color: #757575;">
+                20 most recent pairs · click to switch
+            </span>
+            <div class="spacer"></div>
+            <span class="chip chip-success">
+                <span class="verdict-icon exact">✓</span>
+                Verdict: Exact
+            </span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <button class="btn btn-text">← Back to Compare</button>
+            <div class="spacer"></div>
+            <button class="btn btn-text">⤓ Snapshot this pair</button>
+            <span title="Navigates to /sources/OPC-UA-Cli — the source's detail page filtered to highlight Tag11 in its tag list. Closes this Inspect view.">
+                <button class="btn btn-text">↪ Open Source detail for Tag11</button>
+            </span>
+        </div>
+
+        <div class="split">
+            <div>
+                <div class="split-header">SOURCE SIDE</div>
+                <div style="padding: 16px;">
+                    <div class="inspect-grid">
+                        <h3>Identity</h3>
+                        <div class="label">gatewayId</div>
+                        <div class="value">edgeconnect-gw-1</div>
+                        <div class="label">sourceInstanceId</div>
+                        <div class="value">OPC-UA-Cli</div>
+                        <div class="label">protocolName</div>
+                        <div class="value">opcua-client</div>
+                        <div class="label">deviceId</div>
+                        <div class="value">OPC-UA-Cli</div>
+
+                        <h3>Tag</h3>
+                        <div class="label">tagName</div>
+                        <div class="value">Tag11</div>
+                        <div class="label">tagPath</div>
+                        <div class="value">Tag11</div>
+                        <div class="label">valueType</div>
+                        <div class="value">Integer</div>
+
+                        <h3>Value</h3>
+                        <div class="label">value</div>
+                        <div class="value" style="font-size: 14px;"><strong>18</strong></div>
+                        <div class="label">quality</div>
+                        <div class="value">Good (StatusCode 0x00000000)</div>
+
+                        <h3>Timestamps</h3>
+                        <div class="label">deviceTimestamp</div>
+                        <div class="value">2026-05-30T10:53:01.340Z</div>
+                        <div class="label">gatewayTimestamp</div>
+                        <div class="value">2026-05-30T10:53:01.576Z</div>
+
+                        <h3>Metadata</h3>
+                        <div class="label">deviceClass</div>
+                        <div class="value">scada</div>
+                        <div class="label">stableTagId</div>
+                        <div class="value">Tag11</div>
+                        <div class="label">sourceNodeId</div>
+                        <div class="value">ns=2;s=Tag11</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="split-header">SINK SIDE &nbsp; <code style="background:transparent">OPC-UA-Ser</code></div>
+                <div style="padding: 16px;">
+                    <div class="inspect-grid">
+                        <h3>Identity</h3>
+                        <div class="label">gatewayId</div>
+                        <div class="value">edgeconnect-gw-1</div>
+                        <div class="label">sourceInstanceId</div>
+                        <div class="value">OPC-UA-Cli</div>
+                        <div class="label">protocolName</div>
+                        <div class="value">opcua-client</div>
+                        <div class="label">deviceId</div>
+                        <div class="value">OPC-UA-Cli</div>
+
+                        <h3>Tag</h3>
+                        <div class="label">tagName</div>
+                        <div class="value">Tag11</div>
+                        <div class="label">tagPath</div>
+                        <div class="value">Tag11</div>
+                        <div class="label">valueType</div>
+                        <div class="value">Integer</div>
+
+                        <h3>Value</h3>
+                        <div class="label">value</div>
+                        <div class="value" style="font-size: 14px;"><strong>18</strong></div>
+                        <div class="label">quality</div>
+                        <div class="value">Good (StatusCode 0x00000000)</div>
+
+                        <h3>Timestamps</h3>
+                        <div class="label">deviceTimestamp</div>
+                        <div class="value">2026-05-30T10:53:01.340Z</div>
+                        <div class="label">gatewayTimestamp</div>
+                        <div class="value">2026-05-30T10:53:01.610Z</div>
+
+                        <h3>Sink-projected fields</h3>
+                        <div class="label">sinkNodeId</div>
+                        <div class="value">ns=2;s=edgeconnect-gw-1/OPC-UA-Cli/Tag11</div>
+                        <div class="label">sinkBrowsePath</div>
+                        <div class="value">scada/OPC-UA-Cli/Tag11</div>
+                        <div class="label">pipelineLatencyMs</div>
+                        <div class="value" style="color: #2e7d32; font-weight: 500;">30</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h3 class="card-title">Pipeline trace <span style="font-weight:400;color:#757575;font-size:12px;">— deferred (future "point trace" feature)</span></h3>
+        <div style="font-size: 13px; color: #424242;">
+            Per-stage timing for a single point (adapter callback → canonicalise → transform →
+            buffer → publish) was considered for Inspect and <strong>deferred</strong> at M0
+            sign-off: per-point per-stage timing needs hot-path instrumentation that conflicts
+            with the demand-driven zero-cost principle (ADR-0017). Inspect v1.1 ships as the
+            source/sink canonical-record panels above. A standalone point-trace is a candidate
+            future ADR.
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h3 class="card-title">Privacy</h3>
+        <div style="font-size: 13px; color: #424242;">
+            No sensitive fields on this point. When sensitive fields are present:
+        </div>
+        <div style="margin-top: 8px; font-family: 'Roboto Mono', Consolas, monospace; font-size: 12px;">
+            value: <span class="masked">***</span> (masked at capture; cleartext never enters the diagnostic buffer)
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

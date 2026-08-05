@@ -1,0 +1,78 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.vs/
+*.DotSettings.user
+
+# Python virtual environments (e.g. the Modbus integration-test simulator)
+.venv/
+**/.venv/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+publish/
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets - NEVER commit
+**/appsettings.*.json
+!**/appsettings.json
+!**/appsettings.Development.json
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Claude Code local
+.claude/settings.local.json
+
+# Dev gateway data root (per-dev local state — config/current.json, buffer/,
+# identity/). The repo ships scripts/dev/templates/dev-current.json as the
+# seed; see docs/onboarding/03-dev-config.md.
+data/
+
+# BenchmarkDotNet output (per-run artifacts; baseline numbers live in docs/benchmarks/)
+BenchmarkDotNet.Artifacts/
+
+# ModbusSoakRunner artifacts (per-run CSV + observer logs).
+# Aggregated/representative numbers live in docs once a soak passes.
+*.soak.csv
+soak-*.csv
+soak-*.log
+broker-observed.log
+broker-observed.err.log
+soak-pids.txt
+
+# Vendor manuals (copyrighted Mitsubishi PDFs) — pinned by URL+SHA256 in docs/sessions/2026-07-03-melsec-phase-a1-audit.md
+docs/vendor-manuals/
+
+# Signed developer licences. Both are Enterprise editions valid to 2031. Even
+# though they are customer "DevOnly", the signature is real and dev-license.json
+# binds only to gatewayId "dev-gateway" — which anyone could name their gateway.
+# Not something to publish. Ask Elpis for a dev licence instead; the onboarding
+# doc explains how to sign one with scripts/dev/sign-dev-license.ps1.
+docs/onboarding/dev-license.json
+docs/onboarding/dev-license-thismachine.json

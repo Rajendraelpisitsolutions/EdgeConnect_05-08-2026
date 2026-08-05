@@ -1,0 +1,607 @@
+@*
+    Configuration page (M.2a) — the Studio's first write-path.
+
+    Operators can:
+      * View the active configuration (and its version metadata)
+      * List existing drafts, validate them, view their diff, apply or discard them
+      * View applied-version history and roll back to any entry
+      * Import a new draft from pasted gateway.json
+
+    Out of scope here (per the plan):
+      * Structured form editors for sources/sinks/routes  → M.2b wizards
+      * Tag-table editor + CSV import/export              → M.2c
+      * Monaco/Ace JSON syntax highlighting               → M.3c polish
+
+    Destructive actions (Apply, Rollback) require typed confirmation
+    via MudDialog — "type APPLY to confirm." Discard is reversible
+    (re-import) so it just confirms via dialog without typed input.
+*@
+@page "/config"
+@inject HttpClient HttpClient
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Configuration · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">Configuration</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Active config, drafts, version history. Apply changes through draft → validate → apply.
+            Every change lands in the SHA-256 audit log.
+        </MudText>
+    </div>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.UploadFile"
+               OnClick="OpenImportDialog"
+               Style="text-transform:none;">
+        Import draft from JSON
+    </MudButton>
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+        <strong>Could not load configuration state.</strong> @_loadError
+    </MudAlert>
+}
+
+@* ──── M.P2.2 phase 3 — reload outcome from the most recent Apply / Rollback. ────
+       Hidden while _latestReloadOutcome is null (no recent write, or
+       runtime-reload observation unavailable). *@
+<ReloadOutcomePanel Outcome="_latestReloadOutcome" />
+
+@* ──── Just-created draft guidance (set by ?new=<draftId> query, e.g. arriving from the wizard) ──── *@
+@if (_newlyCreatedDraftId is not null)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" />
+            <div style="flex-grow:1;">
+                <MudText Typo="Typo.body2" Style="font-weight:500;">
+                    New draft <code style="background:rgba(255,255,255,0.2); padding:0 4px;">@_newlyCreatedDraftId</code> is ready below.
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    Next: click <strong>Validate</strong> to check it, then <strong>Apply</strong> to commit.
+                </MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                           aria-label="Dismiss this notice"
+                           OnClick="@(() => _newlyCreatedDraftId = null)" />
+        </MudStack>
+    </MudAlert>
+}
+
+@* ──── Active config ──── *@
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Active configuration</MudText>
+    </MudStack>
+    @if (_current is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">
+            <strong>Version:</strong> <code>@_current.VersionId</code>
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @FormatBytes(_current.SizeBytes) · @_current.Summary
+        </MudText>
+        @* M.2b.6.2 §3.B — surface the active config-file path so
+           operators editing the wrong current.json spot the
+           mismatch instantly. Override-chip names the env var
+           in effect when EDGECONNECT_DATA_ROOT is set; otherwise
+           the chip is hidden. *@
+        @if (!string.IsNullOrWhiteSpace(_current.ConfigPath))
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                         Style="font-family:monospace; word-break:break-all;">
+                    @_current.ConfigPath
+                </MudText>
+                <MudTooltip Text="Copy path to clipboard">
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                   Size="Size.Small"
+                                   aria-label="Copy the configuration file path to the clipboard"
+                                   data-testid="btn-copy-config-path"
+                                   OnClick="@(() => CopyConfigPathAsync(_current.ConfigPath!))" />
+                </MudTooltip>
+                @if (!string.IsNullOrWhiteSpace(_current.Override))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                        Override: @_current.Override
+                    </MudChip>
+                }
+            </MudStack>
+        }
+        <MudStack Row="true" Spacing="2" Class="mt-2">
+            <MudButton Href="/api/v1/config" Target="_blank"
+                       Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Style="text-transform:none;">
+                View JSON
+            </MudButton>
+            <MudButton OnClick="DuplicateCurrentAsDraft"
+                       Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.ContentCopy"
+                       Disabled="@_busy"
+                       Style="text-transform:none;">
+                Duplicate as draft
+            </MudButton>
+        </MudStack>
+    }
+</MudPaper>
+
+@* ──── Drafts ──── *@
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.EditNote" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">
+            Drafts (@(_drafts?.Length ?? 0))
+        </MudText>
+    </MudStack>
+    @if (_drafts is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_drafts.Length == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            No drafts yet. Use <strong>Import draft from JSON</strong> or <strong>Duplicate as draft</strong> to start.
+        </MudText>
+    }
+    else
+    {
+        <MudTable T="DraftMetadataDto" Items="@_drafts" Dense="true" Hover="true" Bordered="false">
+            <HeaderContent>
+                <MudTh>Draft id</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Actor</MudTh>
+                <MudTh>Size</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                            @context.DraftId
+                        </MudText>
+                        @if (_newlyCreatedDraftId is { } newId && context.DraftId == newId)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">
+                                new
+                            </MudChip>
+                        }
+                    </MudStack>
+                </MudTd>
+                <MudTd>
+                    <MudTooltip Text="@context.CreatedAtUtc.ToLocalTime().ToString("g")">
+                        <MudText Typo="Typo.body2">@FormatRelative(context.CreatedAtUtc)</MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@context.Actor</MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@FormatBytes(context.SizeBytes)</MudText>
+                </MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Href="@($"/api/v1/config/drafts/{context.DraftId}")" Target="_blank"
+                                   Variant="Variant.Text" Size="Size.Small"
+                                   Style="text-transform:none;">
+                            View
+                        </MudButton>
+                        <MudButton OnClick="@(() => ValidateDraft(context.DraftId))"
+                                   Variant="Variant.Text" Size="Size.Small"
+                                   Disabled="@_busy"
+                                   Style="text-transform:none;">
+                            Validate
+                        </MudButton>
+                        <MudButton OnClick="@(() => ApplyDraftAsync(context.DraftId))"
+                                   Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   Disabled="@_busy"
+                                   Style="text-transform:none;">
+                            Apply
+                        </MudButton>
+                        <MudButton OnClick="@(() => DiscardDraftAsync(context.DraftId))"
+                                   Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                   Disabled="@_busy"
+                                   Style="text-transform:none;">
+                            Discard
+                        </MudButton>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@* ──── History ──── *@
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">
+            Version history (@(_history?.Length ?? 0))
+        </MudText>
+    </MudStack>
+    @if (_history is null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_history.Length == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            No prior versions on record yet. History grows once the first config is applied via API.
+        </MudText>
+    }
+    else
+    {
+        <MudTable T="HistoryEntryDto" Items="@_history" Dense="true" Hover="true" Bordered="false">
+            <HeaderContent>
+                <MudTh>Version</MudTh>
+                <MudTh>Applied</MudTh>
+                <MudTh>Summary</MudTh>
+                <MudTh>Size</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                            @context.VersionId
+                        </MudText>
+                        @if (context.IsCurrent)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">current</MudChip>
+                        }
+                    </MudStack>
+                </MudTd>
+                <MudTd>
+                    <MudTooltip Text="@context.AppliedAtUtc.ToLocalTime().ToString("g")">
+                        <MudText Typo="Typo.body2">@FormatRelative(context.AppliedAtUtc)</MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Summary</MudText>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@FormatBytes(context.SizeBytes)</MudText>
+                </MudTd>
+                <MudTd>
+                    @if (!context.IsCurrent)
+                    {
+                        <MudButton OnClick="@(() => RollbackToVersionAsync(context.VersionId))"
+                                   Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Undo"
+                                   Disabled="@_busy"
+                                   Style="text-transform:none;">
+                            Rollback
+                        </MudButton>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private CurrentConfigVersionDto? _current;
+    private DraftMetadataDto[]? _drafts;
+    private string? _newlyCreatedDraftId;
+    private HistoryEntryDto[]? _history;
+    private string? _loadError;
+    private bool _busy;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+    // M.P2.2 phase 3 — most-recent reconcile outcome from the last
+    // Apply / Rollback response. Null until the operator triggers a
+    // write or after a refresh.
+    private ReloadOutcomeDto? _latestReloadOutcome;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pick up the wizard's ?new=<draftId> hint so we can highlight
+        // the row + show the next-step guidance banner.
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var newDraftId = query["new"];
+        if (!string.IsNullOrWhiteSpace(newDraftId))
+        {
+            _newlyCreatedDraftId = newDraftId;
+        }
+        await RefreshAllAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAllAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        try
+        {
+            _current = await HttpClient.GetFromJsonAsync<CurrentConfigVersionDto>("/api/v1/config/version");
+            _drafts = await HttpClient.GetFromJsonAsync<DraftMetadataDto[]>("/api/v1/config/drafts") ?? Array.Empty<DraftMetadataDto>();
+            _history = await HttpClient.GetFromJsonAsync<HistoryEntryDto[]>("/api/v1/config/history") ?? Array.Empty<HistoryEntryDto>();
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    // ───── Validate ──────────────────────────────────────────────────────
+    private async Task ValidateDraft(string draftId)
+    {
+        _busy = true;
+        try
+        {
+            var resp = await HttpClient.PostAsync($"/api/v1/config/drafts/{Uri.EscapeDataString(draftId)}/validate", content: null);
+            resp.EnsureSuccessStatusCode();
+            var result = await resp.Content.ReadFromJsonAsync<ValidationResultDto>();
+            if (result is null)
+            {
+                Snackbar.Add("Validate returned no body.", Severity.Error);
+                return;
+            }
+            if (result.IsValid && result.Warnings.Count == 0)
+            {
+                Snackbar.Add($"Draft {draftId} validates cleanly.", Severity.Success);
+            }
+            else if (result.IsValid)
+            {
+                Snackbar.Add($"No blocking problems, but {result.Warnings.Count} warning(s). Review them before applying.", Severity.Warning);
+                Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(result));
+            }
+            else
+            {
+                Snackbar.Add($"Invalid: {result.Errors.Count} error(s). First: {result.Errors[0].Code} — {result.Errors[0].Message}",
+                    Severity.Error);
+                Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(result));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Validate failed: {ex.Message}", Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Apply (with typed confirmation) ───────────────────────────────
+    private async Task ApplyDraftAsync(string draftId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["DraftId"] = draftId,
+        };
+        var dialog = await Dialogs.ShowAsync<ApplyConfirmationDialog>("Apply draft", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled is not false) return;
+
+        _busy = true;
+        try
+        {
+            var body = new ActorRequestDto { Actor = "system" };
+            var resp = await HttpClient.PostAsJsonAsync($"/api/v1/config/drafts/{Uri.EscapeDataString(draftId)}/apply", body);
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                var failure = await resp.Content.ReadFromJsonAsync<ValidationResultDto>();
+                Snackbar.Add($"Apply rejected — {failure?.Errors.Count ?? 0} error(s). First: {failure?.Errors.FirstOrDefault()?.Message}",
+                    Severity.Error);
+                return;
+            }
+            resp.EnsureSuccessStatusCode();
+            var ok = await resp.Content.ReadFromJsonAsync<ApplyResultDto>();
+            Snackbar.Add($"Applied · new version {ok?.NewVersionId} · {ok?.Changes.Count ?? 0} change(s).", Severity.Success);
+            // M.P2.2 phase 3: surface the runtime reconcile outcome via
+            // the ReloadOutcomePanel above. The pre-hot-reload snackbar
+            // ("new sources become live after restart") was removed —
+            // the gateway now reconciles in-process and the panel shows
+            // exactly what came up / restarted / faulted.
+            _latestReloadOutcome = ok?.Reload;
+            await RefreshAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Apply did not complete. The previous configuration is still live — check Config → History to confirm which version is running, then retry.", Severity.Error);
+            Console.WriteLine(ex);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Discard ───────────────────────────────────────────────────────
+    private async Task DiscardDraftAsync(string draftId)
+    {
+        var ok = await Dialogs.ShowMessageBox(
+            "Discard draft",
+            $"Discard draft {draftId}? This cannot be undone.",
+            yesText: "Discard", cancelText: "Cancel");
+        if (ok is not true) return;
+
+        _busy = true;
+        try
+        {
+            var resp = await HttpClient.DeleteAsync($"/api/v1/config/drafts/{Uri.EscapeDataString(draftId)}");
+            resp.EnsureSuccessStatusCode();
+            Snackbar.Add($"Draft {draftId} discarded.", Severity.Info);
+            await RefreshAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Discard failed: {ex.Message}", Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Rollback (with typed confirmation) ────────────────────────────
+    private async Task RollbackToVersionAsync(string versionId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["VersionId"] = versionId,
+        };
+        var dialog = await Dialogs.ShowAsync<RollbackConfirmationDialog>("Roll back configuration", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled is not false) return;
+
+        _busy = true;
+        try
+        {
+            var body = new ActorRequestDto { Actor = "system" };
+            var resp = await HttpClient.PostAsJsonAsync($"/api/v1/config/history/{Uri.EscapeDataString(versionId)}/rollback", body);
+            resp.EnsureSuccessStatusCode();
+            var ok = await resp.Content.ReadFromJsonAsync<ApplyResultDto>();
+            Snackbar.Add($"Rolled back · new version {ok?.NewVersionId} · {ok?.Changes.Count ?? 0} change(s).", Severity.Success);
+            _latestReloadOutcome = ok?.Reload;
+            await RefreshAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Rollback did not complete. The configuration is unchanged — check Config → History to confirm which version is running, then retry.", Severity.Error);
+            Console.WriteLine(ex);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Duplicate current as draft ────────────────────────────────────
+    private async Task DuplicateCurrentAsDraft()
+    {
+        _busy = true;
+        try
+        {
+            var current = await HttpClient.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/config");
+            var body = new
+            {
+                configuration = current,
+                actor = "system",
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/config/drafts", body);
+            resp.EnsureSuccessStatusCode();
+            Snackbar.Add("New draft created from current configuration.", Severity.Success);
+            await RefreshAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Duplicate failed: {ex.Message}", Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Import dialog ────────────────────────────────────────────────
+    private async Task OpenImportDialog()
+    {
+        var dialog = await Dialogs.ShowAsync<ImportDraftDialog>("Import draft from JSON");
+        var result = await dialog.Result;
+        if (result?.Canceled is not false) return;
+        if (result.Data is not string json) return;
+
+        _busy = true;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var body = new
+            {
+                configuration = doc.RootElement,
+                actor = "system",
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/config/drafts", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var error = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Import rejected: {error}", Severity.Error);
+                return;
+            }
+            Snackbar.Add("Draft imported successfully.", Severity.Success);
+            await RefreshAllAsync();
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            Snackbar.Add($"Invalid JSON: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Import failed: {ex.Message}", Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    // ───── Config-path copy (M.2b.6.2 §3.B) ──────────────────────────────
+    private async Task CopyConfigPathAsync(string path)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", path);
+            Snackbar.Add("Config path copied to clipboard.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort: clipboard access can be blocked by browser
+            // policy on non-secure origins; degrade to a snackbar that
+            // tells the operator to copy manually.
+            Snackbar.Add($"Could not copy automatically: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    // ───── Formatting helpers ────────────────────────────────────────────
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0) return "—";
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024d:N1} KB";
+        return $"{bytes / (1024d * 1024d):N1} MB";
+    }
+
+    private static string FormatRelative(DateTime utc)
+    {
+        // Razor's parser misreads `< N` in switch expressions as HTML; use if/else.
+        var age = DateTime.UtcNow - utc;
+        var seconds = age.TotalSeconds;
+        if (seconds < 0) return "just now";
+        if (seconds < 5) return "just now";
+        if (seconds < 60) return $"{(int)seconds}s ago";
+        if (seconds < 3600) return $"{(int)age.TotalMinutes}m ago";
+        if (seconds < 86400) return $"{(int)age.TotalHours}h ago";
+        return $"{(int)age.TotalDays}d ago";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

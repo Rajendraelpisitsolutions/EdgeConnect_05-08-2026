@@ -1,0 +1,69 @@
+@*
+    OnboardingNavigation — Back / Next / Cancel footer for the Connect-a-device
+    flow. Parent owns the actual navigation logic (this is just the buttons);
+    parent passes CanGoNext to gate forward progress.
+
+    Cancel always renders. The confirm dialog ("Exit setup? All progress will
+    be lost.") lives in OnboardingFlow.razor, not here.
+
+    Reference: docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md §3.3
+*@
+
+<MudStack Row="true" Spacing="2" Justify="Justify.SpaceBetween" Class="mt-4 mb-2"
+          data-testid="onboarding-navigation">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.Close"
+               OnClick="@OnCancel"
+               Disabled="@Busy"
+               Style="text-transform:none;"
+               data-testid="onboarding-cancel">
+        Cancel setup
+    </MudButton>
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@OnBack"
+                   Disabled="@(Busy || !CanGoBack)"
+                   Style="text-transform:none;"
+                   data-testid="onboarding-back">
+            Back
+        </MudButton>
+
+        @if (IsLastStep)
+        {
+            @* The last step's "Connect" button lives inside ReviewAndConnect,
+               so we hide Next here to avoid two competing primary buttons. *@
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                       OnClick="@OnNext"
+                       Disabled="@(Busy || !CanGoNext)"
+                       Style="text-transform:none;"
+                       data-testid="onboarding-next">
+                Next
+            </MudButton>
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    /// <summary>True when the operator may go to the next step (parent's CanSave-equivalent).</summary>
+    [Parameter] public bool CanGoNext { get; set; }
+
+    /// <summary>True when there is a previous step to return to.</summary>
+    [Parameter] public bool CanGoBack { get; set; }
+
+    /// <summary>True when this is the final step (Review). Suppresses Next.</summary>
+    [Parameter] public bool IsLastStep { get; set; }
+
+    /// <summary>Disables all buttons while a background operation is in flight.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

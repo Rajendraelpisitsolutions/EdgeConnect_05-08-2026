@@ -1,0 +1,51 @@
+@*
+    WizardSection — shared numbered-card primitive for the six wizards.
+    M.2d.1 deliverable per the v2 plan §5.2 (round-1 #2 — the most useful
+    missing primitive surfaced in ChatGPT review).
+
+    Responsibilities (chrome only):
+      * MudPaper wrapper with consistent elevation + padding + margin.
+      * Numbered title — "{Index}. {Title}".
+      * Optional description text rendered as a caption.
+      * ChildContent slot — the section body.
+
+    What this is NOT responsible for (anti-coupling lock — round-2 #10):
+      * Field layout — wizards decide MudGrid / table / flex / charts /
+        custom panes inside ChildContent. WizardSection does NOT wrap
+        ChildContent in MudGrid.
+
+    DoD §6 anti-layout-coupling check: this file contains zero
+    MudGrid constructs.
+
+    Reference: docs/sessions/2026-05-21-m2d1-shared-primitives-plan-v2.md §5.2
+*@
+
+<MudPaper Elevation="1" Class="pa-4 mb-4" data-testid="wizard-section">
+    <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="@(string.IsNullOrEmpty(Description) ? "mb-3" : "mb-1")"
+             data-testid="wizard-section-title">@Index. @Title</MudText>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" data-testid="wizard-section-description">@Description</MudText>
+    }
+    @ChildContent
+</MudPaper>
+
+@code {
+    /// <summary>Section number rendered as the title prefix (e.g. <c>1. Identity</c>).</summary>
+    [Parameter, EditorRequired] public int Index { get; set; }
+
+    /// <summary>Section title text.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional help text rendered as a small caption directly below the
+    /// numbered title. When null or empty, no caption is rendered.
+    /// </summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>
+    /// The section body. Wizards decide the inner layout (MudGrid for
+    /// field grids, plain markup for tables, panes, charts, etc.).
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

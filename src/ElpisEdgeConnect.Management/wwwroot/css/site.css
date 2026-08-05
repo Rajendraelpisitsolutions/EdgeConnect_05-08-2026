@@ -1,0 +1,1085 @@
+/*
+  Connectivity Studio — application-level CSS additions.
+  MudBlazor's base styles ship in MudBlazor.min.css; we add only:
+    * Subtle route-card hover affordance
+    * Status-footer chrome refinements
+
+  Keep this file SHORT. The visual language belongs in the MudTheme;
+  CSS is only for the things MudBlazor doesn't theme directly.
+*/
+
+/* No webfont import. This gateway runs on an isolated plant network with no
+   route to fonts.googleapis.com, so the @import that used to sit here was a
+   render-blocking request that could only ever time out. Inter is still first
+   in the stack — it renders when the operator's machine happens to have it
+   installed — and Segoe UI carries the design on stock Windows, which is the
+   supported host platform. Do not reintroduce a CDN font; inlining the full
+   four-weight family as a data URI would cost more than it returns. */
+html, body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* NO document-level scrollbar gutter.
+
+   This used to reserve ~15px on <html> so the content width stayed constant
+   whether or not a page scrolled — back when the document itself was the
+   scroller and a disappearing scrollbar re-wrapped the old top-bar nav.
+
+   The app shell changed that: `html, body { overflow: hidden }` below means
+   the document can never scroll, and `.mud-main-content` is the real scroller
+   with its own `scrollbar-gutter: stable`. Reserving here as well left a dead
+   ~15px strip down the right-hand edge of every page — space nothing could
+   ever occupy. The gutter now lives solely on the element that actually
+   scrolls. */
+
+/* Subtle elevation lift on Overview cards when the operator hovers. */
+.route-card {
+    transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.route-card:hover {
+    box-shadow: var(--mud-elevation-4);
+}
+
+/* Status-footer typography refinements — tighter and quieter than body. */
+.status-footer .mud-typography-caption {
+    letter-spacing: 0.01em;
+}
+
+/* Top-bar nav button hover state — subtle blue tint, no fill on
+   inactive, consistent with the Linear/Stripe aesthetic. */
+.nav-menu .nav-btn:not([disabled]):hover {
+    background-color: #EFF6FF !important;
+    color: #1976D2 !important;
+}
+.nav-menu .nav-btn .mud-button-icon-start {
+    color: inherit;
+}
+
+/* Hide the Swagger/API-docs icon from the app bar. The Material "Code" icon
+   renders as < > and reads as decoration to operators, opening developer
+   documentation they have no use for. Removed from MainLayout.razor in source;
+   this rule covers builds that still carry it. The tooltip wrapper goes too,
+   so no empty inline element is left holding a gap in the bar. */
+.mud-appbar .mud-tooltip-root:has(> a[href="/swagger"]),
+.mud-appbar a[href="/swagger"] {
+    display: none;
+}
+
+/* Active tab — light sky-blue fill so the operator can see at a glance which
+   page they are on. The class comes from NavMenu.NavClass(); a child route
+   keeps its parent tab lit (/sources/Modbus/edit still highlights Sources).
+   color needs !important because each MudButton carries an inline
+   style="color:#4B5563", which otherwise wins over a class rule. */
+.nav-menu .nav-btn.nav-btn-active {
+    background-color: #E0F2FE;
+    color: #0369A1 !important;
+    font-weight: 600 !important;
+}
+.nav-menu .nav-btn.nav-btn-active:hover {
+    background-color: #BAE6FD !important;
+}
+/* Keep every top-bar item on a single line. Belt-and-suspenders with the
+   scrollbar-gutter fix above: labels like "Connect a device" and
+   "Diagnostic bundle" must never break onto two lines under width pressure. */
+.nav-menu .nav-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.brand-title {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Per-message Snackbar override: centre the "enquiry sent" success toast
+   (License page Buy/Upgrade). Applied via SnackbarTypeClass on that one
+   Snackbar.Add call only; all other notifications keep MudBlazor defaults. */
+.snackbar-center-middle {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   OPERATOR RESTYLE — applies to every page.
+
+   Density + surface treatment tuned for a factory-floor operator scanning for
+   trouble. Selectors were taken from the running build's DOM, not guessed.
+
+   Deliberately NOT touched: position, overflow, height/vh, and the
+   .mud-main-content scroll container. Repositioning the shell is what forced
+   the earlier full revert; this pass changes surfaces and density only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ---- density: reclaim vertical space on long pages ---- */
+/* One gutter value for the whole app. The sticky page-heading band cancels it
+   with a negative margin, so the two MUST stay in step — a literal in both
+   places is how they drift. The responsive block at the end of this file
+   changes only this variable. */
+:root { --page-gutter: 1.75rem; }
+.mud-container.px-6 { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
+.mud-container.py-4 { padding-top: 1.1rem; padding-bottom: 1.1rem; }
+
+/* ---- surfaces: one consistent card treatment, no heavy drop shadows ---- */
+.mud-paper {
+    border-radius: 10px;
+    border: 1px solid var(--mud-palette-lines-default);
+    box-shadow: 0 1px 2px rgba(27, 37, 48, .05) !important;
+}
+.mud-paper.pa-4 { padding: 1.1rem 1.25rem; }
+/* MudBlazor elevation-8 is a modal-weight shadow; far too heavy inline. */
+.mud-paper.mud-elevation-8:not(.mud-popover):not(.mud-dialog) {
+    box-shadow: 0 1px 3px rgba(27, 37, 48, .08), 0 6px 20px rgba(27, 37, 48, .06) !important;
+}
+/* The status bar is chrome, not a card. */
+.status-footer { border-radius: 0; border: none; box-shadow: none !important; }
+
+/* ---- tables: scannable rows, aligned figures ---- */
+.mud-table-cell {
+    padding: .55rem .85rem;
+    border-bottom-color: var(--mud-palette-lines-default);
+}
+/* Bold + uppercase + .07em tracking is three emphasis signals stacked on one
+   element; the header row ended up shouting louder than the data under it.
+   Semibold with tighter tracking still reads as a header and lets the values
+   sit forward, which is what the operator is actually scanning. */
+.mud-table-head .mud-table-cell {
+    font-size: .72rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: .035em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    background: #F4F7FA;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.mud-table-body .mud-table-row:hover { background: #F7FAFD; }
+/* Digits line up column-to-column instead of drifting. */
+.mud-table-cell { font-variant-numeric: tabular-nums; }
+
+/* ---- one row height across Sources, Destinations and Routes ----
+
+   The three list pages use identical MudDataGrid settings, so any difference
+   in row height came from cell CONTENT. Routes lost on both counts: its Buffer
+   cell stacked a count over a caption, and ids like `route-OPC_UA_Client` and
+   `OPC_UA_Client · opcua-client` wrapped to a second line where Sources'
+   shorter ids did not. Rows there ran noticeably taller than the same table
+   one page across.
+
+   The Buffer cell is one line in the markup now. This handles the wrapping:
+   identifiers stay on one line and get an ellipsis, so a long id changes the
+   column width the browser negotiates, never the height of the row.
+
+   min-height rather than height so a cell that genuinely needs two lines (a
+   wrapped error message) can still take them. */
+.mud-table-dense .mud-table-body .mud-table-cell {
+    min-height: 44px;
+    vertical-align: middle;
+}
+.mud-table-body .mud-table-cell .mud-link,
+.mud-table-body .mud-table-cell > .mud-typography-body2 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: inline-block;
+    vertical-align: middle;
+}
+/* Chips and buttons are laid out by their own flex row; the ellipsis rule
+   above must not collapse those. */
+.mud-table-body .mud-table-cell [role="group"] > .mud-typography-body2 {
+    display: inline;
+    white-space: normal;
+}
+
+/* ---- status chips: readable at a glance, not just coloured ---- */
+/* Status chips carry a word AND an icon now, so the all-caps-bold treatment
+   is redundant weight on an already-legible element. Sentence case at
+   Semibold reads faster and stops the chips competing with the headings. */
+.mud-chip.mud-chip-size-small {
+    font-size: .72rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: .01em;
+    text-transform: none;
+    height: 22px;
+}
+
+/* ---- buttons: sentence case everywhere, once ----
+   MudBlazor ships buttons uppercase, so ~180 call sites carried an inline
+   Style="text-transform:none;" to undo it and ~41 were simply missed —
+   "Retry now" beside "GENERATE BUNDLE" on the same screen. One rule at the
+   root fixes every button, including the ones nobody remembered to annotate.
+   Inline styles still win where a button deliberately wants something else. */
+.mud-button-root { text-transform: none; }
+
+/* ---- protocol picker tiles: one height, three legible states ----
+
+   Available tiles are a bare MudPaper in the grid cell. Unavailable ones are
+   wrapped in a MudTooltip so the reason can be read on hover, and that extra
+   wrapper div broke the height:100% chain — the paper sized itself to the
+   wrapper instead of the grid cell, so "HTTP webhook" and "TCP socket" sat
+   visibly shorter than "MQTT" beside them in the same row. Making the cell and
+   the wrapper flex containers puts every tile on the row's height whether or
+   not something wraps it.
+
+   The unavailable states are also drawn rather than faded. opacity:0.55 dims
+   the text along with the chrome, which pushed the description under contrast
+   minimums and made a deliberate state look like a rendering fault. A quieter
+   surface with full-strength text reads as secondary without going illegible. */
+.protocol-tiles .mud-grid-item { display: flex; }
+.protocol-tiles .mud-grid-item > * { flex: 1 1 auto; min-width: 0; }
+.protocol-tiles .mud-tooltip-root { display: flex; }
+.protocol-tile { width: 100%; height: 100%; }
+
+.protocol-tile-available {
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.protocol-tile-available:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 2px 10px rgba(27, 37, 48, .10) !important;
+}
+/* The tile is a div with role="button"; it needs a visible focus ring of its
+   own because it gets none from the browser's button styling. */
+.protocol-tile-available:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+.protocol-tile-muted {
+    background: #F4F7FA !important;
+    box-shadow: none !important;
+}
+/* Only the title steps back. The description stays at body contrast so an
+   operator can still read what the protocol is before deciding to ask for it. */
+.protocol-tile-muted .mud-typography-h6 { color: var(--mud-palette-text-secondary); }
+
+/* ---- alerts: quieter fill, stronger left edge so severity reads first ---- */
+.mud-alert {
+    border-radius: 8px;
+    border-left-width: 3px;
+    border-left-style: solid;
+}
+
+/* ---- buttons: a real hierarchy instead of eleven equal-weight buttons ---- */
+.mud-button { border-radius: 7px; letter-spacing: .01em; }
+.mud-button-text:not(.nav-btn):hover { background-color: rgba(25, 118, 210, .06); }
+.mud-icon-button { border-radius: 7px; }
+
+/* ---- inputs: consistent density across every wizard ---- */
+.mud-input-control { margin-top: .35rem; }
+.mud-input.mud-input-outlined > input { padding-top: .6rem; padding-bottom: .6rem; }
+
+/* ---- long values must wrap, never clip: endpoints, NodeIds, paths ---- */
+.mud-table-cell code,
+.mud-typography code,
+code { overflow-wrap: anywhere; }
+
+/* ---- accessibility: keyboard focus was previously invisible ---- */
+.mud-button-root:focus-visible,
+.mud-icon-button:focus-visible,
+.mud-input-slot:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* ---- typography: one weight scale, no in-between values ----
+
+   The app renders in Segoe UI (see the no-webfont note at the top of this
+   file), and Segoe UI ships only Light 300 / Regular 400 / Semibold 600 /
+   Bold 700. Any other value — 500, 620, 640, 650 — has no matching face, so
+   the browser synthesises or rounds it, and in practice most of them rounded
+   UP to Bold. That is what made the UI read heavy.
+
+   The scale is therefore only ever: 400 body · 600 emphasis · 700 reserved.
+   Nothing between. */
+:root {
+    --w-body: 400;
+    --w-emphasis: 600;
+}
+
+.mud-typography-h5 { font-weight: var(--w-emphasis); letter-spacing: -.015em; }
+.mud-typography-h6 { font-weight: var(--w-emphasis); letter-spacing: -.01em; }
+.mud-typography-subtitle1,
+.mud-typography-subtitle2 { font-weight: var(--w-emphasis); }
+.mud-typography-body1,
+.mud-typography-body2 { font-weight: var(--w-body); line-height: 1.55; }
+
+/* Pull the above-600 inline weights DOWN to Semibold.
+
+   Per CSS font-matching, a requested weight above 500 resolves upward first —
+   so 620, 640 and 650 all landed on Segoe UI Bold (700). That is the single
+   biggest reason the UI read heavy. 500 is left alone: it resolves DOWN to
+   Regular 400, which is already the light end of the scale.
+
+   The selectors are attribute matches because these weights are set inline on
+   ~30 elements across the pages, and an inline style outranks a class rule —
+   this is the one place they can be corrected without editing every file.
+
+   .logo-fallback is excluded on purpose: it is the ELPIS wordmark shown when
+   the logo image is missing, and a brand mark is meant to be Bold. */
+[style*="font-weight:620"],
+[style*="font-weight:640"],
+[style*="font-weight:650"],
+[style*="font-weight:700"]:not(.logo-fallback),
+[style*="font-weight: 700"]:not(.logo-fallback) { font-weight: var(--w-emphasis) !important; }
+
+/* ---- alignment: one baseline, no squashed icons ----
+
+   Two things were making rows look ragged:
+
+   1. Icons inside a flex row are flex items, so a long label beside them
+      compressed the icon into an ellipse and shifted everything after it.
+      flex:0 0 auto pins them at their natural size.
+
+   2. Cells mixed single-line values with two-line ones (the verdict columns
+      carry a label plus a hint), and the default baseline alignment left the
+      short cells floating against the tall ones. Middle alignment settles the
+      whole row on one axis. */
+.mud-table-cell,
+.mud-table-cell .mud-typography { vertical-align: middle; }
+
+.mud-stack > .mud-icon-root,
+.mud-table-cell .mud-icon-root { flex: 0 0 auto; }
+
+/* Icon and its label share one optical centre-line. Without this the icon
+   sits a pixel or two proud of the text on every status row. */
+[role="group"].flex-row > .mud-icon-root { align-self: center; }
+
+/* A chip's icon and word were spaced by the old letter-spacing rule; now that
+   tracking is normal, the icon needs its own gap. */
+.mud-chip .mud-chip-icon { margin-right: .3rem; }
+
+/* Figures line up column-to-column and digit-to-digit. tabular-nums is set on
+   the cell above; this stops a right-aligned number drifting from its header. */
+.mud-table-cell[style*="text-align:right"],
+.mud-table-cell[style*="text-align: right"] { padding-right: 1rem; }
+
+/* ---- Connect a device: the step ladder scrolls with the page ----
+
+   It used to be pinned at `top: 4.4rem` — a hard-coded guess at the rendered
+   height of the heading band above it. Two things were wrong with that.
+
+   First, the offset is a magic number tied to something that changes: the
+   band gained a description line and had its padding retuned, so the ladder
+   no longer landed where the guess assumed and sat on top of the protocol
+   tiles as they scrolled past it.
+
+   Second, it contradicts the rule the rest of the app follows — the heading
+   is the only thing that pins, and everything below it scrolls. Two stacked
+   frozen bands also cost more vertical space than a seven-step wizard can
+   spare on a laptop.
+
+   So the ladder is ordinary content now. No offset to keep in step with the
+   heading, and nothing to overlap. */
+
+/* The `bottom:32px` action bar this used to correct no longer exists in any
+   component — nothing in Components/ carries that inline style. Removed rather
+   than left in place: dead rules that read as if they are doing something are
+   exactly what hid the broken heading selector for so long. */
+
+/* ---- filter box sits in the right corner ----
+
+   Every list page already puts a <MudSpacer /> before its filter, so the
+   markup intent was right — but the box still floated near the middle with a
+   wide gap to its right. The reason is where the width lands: the pages set
+   `style="max-width:280px"` and MudBlazor applies that to the inner
+   .mud-input, NOT to the outer .mud-input-control. The control is the flex
+   item, so it stretched to fill everything the spacer gave it and the 280px
+   box sat left-aligned inside that stretched shell.
+
+   Pinning the control itself to 280px makes the flex item the same size as
+   the visible box, so the spacer can push it flush right. margin-left:auto is
+   belt-and-braces: the box stays right even on a toolbar with no spacer. */
+.mud-table-toolbar .mud-input-control {
+    flex: 0 0 280px;
+    max-width: 280px;
+    margin-left: auto;
+}
+
+/* Same fix for the wizard section filters (Add route → Source / Destinations),
+   which use a MudStack row rather than a table toolbar. Scoped to a trailing
+   input so ordinary form fields inside a stack are untouched. */
+[role="group"].flex-row > .mud-input-control:last-child { margin-left: auto; }
+
+/* ---- page heading stays put while the body scrolls ----
+
+   The AppBar and StatusFooter are already fixed by the app-shell block further
+   down, and .mud-main-content is the scroller between them. What still scrolled
+   away was the PAGE heading — the icon + title row — so on a long Diagnostics
+   or Sources list the operator lost track of which screen they were on.
+
+   Two details that make or break this:
+
+   * The heading is a child of the layout's container, which carries px-6
+     gutters. A plain `position:sticky` would leave those gutters transparent
+     and let rows slide through the gap at each edge. The negative margin plus
+     matching padding stretches the sticky band across the full width so
+     nothing shows through beside it.
+
+   * z-index sits below the AppBar (1100) and the demo-mode banners (1000) so
+     it can never cover the chrome, but above page content.
+
+   The selector used to be `.mud-stack-row:first-child`. MudBlazor 7 renders a
+   Stack as `d-flex flex-row` and emits no `mud-stack-row` class at all, so
+   that half matched nothing and the heading never actually pinned on any
+   page. Every page heading now carries an explicit `page-heading` class and
+   this keys off that — a class we own cannot be changed out from under us by
+   a component-library upgrade.
+
+   Descendant, not direct child: License nests its heading one container deep
+   and the two protocol pickers wrap theirs in an @if. Sticky still resolves
+   against .mud-main-content in both cases because nothing between them
+   scrolls or transforms. */
+.mud-main-content .page-heading {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--mud-palette-background);
+    margin-left: calc(-1 * var(--page-gutter));
+    margin-right: calc(-1 * var(--page-gutter));
+    /* mb-4 sits OUTSIDE the box, so its 16px would be a transparent strip
+       under the band with rows sliding through it. Move that space into the
+       padding, where the background covers it. */
+    margin-bottom: 0 !important;
+    padding: .6rem var(--page-gutter) .75rem var(--page-gutter);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+/* The heading icon labels the TITLE, not the title-plus-description block.
+   Every page heading gained a description, and with align-items:center on the
+   row the icon then centred across both lines — sitting visibly below the h5
+   it belongs to. flex-start pins it to the title line; the small margin is
+   optical centring against the cap-height rather than the line box.
+
+   Scoped to a direct child so the back-arrow icon-button on detail and wizard
+   headings, which is nested inside a tooltip, keeps its own alignment. On a
+   heading with no description this is indistinguishable from centred, because
+   the row is then one line tall. */
+.mud-main-content .page-heading > .mud-icon-root {
+    align-self: flex-start;
+    margin-top: .18rem;
+}
+
+/* One gap below the rule, and only one. This is the mb-4 the heading gave up
+   when it became sticky, put back on the element below where it belongs.
+   Setting it here AND in the band's padding-bottom is what counted it twice
+   and left the empty strip; the band's padding is now only the breathing room
+   between the heading text and its own rule. */
+.mud-main-content .page-heading + * { margin-top: 1rem; }
+
+/* ---- page width: one measure for every page ----
+
+   MainLayout already wraps @Body in a full-width MudContainer with px-6
+   gutters. A page that nests its own width-capped container inside that ends
+   up as the only screen whose content stops two-thirds of the way across,
+   with the rest of the window left blank — License did exactly this with
+   MaxWidth.Medium (960px, centred).
+
+   The source is fixed, but this rule makes it correct on the installed build
+   too, and catches any page that nests a capped container in future. The
+   inner container also drops its own padding: the outer one already supplies
+   the gutter, so keeping both double-indents the content.
+
+   Deliberately NOT including -xs/-sm: Components/Routes.razor uses
+   MaxWidth.Small for the "route not found" message, where a narrow centred
+   column is the right shape for a single short sentence. */
+.mud-main-content .mud-container-maxwidth-md,
+.mud-main-content .mud-container-maxwidth-lg,
+.mud-main-content .mud-container-maxwidth-xl {
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ROUTE CARDS — density and hierarchy
+
+   The card was three competing blocks of equal visual weight: a bold header,
+   three mid-weight body rows, and a saturated red error slab that took up
+   more space than the route it described. On a wall of cards the eye landed
+   on the red first and the route name last, which is backwards.
+
+   These rules target the SHIPPED markup, so they take effect on the installed
+   build without a rebuild.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.route-card { padding: 1rem 1.1rem !important; }
+
+/* The "ROUTE" eyebrow was competing with the id underneath it. Push it back. */
+.route-card .mud-typography-caption { letter-spacing: .06em; }
+
+/* Route id is the headline — let it be the only large thing on the card. */
+.route-card .mud-typography-h6 { font-size: 1.02rem; line-height: 1.25; }
+
+/* Body rows: one calm rhythm instead of three different gaps. */
+.route-card .mud-typography-body2 { font-size: .84rem; line-height: 1.45; }
+.route-card .mud-divider { margin-top: .6rem !important; margin-bottom: .6rem !important; }
+
+/* The error slab. Dense + full-bleed red read as an alarm on a card that was
+   often merely reporting history. Hairline left rule + tinted background says
+   "error" without swallowing the card. */
+.route-card .mud-alert {
+    padding: .5rem .7rem !important;
+    border: 1px solid rgba(220, 38, 38, .35) !important;
+    border-left: 3px solid var(--mud-palette-error) !important;
+    background: rgba(220, 38, 38, .05) !important;
+    color: var(--mud-palette-text-primary) !important;
+    box-shadow: none !important;
+}
+.route-card .mud-alert .mud-typography { font-size: .78rem; line-height: 1.45; }
+.route-card .mud-alert .mud-alert-message { padding: 0 !important; }
+
+/* Status chips sit beside the title, so they must not out-weigh it. */
+.route-card .mud-chip { height: 21px; font-size: .7rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   APP SHELL — fixed header, fixed footer, body scrolls between them.
+
+   The AppBar carries `mud-appbar-dense`, and MudBlazor sizes a dense bar at
+   three-quarters of --mud-appbar-height (64px) => 48px. MudMainContent's
+   pt-16 utility is 64px, so padding and bar disagree by 16px. That mismatch
+   was what let page content show through beside the chrome on the first
+   attempt; deriving the height removes the guesswork.
+
+   The scroll region is positioned so its own edges ARE the chrome edges.
+   Every sticky offset inside it is therefore 0 — no per-element magic
+   numbers — and the scrollbar no longer runs under the bars.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --shell-appbar-h: 0px;   /* no header: rail and content start at the top */
+    --shell-footer-h: 32px;                                        /* StatusFooter */
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;            /* the document itself never scrolls */
+}
+
+/* The shell is a flex COLUMN, and it does not scroll.
+
+   It used to be the scroller itself, which meant every banner above the page
+   had to be position:sticky to survive a scroll — and sticky banners then
+   fought the sticky page heading for top:0. Trying to offset the heading below
+   them needs the banner's height, which is not a constant: the demo-mode line
+   wraps to two or three rows on a narrow window, and banners appear and
+   disappear as the licence poll runs.
+
+   As a flex column none of that arises. Banners are auto-height rows that
+   simply never scroll, the page container is the single flex-grow row that
+   does, and the browser does the measuring. No magic numbers, no script. */
+.mud-main-content {
+    position: fixed;
+    top: var(--shell-appbar-h);
+    bottom: var(--shell-footer-h);
+    left: 0;
+    right: 0;
+    height: auto;
+    padding-top: 0 !important;   /* pt-16/pb-12 existed only to clear the */
+    padding-bottom: 0 !important; /* chrome; the shell now does that job   */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;            /* the shell itself never scrolls */
+}
+
+/* Chrome rows: banners, demo-mode notice, post-upgrade notice. Auto height,
+   pinned by virtue of being outside the scrolling row. */
+.mud-main-content > *:not(.mud-container) {
+    flex: 0 0 auto;
+}
+
+/* The one row that scrolls.
+   min-height: 0 is load-bearing — a flex item defaults to min-height:auto,
+   which refuses to shrink below its content, so the container would grow past
+   the shell and push the scrollbar onto the document instead of onto itself. */
+.mud-main-content > .mud-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    /* No padding-top, and this is not cosmetic.
+
+       A sticky element is constrained by its containing block — here the
+       container's CONTENT box, which begins below padding-top. With py-4's
+       1.1rem the heading could never rise nearer than 1.1rem to the banner, so
+       a permanent strip sat between them with page content scrolling visibly
+       through it. Zero lets the heading pin flush; its own padding supplies
+       the breathing room, and padding-bottom is untouched. */
+    padding-top: 0 !important;
+}
+
+/* Banners are ordinary rows in the column now. Overriding position rather than
+   top also retires the inline `top:64px`, which predates the app shell and
+   would otherwise push a banner a phantom AppBar's height down the page. */
+.mud-main-content > div[style*="position:sticky"] {
+    position: static !important;
+}
+
+/* Restore modal scroll-locking. MudBlazor decides whether to lock by testing
+   window.innerWidth > document.body.clientWidth — false once the document
+   stops scrolling — so dialogs and drawers would otherwise let the page
+   scroll behind them. When it locks the body, lock the real scroller too —
+   which is now the page container, not the shell. */
+body.mud-scroll-locked .mud-main-content > .mud-container,
+body.mud-scroll-locked-no-padding .mud-main-content > .mud-container {
+    overflow: hidden !important;
+}
+
+/* Live Data Tap sizes its streams in vh; the usable region is now smaller
+   than the viewport, so re-express it against the shell to avoid a second
+   nested scrollbar. */
+.mud-main-content .tap-stream {
+    max-height: calc(100vh - var(--shell-appbar-h) - var(--shell-footer-h) - 14rem);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIDEBAR NAVIGATION
+
+   NavMenu renders one container — <div class="nav-menu d-flex"> — inside the
+   AppBar, so the whole nav can be relocated with a single selector rather
+   than restructuring markup. The AppBar keeps the brand; navigation moves to
+   a fixed left rail spanning between the bars.
+
+   Proper implementation is a MudDrawer in MainLayout.razor; that needs a
+   rebuild. This achieves the same result on the installed build.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root { --sidebar-w: 226px; }
+
+/* ══ collapsed nav rail ══
+   One class on MudLayout drives three things that must move together: the
+   rail's width, and the left edge of both the content and the status bar.
+   Driving them from a single --sidebar-w override keeps them in step — the
+   earlier bug where content and footer disagreed came from setting them
+   separately. */
+.mud-layout.nav-collapsed { --sidebar-w: 62px; }
+
+/* Collapsed: the mark stays (it is the only branding left on screen), the
+   wordmark and attribution go — they cannot fit 62px without wrapping. */
+.mud-layout.nav-collapsed .nav-menu .nav-brand {
+    justify-content: center;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+.mud-layout.nav-collapsed .nav-menu .nav-brand-text { display: none; }
+
+.mud-layout.nav-collapsed .nav-menu .nav-section-label { display: none; }
+/* Collapsed, the control keeps only its chevron and centres it. */
+.mud-layout.nav-collapsed .nav-menu .nav-collapse-btn { justify-content: center; }
+.mud-layout.nav-collapsed .nav-menu .nav-collapse-label { display: none; }
+
+.mud-layout.nav-collapsed .nav-menu .nav-btn {
+    justify-content: center !important;
+    padding: .5rem 0;
+    min-width: 0;
+    font-size: 0;                    /* hides the label, keeps the accessible name */
+}
+.mud-layout.nav-collapsed .nav-menu .nav-btn .mud-button-label {
+    justify-content: center;
+    gap: 0;
+}
+.mud-layout.nav-collapsed .nav-menu .nav-btn .mud-button-icon-start {
+    margin: 0 !important;
+    font-size: 1.3rem;               /* restore: MudBlazor sizes icons in em */
+}
+
+/* The rail animates its width; content and footer follow the same curve so
+   the three edges never visibly separate mid-transition. */
+.nav-menu,
+.mud-main-content,
+.status-footer {
+    transition: width 160ms ease, left 160ms ease;
+}
+
+/* ---- License page: the two action buttons share a baseline ----
+   Activate and Buy sit side by side, but their descriptions are different
+   lengths (two lines vs one), so each button landed wherever its own text
+   ended and the pair looked misaligned. Making the card a flex column and
+   letting the description absorb the slack pins both buttons to the same
+   line regardless of copy length — so editing either description later
+   cannot knock them out of alignment again.
+
+   Keyed off the existing data-testid hooks, so this needs no markup change. */
+[data-testid="feature-activate"],
+[data-testid="feature-buy"] {
+    display: flex;
+    flex-direction: column;
+}
+[data-testid="feature-activate"] > .mud-typography-body2,
+[data-testid="feature-buy"] > .mud-typography-body2 {
+    flex: 1 1 auto;      /* absorbs the height difference between the two */
+}
+/* The upload wrapper is a plain div; without this it would not stretch and
+   the button inside it would still float above Buy's. */
+[data-testid="feature-activate"] .mud-file-upload { display: block; width: 100%; }
+
+/* Equal width. Sizing both to their card rather than to a fixed pixel value
+   keeps them matched at any breakpoint and through any future label change —
+   the two cards are xs=12 sm=6, so full width means identical width. */
+[data-testid="btn-activate"],
+[data-testid="btn-buy"] {
+    width: 100%;
+    justify-content: center;
+    /* Buy carried no inline text-transform, so it rendered BUY LICENSE while
+       Activate read "Choose License". Normalise both here. */
+    text-transform: none !important;
+}
+
+/* ---- table action buttons must never wrap ----
+   The Action column is narrow, so "Disable" was breaking across two lines as
+   "Disab / le" and pushing the row taller than its neighbours. Buttons in a
+   cell size to their label and keep it on one line. */
+.mud-table-cell .mud-button,
+.mud-table-cell .mud-button-root {
+    white-space: nowrap;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+/* Keep the icon actions beside a button from wrapping under it — but ONLY in
+   cells that actually contain a button. Applying this to every stack in every
+   cell also pinned the route/destination chip lists, so a fan-out route with
+   several destinations widened the grid instead of wrapping its chips. */
+.mud-table-cell [role="group"].flex-row:has(.mud-button-root) { flex-wrap: nowrap; }
+
+/* ---- collapse control, inside the rail ----
+   It sits with the thing it collapses rather than in the header, matching the
+   pattern operators already know from other Elpis tools. Styled as a quiet
+   row, not a button: it is chrome, not an action competing with navigation. */
+.nav-menu .nav-collapse-btn {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    width: 100%;
+    margin-bottom: .35rem;
+    padding: .4rem .7rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    /* Same size as the nav tabs below it (.875rem). At .8rem it read as a
+       caption rather than a control, and it is the one thing in the rail an
+       operator has to find before anything else collapses. */
+    font-size: .875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+}
+.nav-menu .nav-collapse-btn:hover {
+    background: #EFF6FF;
+    color: var(--mud-palette-primary);
+}
+.nav-menu .nav-collapse-btn:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+/* ---- section labels ----
+   Splits the hourly operational screens from the system ones so a rail of
+   eleven equal-weight entries stops reading as a flat list. */
+.nav-menu .nav-section-label {
+    padding: .55rem .7rem .25rem .7rem;
+    font-size: .66rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    opacity: .75;
+}
+
+/* ---- brand block at the head of the rail ----
+   The logo moved out of the AppBar (which now shows the current page heading)
+   and sits at the top of the nav rail. It gets more room here than the 28px
+   the bar allowed, which suits the square mark far better than it suited the
+   old wide wordmark. */
+.nav-menu .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem .55rem .85rem .55rem;
+    margin-bottom: .5rem;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex: 0 0 auto;
+}
+.nav-menu .nav-brand img {
+    /* Same asset as the favicon: a 1:1 canvas with ~6% transparent padding, so
+       the visible mark is smaller than its box. 38px of box puts the mark back
+       at the size 34px gave when the source was cropped tight. */
+    height: 38px;
+    width: auto;
+    max-width: 100%;
+    display: block;
+    flex: 0 0 auto;
+}
+.nav-menu .nav-brand-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.15;
+    min-width: 0;
+    overflow: hidden;          /* the name yields before the mark distorts */
+}
+.nav-menu .nav-brand-name {
+    font-size: .95rem;
+    line-height: 1.2;
+    font-weight: var(--w-emphasis);
+    color: var(--mud-palette-text-primary);
+    letter-spacing: -.01em;
+    white-space: nowrap;
+}
+/* Attribution under the product name. Quiet enough that it never competes
+   with EdgeConnect itself, which is the name an operator is looking for. */
+.nav-menu .nav-brand-by {
+    font-size: .7rem;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--mud-palette-text-secondary);
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+
+/* ---- the rail ---- */
+.nav-menu {
+    position: fixed;
+    top: var(--shell-appbar-h);
+    bottom: var(--shell-footer-h);
+    left: 0;
+    width: var(--sidebar-w);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px !important;
+    padding: .75rem .6rem;
+    background: var(--mud-palette-surface);
+    border-right: 1px solid var(--mud-palette-lines-default);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1090;              /* under the AppBar (1100), over content */
+}
+
+/* Each tab is wrapped in a MudTooltip, so the wrapper — not the button — is
+   the rail's flex child. Without this it shrinks to the button's intrinsic
+   width and the tabs stop filling the rail. */
+.nav-menu .mud-tooltip-root {
+    display: block;
+    width: 100%;
+}
+
+/* ---- tabs become full-width rows ---- */
+.nav-menu .nav-btn {
+    justify-content: flex-start !important;
+    width: 100%;
+    min-height: 38px;
+    padding: .45rem .7rem;
+    border-radius: 8px;
+    font-size: .875rem;
+}
+.nav-menu .nav-btn .mud-button-label {
+    justify-content: flex-start;
+    width: 100%;
+}
+.nav-menu .nav-btn .mud-button-icon-start {
+    margin-right: .6rem;
+    margin-left: 0;
+}
+
+/* The Connect-a-device CTA leads the rail rather than sitting inline. */
+.nav-menu .nav-btn.mud-button-filled {
+    margin: 0 0 .55rem 0 !important;
+    min-height: 42px;
+    font-weight: 600;
+}
+
+/* ---- content and status bar clear the rail ---- */
+.mud-main-content { left: var(--sidebar-w); }
+.status-footer { left: var(--sidebar-w) !important; }
+
+/* ---- brand stays in the top bar; drop the centring spacers ---- */
+
+/* ---- narrower rail when the window is tight ---- */
+@media (max-width: 1200px) {
+    :root { --sidebar-w: 190px; }
+    .nav-menu .nav-btn { font-size: .83rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — phone · tablet · laptop · desktop · 4K
+
+   The shell is a fixed left rail with the content and status bar offset by
+   its width. That works from laptop up; below it the rail eats the screen
+   (190px of a 375px phone is half the viewport). Three things adapt:
+
+     * the rail          full labels -> icons only -> a horizontal strip
+     * --page-gutter     so the sticky heading band follows automatically
+     * wide content      tables scroll inside themselves, never the page
+
+   No horizontal page scroll at any width: .mud-main-content is already
+   overflow-x:hidden, and every wide element below is given its own
+   scroll container so nothing is clipped instead.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ---- anything wide: never let a table push the page sideways ---- */
+.mud-table-container,
+.mud-table-container > table,
+.mud-datagrid-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+/* Cards, alerts and code can all carry long unbroken strings (endpoints,
+   NodeIds, file paths). Allow them to wrap rather than widen their parent. */
+.mud-paper, .mud-alert, .mud-card { min-width: 0; }
+.mud-table-cell, .mud-typography { overflow-wrap: anywhere; }
+
+/* ══ 4K and ultra-wide (>= 2560px) ══
+   Scaling the root font makes the whole UI grow proportionally rather than
+   leaving a postage-stamp interface marooned in the middle of the screen.
+   The measure is capped so table rows don't stretch to 3000px, which is
+   unreadable — the eye loses the row between columns. */
+@media (min-width: 2560px) {
+    html { font-size: 18px; }
+    :root { --sidebar-w: 300px; --page-gutter: 2.5rem; }
+    .mud-main-content > .mud-container { max-width: 2400px; margin-left: auto; margin-right: auto; }
+}
+
+/* ══ Large desktop (1920–2559px) ══ */
+@media (min-width: 1920px) and (max-width: 2559px) {
+    html { font-size: 17px; }
+    :root { --sidebar-w: 258px; --page-gutter: 2rem; }
+}
+
+/* ══ Tablet landscape / small laptop (901–1200px) ══
+   Rail already narrows to 190px above; just tighten the gutter so the
+   content keeps its width. */
+@media (max-width: 1200px) {
+    :root { --page-gutter: 1.25rem; }
+}
+
+/* ══ Tablet portrait (601–900px) — icon-only rail ══
+   Labels cost ~130px of a 768px screen. Collapsing to icons returns that to
+   the content. The label text is zeroed rather than display:none so the
+   button keeps its accessible name for screen readers; the icon gets its own
+   font-size back because MudBlazor sizes SVG icons in em. */
+@media (max-width: 900px) {
+    :root { --sidebar-w: 60px; --page-gutter: 1rem; }
+
+    .nav-menu { padding: .5rem .35rem; align-items: center; }
+    /* Only the mark survives at 60px — the name and attribution would either
+       wrap to three lines or clip. The AppBar still names the page, and the
+       product name returns as soon as the rail expands. */
+    .nav-menu .nav-brand {
+        padding: .2rem 0 .6rem 0;
+        justify-content: center;
+        gap: 0;
+    }
+    .nav-menu .nav-brand-text { display: none; }
+
+    .nav-menu .nav-btn {
+        justify-content: center !important;
+        padding: .5rem 0;
+        min-width: 0;
+        font-size: 0;                       /* hides the label text only */
+    }
+    .nav-menu .nav-btn .mud-button-label { justify-content: center; gap: 0; }
+    .nav-menu .nav-btn .mud-button-icon-start {
+        margin: 0 !important;
+        font-size: 1.3rem;                  /* restore: icons are sized in em */
+    }
+    /* The filled "Connect a device" CTA keeps its emphasis but loses its text. */
+    .nav-menu .nav-btn.mud-button-filled { min-height: 40px; }
+
+    /* Toolbars stack so the filter never collides with the row count. */
+    .mud-table-toolbar { flex-wrap: wrap; row-gap: .5rem; padding: .6rem .75rem; }
+    .mud-table-toolbar .mud-input-control { flex: 1 1 100%; max-width: 100%; margin-left: 0; }
+}
+
+/* ══ Phone (<= 600px) — rail becomes a horizontal strip ══
+   A vertical rail cannot survive here at any width, so it moves under the
+   AppBar as a scrollable row of icons and the content takes the full screen.
+   --rail-h is added to the content's top offset so nothing hides beneath it. */
+@media (max-width: 600px) {
+    :root { --sidebar-w: 0px; --page-gutter: .85rem; --rail-h: 46px; }
+
+    .nav-menu {
+        top: var(--shell-appbar-h);
+        bottom: auto;
+        left: 0;
+        right: 0;
+        width: auto;
+        height: var(--rail-h);
+        flex-direction: row;
+        align-items: center;
+        gap: 4px !important;
+        padding: 0 .4rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: none;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+    /* Branding is redundant here — the AppBar already names the page, and the
+       strip needs every pixel for navigation. */
+    .nav-menu .nav-brand { display: none; }
+    .nav-menu .nav-btn { width: auto; flex: 0 0 auto; min-height: 34px; }
+
+    .mud-main-content {
+        left: 0;
+        top: calc(var(--shell-appbar-h) + var(--rail-h));
+    }
+    .status-footer { left: 0 !important; }
+
+    /* The status bar carries four items; let the least important go. */
+    .status-footer [data-testid="footer-version"] { display: none; }
+
+    /* Page heading: no negative-margin band on a phone, it wastes height. */
+    .mud-main-content .page-heading {
+        padding: .4rem var(--page-gutter) .45rem var(--page-gutter);
+    }
+    .mud-main-content .page-heading + * { margin-top: .6rem; }
+
+    /* Live Data Tap: the fixed timestamp column has no room — stack instead. */
+    .tap-point { grid-template-columns: 1fr; row-gap: 2px; }
+    .tap-point-tag, .tap-point-val, .tap-point-reason { grid-column: 1; }
+
+    /* Onboarding ladder: 7 steps never fit — let it scroll on its own. */
+    /* Seven steps never fit a phone — let the ladder scroll sideways. */
+    .mud-main-content .onboarding-ladder { overflow-x: auto; }
+
+    /* Dialogs should use the screen rather than float in a narrow column. */
+    .mud-dialog { margin: 8px !important; width: calc(100% - 16px) !important; }
+}
+
+/* ---- pointer-coarse: give touch targets real hit area ----
+   Independent of width: a 10" tablet and a phone both need this, and a
+   desktop with a touchscreen benefits too. */
+@media (pointer: coarse) {
+    .mud-button-root, .mud-icon-button { min-height: 40px; }
+    .mud-table-cell { padding-top: .7rem; padding-bottom: .7rem; }
+}
+
+/* Skip link — pairs with the anchor added to MainLayout.razor. The nav rail
+   is 11 tabs deep, so a keyboard operator previously had to tab through all
+   of it on every page load before reaching the content they came for.
+   Off-screen until focused, then pinned over the AppBar. */
+.op-skip-link {
+    position: fixed;
+    top: -100px;
+    left: 8px;
+    z-index: 1200;              /* above the AppBar (1100) */
+    padding: .5rem .9rem;
+    border-radius: 0 0 8px 8px;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-primary);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(27, 37, 48, .18);
+}
+.op-skip-link:focus { top: 0; }

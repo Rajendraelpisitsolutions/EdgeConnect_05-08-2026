@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  File:        docs/marketing/assets/architecture-diagram-v1-light.svg
+  Purpose:     Branded master architecture diagram (light variant) — paired
+               with architecture-diagram-v1-dark.svg. Identical structure,
+               dimensions, and content. Use this variant on white-background
+               contexts: light website pages, white-paper PDFs, light-themed
+               email headers.
+  Spec:        docs/marketing/architecture-diagram-spec-v2.md
+  Tokens:      docs/marketing/assets/brand/BRAND_TOKENS.md v1 (§2.3 light palette)
+  Pair:        architecture-diagram-v1-dark.svg (master dark variant)
+  Version:     v1, light variant
+  Date:        2026-05-24
+  Notes:
+    - Layout, dimensions, stroke weights, font sizes, and content are byte-for-byte
+      equivalent to the dark master. Only colors differ. Any future structural
+      change must land on BOTH variants in the same commit to keep them in sync.
+    - Brand teal SHIFTS on light from #00A0E0 → #0080BC (a slightly darker teal
+      reaching 4.16:1 contrast on the light background — passes WCAG AA for
+      graphical objects and large text. The brighter #00A0E0 fails 3:1 on
+      light, per BRAND_TOKENS.md §6.).
+    - Arrow stroke color stays #5E6B78 — passes 5.15:1 on light, so the dark
+      variant's grey doesn't need adjusting for the light bg.
+    - Hero stacking shadows behind EdgeConnect become SLIGHTLY DARKER than bg
+      (rather than darker shades of grey) to suggest elevation depth from below.
+
+  Token map (light variant):
+    bg.light.default         #FAFBFC
+    surface.light.hero       gradient #FFFFFF → #F4F7FB
+    surface.light.secondary  #EEF1F5
+    border.light.subtle      #D5DCE3
+    border.light.strong      #A8B3BD
+    text.body (light)        #1A1F26
+    text.muted (light)       #5E6B78
+    text.heading (light)     #0F1419
+    brand.teal (light)       #0080BC   ← shifts darker from #00A0E0
+    arrow.stroke             #5E6B78   ← unchanged, contrast OK on both
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 2400 1600"
+     width="2400" height="1600"
+     font-family="Inter, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+  <defs>
+    <!-- Hero container gradient — subtle off-white elevation -->
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F4F7FB"/>
+    </linearGradient>
+
+    <!-- Arrowhead for grey (non-emphasized) flow arrows -->
+    <marker id="arrowGrey"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#5E6B78"/>
+    </marker>
+
+    <!-- Arrowhead for teal (emphasized) flow arrows — DARKER teal on light -->
+    <marker id="arrowTeal"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#0080BC"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2400" height="1600" fill="#FAFBFC"/>
+
+  <!-- =================================================================== -->
+  <!-- Factory floor column: dashed boundary + "PER PLANT" badge            -->
+  <!-- =================================================================== -->
+
+  <rect x="140" y="140" width="580" height="1220" rx="10"
+        fill="none" stroke="#A8B3BD" stroke-width="1.5"
+        stroke-dasharray="10 7"/>
+
+  <!-- PER PLANT badge -->
+  <g transform="translate(560 152)">
+    <rect x="0" y="0" width="148" height="36" rx="18"
+          fill="#EEF1F5" stroke="#A8B3BD" stroke-width="1"/>
+    <text x="74" y="24" text-anchor="middle"
+          font-size="16" font-weight="600"
+          fill="#5E6B78" letter-spacing="0.14em">PER PLANT</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Layer labels (top of each column)                                   -->
+  <!-- =================================================================== -->
+
+  <g font-size="26" font-weight="600" fill="#5E6B78"
+     letter-spacing="0.18em" text-anchor="middle">
+    <text x="430"  y="178">FACTORY FLOOR</text>
+    <text x="990"  y="178">INTEGRATION</text>
+    <text x="1480" y="178">INTELLIGENCE</text>
+    <text x="2030" y="178">CONSUMERS</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Column 1: Factory floor — Controllers + EdgeConnect (hero)          -->
+  <!-- =================================================================== -->
+
+  <!-- Controllers (tertiary, outline-only) -->
+  <g id="controllers">
+    <rect x="170" y="240" width="520" height="360" rx="8"
+          fill="none" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <text x="430" y="290" text-anchor="middle"
+          font-size="30" font-weight="600" fill="#1A1F26">Controllers</text>
+
+    <!-- Device rows -->
+    <g transform="translate(220 330)">
+      <g stroke="#5E6B78" stroke-width="1.6" fill="none">
+        <rect x="0" y="6" width="36" height="24" rx="3"/>
+        <line x1="6"  y1="14" x2="30" y2="14"/>
+        <line x1="6"  y1="20" x2="22" y2="20"/>
+        <line x1="6"  y1="26" x2="26" y2="26"/>
+      </g>
+      <text x="56" y="28" font-size="22" fill="#1A1F26">CNCs</text>
+    </g>
+
+    <g transform="translate(220 376)">
+      <g stroke="#5E6B78" stroke-width="1.6" fill="none">
+        <rect x="0" y="2" width="36" height="32" rx="2"/>
+      </g>
+      <g fill="#5E6B78">
+        <circle cx="8"  cy="11" r="2.2"/>
+        <circle cx="18" cy="11" r="2.2"/>
+        <circle cx="28" cy="11" r="2.2"/>
+        <rect x="6"  y="20" width="24" height="2"/>
+        <rect x="6"  y="26" width="16" height="2"/>
+      </g>
+      <text x="56" y="28" font-size="22" fill="#1A1F26">Modbus PLCs</text>
+    </g>
+
+    <g transform="translate(220 422)">
+      <g stroke="#5E6B78" stroke-width="1.6" fill="none">
+        <circle cx="18" cy="20" r="15"/>
+        <line x1="18" y1="20" x2="26" y2="11" stroke-linecap="round"/>
+        <line x1="13" y1="32" x2="13" y2="33"/>
+        <line x1="23" y1="32" x2="23" y2="33"/>
+      </g>
+      <text x="56" y="28" font-size="22" fill="#1A1F26">Energy meters</text>
+    </g>
+
+    <!-- Divider between devices and protocols -->
+    <line x1="200" y1="488" x2="660" y2="488"
+          stroke="#D5DCE3" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <!-- Protocols section -->
+    <text x="210" y="516" font-size="15" font-weight="600"
+          fill="#5E6B78" letter-spacing="0.14em">PROTOCOLS</text>
+
+    <text x="210" y="548" font-size="20" fill="#1A1F26">FOCAS2 · MT-LINKi · MTConnect</text>
+    <text x="210" y="578" font-size="20" fill="#1A1F26">Brother HTTP · Modbus TCP</text>
+  </g>
+
+  <!-- Arrow 1: Controllers → EdgeConnect -->
+  <line x1="430" y1="600" x2="430" y2="676"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- EdgeConnect (hero, with multi-site stacking) -->
+  <g id="edgeconnect">
+    <!-- Stacking shadows: SLIGHTLY DARKER than bg for elevation depth on light -->
+    <rect x="184" y="704" width="520" height="488" rx="10"
+          fill="#E5E9EE" stroke="#C0CAD3" stroke-width="1" opacity="0.6"/>
+    <rect x="176" y="696" width="520" height="488" rx="10"
+          fill="#EFF2F6" stroke="#C0CAD3" stroke-width="1" opacity="0.85"/>
+
+    <!-- Main hero box -->
+    <rect x="170" y="688" width="520" height="488" rx="10"
+          fill="url(#heroGrad)" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <!-- Edge-appliance icon -->
+    <g transform="translate(610 720)" stroke="#0080BC" stroke-width="2" fill="none">
+      <rect x="0" y="0" width="48" height="36" rx="4"/>
+      <circle cx="8"  cy="9" r="2.2" fill="#0080BC" stroke="none"/>
+      <circle cx="18" cy="9" r="2.2" fill="#0080BC" stroke="none"/>
+      <line x1="6"  y1="22" x2="42" y2="22"/>
+      <line x1="6"  y1="29" x2="34" y2="29"/>
+    </g>
+
+    <text x="200" y="792" font-size="56" font-weight="700" fill="#0F1419">EdgeConnect</text>
+    <text x="200" y="828" font-size="24" font-weight="400" fill="#5E6B78">Edge runtime</text>
+
+    <line x1="200" y1="870" x2="660" y2="870"
+          stroke="#D5DCE3" stroke-width="1"/>
+
+    <g font-size="22" fill="#1A1F26">
+      <text x="200" y="912">Canonical data pipeline</text>
+      <text x="200" y="948">Per-route store-and-forward</text>
+      <text x="200" y="984">Three-way diagnostics</text>
+      <text x="200" y="1020">Signed offline licensing</text>
+    </g>
+
+    <text x="200" y="1098" font-size="16" font-weight="600"
+          fill="#5E6B78" letter-spacing="0.14em">DEPLOYS PER PLANT — ONE PER SITE</text>
+
+    <text x="660" y="1140" text-anchor="end"
+          font-size="32" font-weight="700" fill="#0080BC">× N</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Column 2: Integration — MQTT broker + OPC UA Server (secondary)     -->
+  <!-- =================================================================== -->
+
+  <g id="mqtt">
+    <rect x="800" y="300" width="380" height="320" rx="8"
+          fill="#EEF1F5" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <!-- Pub/sub hub icon -->
+    <g transform="translate(990 380)">
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#0080BC" stroke-width="2"/>
+      <circle cx="0" cy="0" r="6"  fill="#0080BC"/>
+      <g stroke="#5E6B78" stroke-width="1.6">
+        <line x1="-14" y1="-10" x2="-34" y2="-22"/>
+        <line x1="-14" y1="10"  x2="-34" y2="22"/>
+        <line x1="14"  y1="-10" x2="34"  y2="-22"/>
+        <line x1="14"  y1="10"  x2="34"  y2="22"/>
+        <line x1="16"  y1="0"   x2="38"  y2="0"/>
+      </g>
+      <g fill="#5E6B78">
+        <circle cx="-36" cy="-22" r="3"/>
+        <circle cx="-36" cy="22"  r="3"/>
+        <circle cx="36"  cy="-22" r="3"/>
+        <circle cx="36"  cy="22"  r="3"/>
+        <circle cx="40"  cy="0"   r="3"/>
+      </g>
+    </g>
+
+    <text x="990" y="498" text-anchor="middle"
+          font-size="34" font-weight="600" fill="#0F1419">MQTT broker</text>
+    <text x="990" y="534" text-anchor="middle"
+          font-size="20" fill="#5E6B78">Pub/sub message bus</text>
+    <text x="990" y="568" text-anchor="middle"
+          font-size="18" fill="#5E6B78">Any compliant broker</text>
+  </g>
+
+  <g id="opcua">
+    <rect x="800" y="700" width="380" height="320" rx="8"
+          fill="#EEF1F5" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <!-- Server icon -->
+    <g transform="translate(972 776)" stroke="#0080BC" stroke-width="2" fill="none">
+      <rect x="0" y="0" width="48" height="56" rx="4"/>
+      <line x1="0" y1="18" x2="48" y2="18"/>
+      <line x1="0" y1="36" x2="48" y2="36"/>
+    </g>
+    <g transform="translate(972 776)" fill="#0080BC">
+      <circle cx="9"  cy="9"  r="2.2"/>
+      <circle cx="9"  cy="27" r="2.2"/>
+      <circle cx="9"  cy="45" r="2.2"/>
+    </g>
+
+    <text x="990" y="900" text-anchor="middle"
+          font-size="34" font-weight="600" fill="#0F1419">OPC UA Server</text>
+    <text x="990" y="936" text-anchor="middle"
+          font-size="20" fill="#5E6B78">Standard industrial endpoint</text>
+    <text x="990" y="970" text-anchor="middle"
+          font-size="18" fill="#5E6B78">Read-only access</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Column 3: Intelligence — EREMOS V2 (hero)                           -->
+  <!-- =================================================================== -->
+
+  <g id="eremos">
+    <!-- EREMOS hero on light: same subtler-stroke treatment as dark variant.
+         Stroke mapped from border.subtle (dark) → border.light.subtle (light). -->
+    <rect x="1280" y="340" width="400" height="680" rx="10"
+          fill="url(#heroGrad)" stroke="#C0CAD3" stroke-width="1.5"/>
+
+    <!-- Analytics dashboard icon -->
+    <g transform="translate(1450 392)">
+      <rect x="0" y="0" width="76" height="48" rx="4"
+            fill="none" stroke="#0080BC" stroke-width="2"/>
+      <line x1="0" y1="14" x2="76" y2="14"
+            stroke="#0080BC" stroke-width="1.6"/>
+      <g fill="#0080BC">
+        <rect x="8"  y="32" width="8" height="10"/>
+        <rect x="22" y="24" width="8" height="18"/>
+        <rect x="36" y="28" width="8" height="14"/>
+        <rect x="50" y="20" width="8" height="22"/>
+        <rect x="64" y="26" width="8" height="16"/>
+      </g>
+      <g fill="#5E6B78">
+        <circle cx="6" cy="7" r="1.6"/>
+        <circle cx="12" cy="7" r="1.6"/>
+        <circle cx="18" cy="7" r="1.6"/>
+      </g>
+    </g>
+
+    <text x="1480" y="502" text-anchor="middle"
+          font-size="48" font-weight="700" fill="#0F1419">EREMOS V2</text>
+    <text x="1480" y="540" text-anchor="middle"
+          font-size="22" fill="#5E6B78">Industrial intelligence</text>
+
+    <line x1="1320" y1="594" x2="1640" y2="594"
+          stroke="#D5DCE3" stroke-width="1"/>
+
+    <g font-size="22" fill="#1A1F26">
+      <text x="1320" y="648">Multi-tenant analytics</text>
+      <text x="1320" y="692">OEE via Segments</text>
+      <text x="1320" y="736">Persistent alarms + incidents</text>
+      <text x="1320" y="780">Configurable alerting</text>
+      <text x="1320" y="824">Reports — PDF · Excel</text>
+      <text x="1320" y="868">Tool-life · tag mapping</text>
+    </g>
+
+    <text x="1320" y="968" font-size="16" font-weight="600"
+          fill="#5E6B78" letter-spacing="0.14em">ONE TENANT — MANY PLANTS</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Column 4: Consumers — Operations / SCADA / Cloud (tertiary)         -->
+  <!-- =================================================================== -->
+
+  <g id="operations">
+    <rect x="1780" y="300" width="500" height="240" rx="8"
+          fill="none" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <g transform="translate(1820 340)">
+      <g stroke="#5E6B78" stroke-width="1.6" fill="none">
+        <circle cx="16" cy="12" r="9"/>
+        <path d="M 2 36 Q 16 24 30 36"/>
+        <rect x="44" y="6" width="46" height="32" rx="2"/>
+      </g>
+      <g stroke="#5E6B78" stroke-width="1.3" fill="none">
+        <line x1="50" y1="14" x2="84" y2="14"/>
+        <line x1="50" y1="22" x2="76" y2="22"/>
+        <line x1="50" y1="30" x2="82" y2="30"/>
+      </g>
+    </g>
+
+    <text x="1820" y="440" font-size="30" font-weight="600" fill="#1A1F26">Operations team</text>
+    <text x="1820" y="476" font-size="20" fill="#5E6B78">Dashboards · Alerts</text>
+    <text x="1820" y="508" font-size="20" fill="#5E6B78">Shift reports · OEE views</text>
+  </g>
+
+  <g id="scada">
+    <rect x="1780" y="600" width="500" height="240" rx="8"
+          fill="none" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <g transform="translate(1820 640)" stroke="#5E6B78" stroke-width="1.6" fill="none">
+      <rect x="0" y="0" width="60" height="38" rx="3"/>
+      <rect x="6" y="6" width="48" height="26"/>
+      <line x1="26" y1="42" x2="34" y2="42"/>
+      <line x1="14" y1="50" x2="46" y2="50"/>
+    </g>
+
+    <text x="1820" y="740" font-size="30" font-weight="600" fill="#1A1F26">SCADA · MES · HMI</text>
+    <text x="1820" y="776" font-size="20" fill="#5E6B78">OPC UA clients</text>
+    <text x="1820" y="808" font-size="20" fill="#5E6B78">Existing operational tools</text>
+  </g>
+
+  <!-- Cloud shifted down 40 px (y=900→940) — matches dark master for centered
+       south-bus entry at y=1060. -->
+  <g id="cloud">
+    <rect x="1780" y="940" width="500" height="240" rx="8"
+          fill="none" stroke="#A8B3BD" stroke-width="1.5"/>
+
+    <g transform="translate(1820 984)" stroke="#5E6B78" stroke-width="1.8" fill="none" stroke-linejoin="round">
+      <path d="M 18 36 Q 0 36 0 22 Q 0 8 14 8 Q 18 -2 32 -2 Q 50 -2 52 14 Q 70 14 70 26 Q 70 38 54 38 L 18 38 Z"/>
+    </g>
+
+    <text x="1820" y="1082" font-size="30" font-weight="600" fill="#1A1F26">Cloud platforms</text>
+    <text x="1820" y="1118" font-size="20" fill="#5E6B78">AWS · Azure · custom</text>
+    <text x="1820" y="1150" font-size="20" fill="#5E6B78">Filtered, aggregated egress</text>
+  </g>
+
+  <!-- =================================================================== -->
+  <!-- Flow arrows (drawn last)                                            -->
+  <!-- =================================================================== -->
+
+  <!-- Arrow 2: EdgeConnect → MQTT broker (EMPHASIZED — darker teal) -->
+  <path d="M 690 808 L 760 808 L 760 460 L 794 460"
+        fill="none" stroke="#0080BC" stroke-width="2.5"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- Arrow 3: EdgeConnect → OPC UA Server -->
+  <path d="M 690 900 L 760 900 L 760 860 L 794 860"
+        fill="none" stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- Arrow 4: MQTT broker → EREMOS V2 (EMPHASIZED — darker teal) -->
+  <line x1="1180" y1="460" x2="1274" y2="460"
+        stroke="#0080BC" stroke-width="2.5"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- Arrow 5: EREMOS V2 → Operations team -->
+  <line x1="1680" y1="420" x2="1774" y2="420"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- ============ South bus (mirrors dark master exactly) ============ -->
+
+  <!-- A. OPC UA Server tap into south bus -->
+  <path d="M 1180 760 L 1220 760 L 1220 1060"
+        fill="none" stroke="#5E6B78" stroke-width="2.5"/>
+
+  <!-- B. MQTT broker tap into south bus -->
+  <path d="M 1180 560 L 1240 560 L 1240 1060"
+        fill="none" stroke="#5E6B78" stroke-width="2.5"/>
+
+  <!-- C. South bus + Cloud destination -->
+  <path d="M 1220 1060 L 1774 1060"
+        fill="none" stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- D. Split off bus going up to SCADA -->
+  <path d="M 1740 1060 L 1740 720 L 1774 720"
+        fill="none" stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- Junction dot at the bus split point -->
+  <circle cx="1740" cy="1060" r="6" fill="#5E6B78"/>
+
+  <!-- =================================================================== -->
+  <!-- Caption                                                             -->
+  <!-- =================================================================== -->
+
+  <g id="caption" font-size="25" font-weight="400" font-style="italic"
+     fill="#5E6B78" text-anchor="middle">
+    <text x="1200" y="1408">
+      One EdgeConnect deploys at each plant. One EREMOS V2 tenant aggregates many sites.
+    </text>
+    <text x="1200" y="1444">
+      Standard MQTT and OPC UA make the integration interoperable with whatever else you run.
+    </text>
+  </g>
+
+</svg>

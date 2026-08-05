@@ -1,0 +1,1076 @@
+@*
+    Add / Edit Siemens S7 source wizard (M.2b.2 / M3).
+
+    Two modes:
+      * Add  — @page "/sources/new/s7" entry. BuildNewSourceDraft + drafts API.
+      * Edit — rendered from SourceEditRouter. PUT /api/v1/sources/{instanceId}.
+
+    S7 cannot self-describe, so this is a MANUAL tag-address editor (Modbus
+    playbook), not a browse flow. Per-tag scan rates drive polling (no top-level
+    poll interval). Datatype/address-width compatibility is enforced pre-Save via
+    S7TagCompatibility (the same rule the scan planner uses), so a config the
+    wizard accepts never fails adapter Initialize for a deterministic reason.
+
+    Locked decisions (plan v2 "M2 build amendments" + "M3 UI refinements"):
+      * Planner-rejected datatype/address combos BLOCK Save (clear inline error).
+      * Timer/Counter addresses are unsupported → block Save.
+      * Duplicate tag names block; duplicate addresses warn.
+      * Test connection result defaults to "Not tested yet"; Advanced collapsed;
+        "Scan interval (ms)"; explicit row-selection for Test-selected-read;
+        no CSV affordance in v1; accessibility wiring (labels, aria-live, etc.).
+
+    Reference: docs/sessions/2026-06-02-s7-source-wizard-plan-v2.md
+*@
+@page "/sources/new/s7"
+@using System.IO
+@using System.Linq
+@using System.Net
+@using ElpisEdgeConnect.Core.Adapters
+@using ElpisEdgeConnect.Sources.S7
+@using ElpisEdgeConnect.Sources.S7.Import
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") Siemens S7 source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.DeveloperBoard"
+             Title="@(_isEdit ? $"Edit Siemens S7 source — {_model.InstanceId}" : "Add Siemens S7 source")"
+             Subtitle="Enter the PLC connection details and the Siemens S7 addresses to read. Examples: DB1.DBW0, DB1.DBX0.0, M10.2, IW4, Q0.1 — each address validates as you type."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Source">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Source id (immutable in Edit)" : "Source id *")"
+                              HelperText="@(_isEdit ? "Source id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Source name"
+                              HelperText="Shown across the Studio; defaults to the source id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="_model.Description" Label="Description (optional)"
+                              HelperText="e.g. S7-1500 controlling the hob line."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="4">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("plc")">plc</MudSelectItem>
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("meter")">meter</MudSelectItem>
+                    <MudSelectItem Value="@("rtu")">rtu</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="PLC connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="_model.Host" Label="PLC host / IP *"
+                              HelperText="IP address or hostname (e.g. 192.168.0.10)"
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="4" md="2">
+                <MudNumericField @bind-Value="_model.Port" Label="Port" Min="1" Max="65535"
+                                 HelperText="ISO-on-TCP — 102."
+                                 Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="4" md="1">
+                <MudNumericField @bind-Value="_model.Rack" Label="Rack" Min="0" Max="7"
+                                 HelperText="Usually 0." Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="4" md="1">
+                <MudNumericField @bind-Value="_model.Slot" Label="Slot" Min="0" Max="31"
+                                 HelperText="Commonly 1 or 2." Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_model.ConnectionType" Label="S7 connection type" Variant="Variant.Outlined">
+                    @foreach (var ct in S7SourceWizardModel.ConnectionTypes)
+                    {
+                        <MudSelectItem Value="@ct">@ct</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <div role="status" aria-live="polite">
+        @if (_connProbe is null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2" Style="display:block;"
+                     data-testid="s7-conn-not-tested">Not tested yet.</MudText>
+        }
+        else
+        {
+            <MudAlert Severity="@(_connProbe.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined" Class="mt-3" data-testid="s7-probe-result">
+                @if (_connProbe.Success)
+                {
+                    <strong>@_connProbe.Message</strong>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">in @_connProbe.ElapsedMs ms.</MudText>
+                }
+                else
+                {
+                    <strong>Connection failed (@_connProbe.ErrorCode).</strong>
+                    <MudText Typo="Typo.body2">@_connProbe.Message</MudText>
+                }
+            </MudAlert>
+        }
+        </div>
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    Defaults are production-safe. Adjust only if your PLC documentation calls for non-standard values.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.ConnectTimeoutMs" Label="Connect timeout (ms)"
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.RequestTimeoutMs" Label="Request timeout (ms)"
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxTransactionRetries" Label="Max retries"
+                                         Min="0" Max="10" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.CircuitBreakerThreshold" Label="Breaker threshold"
+                                         Min="1" Max="50" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)"
+                                         Min="0" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)"
+                                         Min="0" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxGapBytes" Label="Max gap (bytes)"
+                                         Min="0" Max="256" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxReadBytes" Label="Max read (bytes)"
+                                         Min="1" Max="960" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudSwitch @bind-Value="_model.KeepAlive" Label="Keep session alive" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="_model.OptimizedDbAccess" Label="Use optimized DB access" Color="Color.Primary" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                            Leave off for absolute DB addresses such as DB1.DBW0 or DB1.DBX0.0. For this release,
+                            standard / non-optimized DBs are the supported path for absolute DB addressing.
+                            Only enable if this PLC's backend configuration specifically requires it.
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="@($"Tags ({_model.Tags.Count})")">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudSpacer />
+            <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile"
+                       OnClick="OpenCsvDialog" Style="text-transform:none;" data-testid="s7-import-csv-btn">Import CSV</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddTag" Style="text-transform:none;">Add tag</MudButton>
+        </MudStack>
+
+        @* ── Import CSV dialog ── *@
+        <MudDialog @bind-Visible="_csvDialogOpen" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+            <TitleContent><MudText Typo="Typo.h6">Import tags from CSV</MudText></TitleContent>
+            <DialogContent>
+                <MudFileUpload T="IBrowserFile" Accept=".csv,text/csv" MaximumFileCount="1"
+                               FilesChanged="OnCsvFilePickedAsync" Class="mb-2">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile"
+                                   Style="text-transform:none;">Choose a .csv file</MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                    Expected columns: <code>Name, Address, Datatype, ScanRateMs, Unit, Scale, Offset</code>.
+                    Only <strong>Name</strong> and <strong>Address</strong> are required — datatype is derived
+                    from the address width when blank, scan rate defaults to 1000 ms.
+                    <MudLink Href="/api/v1/sources/s7/tag-template.csv" Target="_blank">Download template</MudLink>.
+                </MudText>
+
+                @if (_csvResult is { IsSuccess: false })
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3" data-testid="s7-csv-errors">
+                        <strong>@_csvResult.Errors.Count problem(s) found — nothing imported.</strong>
+                        Fix the file and re-upload.
+                    </MudAlert>
+                    <MudSimpleTable Dense="true" Bordered="false" Class="mt-2" Style="max-height:240px; overflow:auto;">
+                        <thead><tr><th>Line</th><th>Column</th><th>Problem</th></tr></thead>
+                        <tbody>
+                            @foreach (var e in _csvResult.Errors)
+                            {
+                                <tr>
+                                    <td>@(e.Line > 0 ? e.Line.ToString() : "—")</td>
+                                    <td>@(e.Column ?? "—")</td>
+                                    <td>@e.Message</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else if (_csvResult is { IsSuccess: true })
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mt-3" data-testid="s7-csv-success">
+                        <strong>Parsed @_csvResult.Tags.Count tag(s).</strong>
+                        @if (_csvResult.Summary.CommentRowsIgnored + _csvResult.Summary.BlankRowsIgnored > 0)
+                        {
+                            <text> @_csvResult.Summary.CommentRowsIgnored comment and @_csvResult.Summary.BlankRowsIgnored blank row(s) ignored.</text>
+                        }
+                    </MudAlert>
+                    @foreach (var w in _csvResult.Warnings)
+                    {
+                        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-warning); display:block;">⚠ @w.Message</MudText>
+                    }
+
+                    @if (_model.Tags.Count > 0)
+                    {
+                        <MudRadioGroup @bind-Value="_csvMergeMode" T="string" Class="mt-3">
+                            <MudRadio Value="@("add")" Color="Color.Primary">Add to current tag list</MudRadio>
+                            <MudRadio Value="@("replace")" Color="Color.Primary">Replace current tag list</MudRadio>
+                        </MudRadioGroup>
+                        @if (_csvMergeMode == "replace")
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning" Style="display:block;">
+                                Replace removes the current @_model.Tags.Count tag row(s) from this wizard before importing.
+                            </MudText>
+                        }
+                    }
+                }
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="CloseCsvDialog" Style="text-transform:none;">Cancel</MudButton>
+                @if (_csvResult is { IsSuccess: true })
+                {
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ApplyCsvImport"
+                               Style="text-transform:none;" data-testid="s7-csv-apply">@CsvConfirmLabel()</MudButton>
+                }
+            </DialogActions>
+        </MudDialog>
+
+        @if (_model.Tags.Count == 0)
+        {
+            <MudPaper Outlined="true" Class="pa-6" data-testid="s7-empty-tags">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1">No tags yet.</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                        Add the first S7 address to read — it validates as you type.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add" OnClick="AddTag"
+                               Style="text-transform:none;" data-testid="s7-add-first-tag">
+                        Add your first tag
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Bordered="false" Style="overflow:auto;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Datatype</th>
+                        <th>Scan interval (ms)</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < _model.Tags.Count; i++)
+                {
+                    var idx = i;
+                    var tag = _model.Tags[idx];
+                    var rowIssues = S7SourceWizardModel.ValidateTag(tag);
+                    var nameError = rowIssues.FirstOrDefault(iss => iss.Path == "Name");
+                    var addressError = rowIssues.FirstOrDefault(iss => iss.Path == "Address");
+                    var datatypeError = rowIssues.FirstOrDefault(iss => iss.Path == "Datatype");
+                    var stringLengthError = rowIssues.FirstOrDefault(iss => iss.Path == "StringLength");
+                    var isString = string.Equals(tag.Datatype, "String", StringComparison.OrdinalIgnoreCase);
+                    var addr = _addrValidation.GetValueOrDefault(tag);
+                    var verdict = S7SourceWizardModel.TagCompatibility(tag);
+                    var selected = _selectedTagIndex == idx;
+                    <tr style="@(selected ? "background:var(--mud-palette-action-default-hover);" : null)"
+                        aria-selected="@(selected ? "true" : "false")"
+                        @onclick="@(() => SelectTag(idx))">
+                        <td>
+                            <MudTextField @bind-Value="tag.Name" Variant="Variant.Text" Margin="Margin.Dense"
+                                          Error="@(nameError is not null)" ErrorText="@nameError?.Message"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Tag name" })" />
+                        </td>
+                        <td>
+                            <MudTextField @bind-Value="tag.Address" @bind-Value:after="@(() => OnAddressChangedAsync(tag))"
+                                          DebounceInterval="350" Variant="Variant.Text" Margin="Margin.Dense"
+                                          Error="@(addressError is not null)" ErrorText="@addressError?.Message"
+                                          Class="mono"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "S7 address" })" />
+                            @if (addressError is null && addr is { IsValid: true, NormalizedAddress: not null })
+                            {
+                                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-success);display:block;">
+                                    @addr.Area · @addr.WidthHint · @addr.NormalizedAddress
+                                </MudText>
+                            }
+                            @if (addressError is null && addr is { SuggestedDatatypes.Count: > 0 })
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Primary" Style="display:block;">
+                                    Address suggests: @string.Join(" or ", addr.SuggestedDatatypes)
+                                </MudText>
+                            }
+                        </td>
+                        <td>
+                            <MudSelect T="string" @bind-Value="tag.Datatype" Variant="Variant.Text" Margin="Margin.Dense" Clearable="true"
+                                       Error="@(datatypeError is not null)" ErrorText="@datatypeError?.Message"
+                                       UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Datatype" })">
+                                @foreach (var dt in S7SourceWizardModel.Datatypes)
+                                {
+                                    <MudSelectItem Value="@dt" Disabled="@DatatypeRejected(tag, dt)">
+                                        @dt@(DatatypeRejected(tag, dt) ? " — doesn't fit this address" : string.Empty)
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                            @if (isString)
+                            {
+                                <MudNumericField T="int?" @bind-Value="tag.StringLength" Min="1" Max="254"
+                                                 Variant="Variant.Text" Margin="Margin.Dense" Placeholder="length (chars)"
+                                                 Error="@(stringLengthError is not null)" ErrorText="@stringLengthError?.Message" />
+                            }
+                        </td>
+                        <td>
+                            <MudNumericField @bind-Value="tag.ScanRateMs" Min="50" Max="600000" Step="50"
+                                             Variant="Variant.Text" Margin="Margin.Dense"
+                                             UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "Scan interval in milliseconds" })" />
+                        </td>
+                        <td>@RenderStatus(rowIssues.Count, verdict)</td>
+                        <td>
+                            <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                                <MudButton Variant="Variant.Text" Size="Size.Small" Style="text-transform:none;"
+                                           OnClick="@(() => ToggleMore(tag))">
+                                    @(_moreExpanded.Contains(tag) ? "Less" : "More")
+                                </MudButton>
+                                <MudTooltip Text="Remove tag">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                                   aria-label="@($"Remove tag {tag.Name}")"
+                                                   OnClick="@(() => RemoveTag(idx))" />
+                                </MudTooltip>
+                            </MudStack>
+                        </td>
+                    </tr>
+                    @if (_moreExpanded.Contains(tag))
+                    {
+                        <tr>
+                            <td></td>
+                            <td colspan="5">
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="4" md="3">
+                                        <MudTextField @bind-Value="tag.Unit" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="4" md="3">
+                                        <MudNumericField T="double?" @bind-Value="tag.Scale" Label="Scale" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                    <MudItem xs="4" md="3">
+                                        <MudNumericField T="double?" @bind-Value="tag.Offset" Label="Offset" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </MudItem>
+                                </MudGrid>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Style="text-transform:none;"
+                           Disabled="@(!CanTestRead())" OnClick="TestReadAsync"
+                           data-testid="s7-test-read-btn">Test selected tag read</MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@TestReadHint()</MudText>
+            </MudStack>
+
+            <div role="status" aria-live="polite">
+            @if (_readProbe is not null)
+            {
+                <MudAlert Severity="@(_readProbe.Success ? Severity.Success : Severity.Error)"
+                          Variant="Variant.Outlined" Dense="true" Class="mt-2" data-testid="s7-read-result">
+                    @if (_readProbe.Success) { <strong>@_readProbe.Message</strong> }
+                    else { <strong>@_readProbe.Message</strong> }
+                </MudAlert>
+            }
+            </div>
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="4" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route). Add a route later to activate it.
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route links this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
+                                      Label="Route id *"
+                                      HelperText="Auto-suggested from source id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId" Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+
+        <MudPaper Elevation="0" Class="pa-4 mb-3"
+                  Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+            <ul style="margin:0; padding-left:1.4rem;">
+                <li>
+                    <strong>Add source:</strong> @(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not yet named)" : _model.InstanceId)
+                    @if (!string.IsNullOrWhiteSpace(_model.Host)) { <text> (s7, @_model.Host:@_model.Port)</text> }
+                    @if (_wiringChoice == "none") { <text> — </text><strong style="color:var(--mud-palette-warning);">created DISABLED</strong> }
+                    else { <text> — enabled</text> }
+                </li>
+                <li><strong>Define tags:</strong> @_model.Tags.Count</li>
+                <li>
+                    @if (_wiringChoice == "newRoute")
+                    {
+                        <strong>Create new route:</strong>
+                        @(string.IsNullOrWhiteSpace(_routeId) ? "(not yet named)" : _routeId)
+                        @if (_selectedSinkIds.Count > 0) { <text> · attaching to: @string.Join(", ", _selectedSinkIds)</text> }
+                    }
+                    else
+                    {
+                        <strong>Routes:</strong> <span>leave for later — source disabled until wired</span>
+                    }
+                </li>
+            </ul>
+        </MudPaper>
+    }
+
+    </ChildContent>
+    <Footer>
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="TestConnectionAsync"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in the Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    private S7SourceWizardModel _model = new();
+    private bool _hydrated;
+    private bool? _lastNotifiedValid;
+
+    // Routing UI state (Add mode only)
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    // Loaded context (Add mode)
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private bool _busy;
+
+    // Probe + live-validation state (wizard-local, never persisted).
+    private S7ProbeResultDto? _connProbe;
+    private S7ProbeResultDto? _readProbe;
+    private int? _selectedTagIndex;
+    private readonly Dictionary<S7TagWizardRow, S7AddressValidationResult> _addrValidation = new();
+    private readonly HashSet<S7TagWizardRow> _moreExpanded = new();
+
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "s7.instance-id.duplicate", "InstanceId", _instanceIdError, "#field-instance-id"));
+        }
+
+        // Whole-model validation: identity + per-row errors + duplicate names.
+        var result = _model.Validate();
+        foreach (var issue in result.Errors)
+        {
+            // Skip the bare InstanceId/Host required errors when the field is
+            // simply not filled yet — the banner would be noisy on first load.
+            messages.Add(new WizardValidationMessage(issue.Code, issue.Path ?? string.Empty, issue.Message, null));
+        }
+
+        return messages;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = S7SourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return;
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different source id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+
+        if (!_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void AddTag() => _model.Tags.Add(new S7TagWizardRow());
+
+    // ── CSV import ─────────────────────────────────────────────────────
+    private const long MaxCsvBytes = 5 * 1024 * 1024;
+    private bool _csvDialogOpen;
+    private S7TagCsvImportResult? _csvResult;
+    private string _csvMergeMode = "add";
+
+    private void OpenCsvDialog()
+    {
+        _csvResult = null;
+        _csvMergeMode = "add";
+        _csvDialogOpen = true;
+    }
+
+    private void CloseCsvDialog() => _csvDialogOpen = false;
+
+    private async Task OnCsvFilePickedAsync(IBrowserFile file)
+    {
+        if (file is null) return;
+        try
+        {
+            await using var stream = file.OpenReadStream(MaxCsvBytes);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            _csvResult = S7TagCsvImporter.Import(new StringReader(content));
+        }
+        catch (Exception ex)
+        {
+            _csvResult = null;
+            if (!EmbeddedMode) Snackbar.Add($"Could not read CSV: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string CsvConfirmLabel()
+    {
+        var n = _csvResult?.Tags.Count ?? 0;
+        if (_model.Tags.Count == 0) return $"Import {n} tags";
+        return _csvMergeMode == "replace" ? $"Replace with {n} tags" : $"Add {n} tags";
+    }
+
+    private void ApplyCsvImport()
+    {
+        if (_csvResult is not { IsSuccess: true } result) return;
+
+        if (_model.Tags.Count > 0 && _csvMergeMode == "replace")
+        {
+            _model.Tags.Clear();
+            _addrValidation.Clear();
+            _moreExpanded.Clear();
+            _selectedTagIndex = null;
+        }
+
+        foreach (var tag in result.Tags)
+        {
+            _model.Tags.Add(S7SourceWizardModel.ToWizardRow(tag));
+        }
+
+        _csvDialogOpen = false;
+        _csvResult = null;
+        if (!EmbeddedMode)
+        {
+            Snackbar.Add($"Imported {result.Tags.Count} tag(s).", Severity.Success);
+        }
+    }
+
+    private void RemoveTag(int index)
+    {
+        if (index < 0 || index >= _model.Tags.Count) return;
+        var row = _model.Tags[index];
+        _addrValidation.Remove(row);
+        _moreExpanded.Remove(row);
+        _model.Tags.RemoveAt(index);
+        if (_selectedTagIndex == index) _selectedTagIndex = null;
+        else if (_selectedTagIndex > index) _selectedTagIndex--;
+    }
+
+    private void SelectTag(int index) => _selectedTagIndex = index;
+
+    private void ToggleMore(S7TagWizardRow row)
+    {
+        if (!_moreExpanded.Remove(row)) _moreExpanded.Add(row);
+    }
+
+    /// <summary>
+    /// Debounced live address validation. Calls the parser-only endpoint and
+    /// stores the result for the inline preview + datatype suggestion. Datatype
+    /// is auto-filled ONLY while still untouched (null) — never overwriting a
+    /// manual choice (Q2: suggest, never coerce).
+    /// </summary>
+    private async Task OnAddressChangedAsync(S7TagWizardRow row)
+    {
+        _readProbe = null;
+        if (string.IsNullOrWhiteSpace(row.Address))
+        {
+            _addrValidation.Remove(row);
+            return;
+        }
+        try
+        {
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/validate/s7-address",
+                new { address = row.Address, datatype = row.Datatype });
+            var result = await resp.Content.ReadFromJsonAsync<S7AddressValidationResult>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (result is not null)
+            {
+                _addrValidation[row] = result;
+                if (result.IsValid && string.IsNullOrWhiteSpace(row.Datatype)
+                    && result.SuggestedDatatypes.Count > 0)
+                {
+                    row.Datatype = result.SuggestedDatatypes[0];
+                }
+            }
+        }
+        catch
+        {
+            _addrValidation.Remove(row);
+        }
+    }
+
+    /// <summary>True when <paramref name="datatype"/> would be rejected by the
+    /// scan planner for this row's address (so the dropdown option is disabled).</summary>
+    private static bool DatatypeRejected(S7TagWizardRow row, string datatype)
+    {
+        if (string.IsNullOrWhiteSpace(row.Address)) return false;
+        S7Address address;
+        try { address = S7AddressParser.Parse(row.Address); }
+        catch (ArgumentException) { return false; }
+        if (address.Area is S7MemoryArea.Timer or S7MemoryArea.Counter) return false;
+
+        // String declares its own length and is width-exempt.
+        if (string.Equals(datatype, "String", StringComparison.OrdinalIgnoreCase))
+        {
+            return S7TagCompatibility.Check(address, new S7DatatypeSpec(S7Datatype.String, 1)).BlocksSave;
+        }
+        var spec = S7DatatypeParser.Parse(datatype, defaultSpec: default);
+        return S7TagCompatibility.Check(address, spec).BlocksSave;
+    }
+
+    private static RenderFragment RenderStatus(int errorCount, S7CompatibilityVerdict? verdict) => builder =>
+    {
+        string text; string color;
+        if (errorCount > 0) { text = "✗ Error"; color = "var(--mud-palette-error)"; }
+        else if (verdict is { Severity: S7CompatibilitySeverity.Warning }) { text = "⚠ Warning"; color = "var(--mud-palette-warning)"; }
+        else { text = "✓ Valid"; color = "var(--mud-palette-success)"; }
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "style", $"color:{color};font-weight:600;font-size:12px;");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private bool CanTestRead()
+    {
+        if (_busy || _selectedTagIndex is not { } i || i < 0 || i >= _model.Tags.Count) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        return S7SourceWizardModel.ValidateTag(_model.Tags[i]).Count == 0;
+    }
+
+    private string TestReadHint()
+    {
+        if (_selectedTagIndex is not { } i || i < 0 || i >= _model.Tags.Count)
+        {
+            return "Select a tag row to test one read.";
+        }
+        var row = _model.Tags[i];
+        if (S7SourceWizardModel.ValidateTag(row).Count > 0)
+        {
+            return "The selected row has errors — fix them to test it.";
+        }
+        return $"Reads {row.Address} ({row.Name}) once, read-only — does not save.";
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return _model.Validate().IsValid;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        if (_lastNotifiedValid == isValid) return;
+        _lastNotifiedValid = isValid;
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; _lastNotifiedValid = false; }
+        }
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+    private async Task TestConnectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Host)) return;
+        _busy = true;
+        _connProbe = null;
+        try
+        {
+            var request = new
+            {
+                host = _model.Host,
+                port = _model.Port,
+                rack = _model.Rack,
+                slot = _model.Slot,
+                connectionType = _model.ConnectionType,
+                connectTimeoutMs = _model.ConnectTimeoutMs,
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/s7/test-connection", request);
+            _connProbe = await resp.Content.ReadFromJsonAsync<S7ProbeResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (_connProbe is null && !EmbeddedMode)
+            {
+                Snackbar.Add($"Test connection failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test connection failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task TestReadAsync()
+    {
+        if (!CanTestRead() || _selectedTagIndex is not { } i) return;
+        var row = _model.Tags[i];
+        _busy = true;
+        _readProbe = null;
+        try
+        {
+            var datatype = string.Equals(row.Datatype, "String", StringComparison.OrdinalIgnoreCase)
+                           && row.StringLength is { } len && len > 0
+                ? $"string[{len}]"
+                : row.Datatype;
+            var request = new
+            {
+                host = _model.Host,
+                port = _model.Port,
+                rack = _model.Rack,
+                slot = _model.Slot,
+                connectionType = _model.ConnectionType,
+                connectTimeoutMs = _model.ConnectTimeoutMs,
+                address = row.Address,
+                datatype,
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/s7/test-read", request);
+            _readProbe = await resp.Content.ReadFromJsonAsync<S7ProbeResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Test read failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String && ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Save failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status ? $" (reload: {status})" : string.Empty;
+            Snackbar.Add($"Source '{updatedSource.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,222 @@
+# ============================================================================
+# Docker Compose — Elpis EdgeConnect + Mosquitto MQTT Broker
+# ============================================================================
+#
+# WHAT THIS DEPLOYS:
+#   1. mqtt-broker:   Eclipse Mosquitto MQTT broker (message bus)
+#   2. edgeconnect:  The Elpis EdgeConnect service (data collector + publisher)
+#
+# STARTUP ORDER:
+#   1. Mosquitto starts first and exposes ports 1883 (plaintext), 8883 (TLS), 9001 (WS)
+#   2. Docker health check verifies Mosquitto is accepting connections
+#   3. Only after Mosquitto is healthy, EdgeConnect starts
+#   4. The bridge connects to the broker, then begins polling CNC machines
+#
+# NETWORKING:
+#   The 'factory-net' bridge network allows the bridge container to reach
+#   CNC machines on the 192.168.1.0/24 subnet. Adjust the subnet to match
+#   your factory floor network.
+#
+# QUICK START:
+#   1. Set secrets:    export EDGECONNECT_ENCRYPTION_KEY="<your-key>"
+#   2. Start:          docker-compose up -d
+#   3. View logs:      docker-compose logs -f edgeconnect
+#   4. Stop:           docker-compose down
+#
+# PRODUCTION CHECKLIST:
+#   □ Place TLS certs in ./certs/ (ca.crt, server.crt, server.key)
+#   □ Set EDGECONNECT_ENCRYPTION_KEY in the host environment
+#   □ Set CNC machine passwords (env vars or encrypted values)
+#   □ Create Mosquitto password file: mosquitto_passwd -c passwords.txt bridge_user
+#   □ Disable port 1883 (plaintext) — use only 8883 (TLS) in production
+#   □ Review config/appsettings.Production.json for your machine fleet
+# ============================================================================
+
+version: '3.8'
+
+services:
+
+  # ==========================================================================
+  # MQTT BROKER — Eclipse Mosquitto
+  # ==========================================================================
+  # Mosquitto is a lightweight, open-source MQTT broker that handles message
+  # routing between the bridge (publisher) and downstream consumers (SCADA,
+  # dashboards, historians). It queues messages, manages QoS guarantees,
+  # and handles Last Will Testament for disconnection detection.
+  #
+  # WHY MOSQUITTO:
+  #   - Lightweight: <10MB RAM for moderate loads (~1000 msgs/sec)
+  #   - Battle-tested: Industry standard for IIoT/SCADA applications
+  #   - Supports TLS, auth, persistent sessions, retained messages
+  #   - Simple configuration via a single .conf file
+  #
+  # ALTERNATIVES: HiveMQ, EMQX, VerneMQ (for higher throughput or clustering)
+  # ==========================================================================
+  mqtt-broker:
+    # Official Eclipse Mosquitto 2.0 Docker image from Docker Hub
+    image: eclipse-mosquitto:2.0
+    
+    # Explicit container name for easy reference in logs and commands:
+    #   docker logs edgeconnect-mqtt-broker
+    #   docker exec -it edgeconnect-mqtt-broker mosquitto_sub -t '#' -v
+    container_name: edgeconnect-mqtt-broker
+    
+    # Restart policy: always restart unless manually stopped with 'docker stop'.
+    # This ensures the broker recovers automatically from crashes or host reboots.
+    # On crash: Docker waits 1s, 2s, 4s, 8s... (exponential backoff) before restarting.
+    restart: unless-stopped
+    
+    # ── Exposed ports ──
+    # Map host ports to container ports so external clients can connect.
+    ports:
+      # Port 1883: Standard MQTT (UNENCRYPTED — for development ONLY)
+      # WARNING: Disable this in production! All credentials are sent in plaintext.
+      # Remove or comment out this line for production deployments.
+      - "1883:1883"
+      
+      # Port 8883: MQTT over TLS (ENCRYPTED — use this in production)
+      # Requires TLS certificates in ./certs/ (ca.crt, server.crt, server.key)
+      - "8883:8883"
+      
+      # Port 9001: MQTT over WebSocket (optional — for browser-based dashboards)
+      # Allows MQTT.js clients in web browsers to subscribe to machine data
+      - "9001:9001"
+    
+    # ── Volume mounts ──
+    # Mount host directories into the container for persistent storage
+    # and configuration.
+    volumes:
+      # Mosquitto configuration file (mosquitto.conf)
+      # Contains listener config, auth settings, TLS paths, performance tuning
+      - ./mosquitto/config:/mosquitto/config
+      
+      # Persistent message storage (retained messages, queued QoS 1/2 messages)
+      # Without this, all retained messages and pending deliveries are lost on restart
+      - ./mosquitto/data:/mosquitto/data
+      
+      # Mosquitto log files
+      # Useful for debugging connection issues, auth failures, and protocol errors
+      - ./mosquitto/log:/mosquitto/log
+      
+      # TLS certificates (read-only mount for security)
+      # Contains: ca.crt (CA certificate), server.crt (broker cert), server.key (private key)
+      - ./certs:/mosquitto/certs:ro
+    
+    # ── Health check ──
+    # Verifies the broker is accepting MQTT connections by subscribing to the
+    # $SYS topic tree (built-in broker statistics). If this succeeds, the
+    # broker is healthy and ready for clients.
+    #
+    # Flags:
+    #   -t "$$SYS/#"  : Subscribe to system topics (the $$ escapes the $ for YAML)
+    #   -C 1          : Exit after receiving 1 message (don't stay subscribed)
+    #   -i healthcheck: Use "healthcheck" as the client ID
+    #   -W 3          : Wait up to 3 seconds for a message before timing out
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 30s     # Check every 30 seconds
+      timeout: 10s      # Consider unhealthy if check takes >10 seconds
+      retries: 3        # Mark unhealthy after 3 consecutive failures
+
+  # ==========================================================================
+  # ELPIS EDGECONNECT — Industrial Edge Integration Platform
+  # ==========================================================================
+  # EdgeConnect polls CNC machines via multiple protocols (FOCAS2, MT-LINKi,
+  # MTConnect, Brother HTTP) and publishes collected data to the MQTT broker.
+  # It runs as a .NET 8 Worker Service with automatic reconnection, retry
+  # logic, and circuit breaker patterns.
+  #
+  # RESOURCE USAGE (approximate, depends on machine count and poll frequency):
+  #   - 100 machines at 1Hz:   ~50MB RAM, 2-5% CPU
+  #   - 500 machines at 1Hz:   ~150MB RAM, 10-15% CPU
+  #   - 1000 machines at 1Hz:  Scale horizontally (multiple bridge instances)
+  # ==========================================================================
+  edgeconnect:
+    # Build the bridge from the Dockerfile in the current directory
+    build:
+      context: .              # Build context = repository root
+      dockerfile: Dockerfile  # Use the multi-stage Dockerfile
+    
+    # Explicit container name for easy reference
+    container_name: elpis-edgeconnect
+    
+    # Always restart unless manually stopped
+    restart: unless-stopped
+    
+    # ── Dependency: Wait for MQTT broker to be healthy ──
+    # The bridge needs the MQTT broker to be fully operational before starting.
+    # 'condition: service_healthy' uses the broker's health check defined above.
+    # Without this, the bridge might start and fail to connect, requiring retries.
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+    
+    # ── Exposed ports ──
+    ports:
+      # Port 8080: Health check endpoint for the bridge itself
+      # Used by Docker/Kubernetes to verify the bridge is running:
+      #   curl http://localhost:8080/health
+      # Returns HTTP 200 if healthy, 503 if unhealthy
+      - "8080:8080"
+    
+    # ── Volume mounts ──
+    volumes:
+      # Production configuration (read-only)
+      # Contains: machine list, MQTT settings, performance tuning
+      # Mounted as read-only (:ro) because the app should never modify config
+      - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro
+      
+      # TLS certificates (read-only)
+      # Contains: CA cert for verifying the broker, client cert for mTLS (optional)
+      - ./certs:/app/certs:ro
+      
+      # Application logs (writable)
+      # Rolling log files with daily rotation and 31-day retention
+      - ./logs:/app/logs
+    
+    # ── Environment variables ──
+    # These override values from appsettings.json and appsettings.Production.json.
+    # Environment variables have the HIGHEST precedence in the configuration stack.
+    environment:
+      # DOTNET_ENVIRONMENT: Tells .NET which environment-specific config to load.
+      # "Production" loads appsettings.Production.json with production-tuned settings
+      # (higher concurrency, larger channel, broker hostname = "mqtt-broker", etc.)
+      - DOTNET_ENVIRONMENT=Production
+      
+      # EDGECONNECT_ENCRYPTION_KEY: AES-256 key for decrypting passwords in config.
+      # The ${...} syntax reads from the HOST's environment variable.
+      # Set it on the host: export EDGECONNECT_ENCRYPTION_KEY="<base64-key>"
+      # Or use a .env file: echo 'EDGECONNECT_ENCRYPTION_KEY=<key>' > .env
+      - EDGECONNECT_ENCRYPTION_KEY=${EDGECONNECT_ENCRYPTION_KEY}
+    
+    # ── Networks ──
+    # The bridge connects to TWO networks:
+    #   1. factory-net:  Reaches CNC machines on the factory floor
+    #   2. default:      Reaches the mqtt-broker container (Docker internal DNS)
+    networks:
+      - factory-net  # For CNC machine access (192.168.1.0/24)
+      - default      # For mqtt-broker access (Docker DNS: "mqtt-broker" → container IP)
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  factory-net:
+    # Bridge to factory floor network where CNC machines live.
+    #
+    # IMPORTANT: Adjust the subnet to match your factory network!
+    #   - If your CNC machines are on 10.0.1.0/24, change this accordingly
+    #   - The Docker bridge network routes traffic between the container
+    #     and the host's network interfaces
+    #   - On production servers, you may need macvlan or host networking
+    #     instead of bridge networking for proper factory floor access
+    #
+    # ALTERNATIVE APPROACHES:
+    #   - Host networking (network_mode: host): Container shares host's network stack.
+    #     Simplest, but loses container network isolation.
+    #   - macvlan: Gives the container its own IP on the physical network.
+    #     Best for production, but requires host network configuration.
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24  # ← Change to match your factory network

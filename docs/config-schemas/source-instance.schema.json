@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "SourceInstanceConfig",
+  "type": "object",
+  "description": "JSON DTO for a single source connector instance — one configured use of\na protocol module against one physical device. Distinct from the runtime\nSourceConfiguration which adapter implementations\nreceive after Core has loaded and validated the JSON.",
+  "required": [
+    "InstanceId",
+    "ProtocolName",
+    "DeviceId"
+  ],
+  "properties": {
+    "InstanceId": {
+      "type": "string",
+      "description": "Stable identifier for this source connector instance (e.g.,\n\"focas-jyoti17\"). Lowercase alphanumeric with hyphens, must\nstart with a letter or digit.",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "ProtocolName": {
+      "type": "string",
+      "description": "Protocol module name (e.g., \"focas2\", \"mtlinki\",\n\"modbus\"). Lowercase, must match the adapter's declared\nProtocolName.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "Enabled": {
+      "type": "boolean",
+      "description": "True if this instance is enabled in the running gateway. Default true."
+    },
+    "DeviceId": {
+      "type": "string",
+      "description": "Identifier of the physical device behind this source (e.g.,\n\"Jyoti17CNC\").",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "DeviceName": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Optional human-readable device name.",
+      "maxLength": 256,
+      "minLength": 0
+    },
+    "Connection": {
+      "description": "Protocol-specific connection block. Held opaquely as JsonElement\nbecause the schema differs per protocol (FOCAS2 has IpAddress+Port,\nModbus has UnitId, MQTT has BrokerHost+ClientId, etc.). The protocol\nadapter is responsible for parsing this into its own typed connection\nrecord during InitializeAsync.",
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Polling": {
+      "description": "Polling parameters. Optional; defaults supplied by\nPollingSettings when omitted.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/PollingSettings"
+        }
+      ]
+    },
+    "Tags": {
+      "type": "array",
+      "description": "Free-form tags attached to this instance for filtering and routing.\nDefault empty.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "PollingSettings": {
+      "type": "object",
+      "description": "Polling parameters for a source connector instance. Used by the routing\nengine (Phase 1 C3) to drive periodic PollAsync\ncalls.",
+      "properties": {
+        "IntervalMs": {
+          "type": "integer",
+          "description": "Polling interval in milliseconds. Default 1000 ms per blueprint §8.1 sample.\nAdapters may impose protocol-specific minimums (see §18.6) — for example,\nFOCAS2 should not be polled faster than ~3-5 seconds in production.",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 1.0
+        },
+        "MaxConsecutiveErrors": {
+          "type": "integer",
+          "description": "Number of consecutive polling failures after which the source is\nauto-disabled and marked Failed.\nDefault 3 per blueprint §8.1 sample. 0 disables the auto-disable.",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

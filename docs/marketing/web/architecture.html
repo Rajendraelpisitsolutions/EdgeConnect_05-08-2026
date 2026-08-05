@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/architecture.html
+  Purpose:     Static mockup of the /architecture page — the cross-pillar
+               technical walkthrough of the Industrial Intelligence Stack.
+               Faithful to page-architecture-spec-v1.md (v2.2 LOCKED). 9
+               sections built around the rev3 4-column / stacked-peer diagram.
+               Reuses styles.css + standardized nav/footer.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Honesty notes:
+    - The spec calls for an INTERACTIVE ArchitecturePanel (hover/zoom/click,
+      motion.architecture 240ms). This is a STATIC mockup: the diagram is a
+      clean full-width inline SVG of the rev3 4-column layout, and the 8
+      annotations are rendered as labeled cards BELOW the diagram, grouped by
+      their 3 zoom levels. Progressive hover/zoom/click-to-focus
+      interactivity is an engineering deliverable, called out in-page.
+    - Protocol coverage TODAY: FOCAS2 / MTConnect / Brother HTTP / Modbus TCP
+      / OPC UA Client / S7. MT-LINKi REST is ROADMAP only.
+    - EdgeConnect runs on Windows today; Linux on the roadmap.
+    - EdgeConnect & Acquisition are PEERS, not parent/child; either deploys
+      standalone; cooperation is OPTIONAL. mDAQ/mTracker/VAS/E-IDOS publish
+      to EREMOS V2 directly.
+    - No customer names, no competitor names, no fabricated metrics, no cert
+      claims, no named historian/data-lake vendors (per-deployment framing).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture — the Industrial Intelligence Stack · Elpis</title>
+  <meta name="description" content="How the 5 capability pillars compose into one operational data layer. Column structure, deployment shapes, SCADA coexistence, store-and-forward.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/architecture">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Architecture">
+  <meta property="og:description" content="How the 5 capability pillars compose into one operational data layer. Column structure, deployment shapes, SCADA coexistence, store-and-forward.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/architecture">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Architecture">
+  <meta name="twitter:description" content="How the 5 capability pillars compose into one operational data layer. Column structure, deployment shapes, SCADA coexistence, store-and-forward.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+
+    /* §2 what-you'll-learn strip */
+    .learn-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4) var(--space-6); margin-top: var(--space-5); }
+    .learn-grid li { list-style:none; padding-left: var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-base); line-height: var(--line-body); }
+    .learn-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .learn-grid strong { color: var(--color-text-heading-light); }
+    @media (max-width: 640px) { .learn-grid { grid-template-columns: 1fr; } }
+
+    .diagram-caption-top { font-size: var(--size-base); color: var(--color-text-body-light); max-width: 78ch; margin-top: var(--space-3); }
+    .diagram-caption-bottom { text-align:center; color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 86ch; margin: var(--space-5) auto 0; }
+    .interactivity-note { margin-top: var(--space-5); padding: var(--space-4) var(--space-5); border-left:3px solid var(--color-brand-teal); background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 86ch; }
+    .interactivity-note p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .interactivity-note strong { color: var(--color-text-heading-light); }
+
+    /* annotation cards grouped by zoom level */
+    .annot-group { margin-top: var(--space-7); }
+    .annot-group__lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); text-transform:uppercase; }
+    .annot-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: var(--space-5); margin-top: var(--space-4); }
+    .annot-card { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .annot-card .eyebrow { display:block; margin-bottom: var(--space-2); font-size: var(--size-xs); }
+    .annot-card h4 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .annot-card p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+
+    /* §3 four columns */
+    .col-walk { display:grid; grid-template-columns: 1fr; gap: var(--space-7); margin-top: var(--space-6); }
+    .col-block h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .col-block p { color: var(--color-text-body-light); font-size: var(--size-base); line-height: var(--line-body); max-width: 80ch; }
+    .col-block p + p { margin-top: var(--space-4); }
+    .col-block strong { color: var(--color-text-heading-light); }
+    .col-tag { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+
+    /* §4 peer architecture */
+    .rhythm-lead { font-size: var(--size-lg); font-style:italic; color: var(--color-text-heading-light); margin-top: var(--space-2); }
+    .entry-strip { margin: var(--space-4) 0; font-size: var(--size-sm); color: var(--color-brand-teal); font-weight: var(--weight-semibold); letter-spacing: 0.18em; text-transform:uppercase; }
+    .peer-callout { border-left:4px solid var(--color-brand-teal); padding: var(--space-5) var(--space-6); background: var(--color-surface-light-hero); border-radius:0 10px 10px 0; max-width: 84ch; }
+    .peer-callout p { color: var(--color-text-body-light); font-size: var(--size-base); line-height: var(--line-body); }
+    .peer-callout p + p { margin-top: var(--space-4); }
+    .peer-callout strong { color: var(--color-text-heading-light); }
+    .peer-subline { margin-top: var(--space-5); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 84ch; }
+
+    /* §5 deployment paths grid */
+    .deploy-grid { display:grid; grid-template-columns: 180px repeat(3, 1fr); gap:0; margin-top: var(--space-6); border:1px solid var(--color-border-light-subtle); border-radius:10px; overflow:hidden; }
+    .deploy-grid > div { padding: var(--space-4) var(--space-4); border-bottom:1px solid var(--color-border-light-subtle); font-size: var(--size-sm); line-height: var(--line-body); color: var(--color-text-muted-light); }
+    .deploy-grid .dg-rowlbl { font-weight: var(--weight-semibold); color: var(--color-text-heading-light); background: var(--color-surface-light-secondary); }
+    .deploy-grid .dg-colhead { font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); font-size: var(--size-base); }
+    .deploy-grid .dg-corner { background: var(--color-surface-light-hero); }
+    /* "When it fits" row visual emphasis */
+    .deploy-grid .dg-fit { background:#EAF7FD; color: var(--color-text-heading-light); font-size: var(--size-base); font-weight: var(--weight-semibold); border-top:2px solid var(--color-brand-teal); border-bottom:2px solid var(--color-brand-teal); }
+    .deploy-grid .dg-fit-lbl { background: var(--color-brand-teal); color: var(--color-bg-deep); }
+    .deploy-fitnote { margin-top: var(--space-3); color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); text-transform:uppercase; }
+    .deploy-body { margin-top: var(--space-6); color: var(--color-text-body-light); font-size: var(--size-base); line-height: var(--line-body); max-width: 84ch; }
+    @media (max-width: 760px) {
+      .deploy-grid { grid-template-columns: 1fr; }
+      .deploy-grid .dg-corner { display:none; }
+    }
+
+    /* §6 integration patterns */
+    .pat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(330px,1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+    .pat-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background:#fff; }
+    .pat-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .pat-card p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .pat-card .eyebrow { display:block; margin-bottom: var(--space-2); font-size: var(--size-xs); }
+    .pat-body { margin-top: var(--space-6); color: var(--color-text-body-light); font-size: var(--size-base); line-height: var(--line-body); max-width: 84ch; }
+
+    /* §7 faq */
+    .faq { margin-top: var(--space-6); max-width: 84ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §8 cross-lens */
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">THE INDUSTRIAL INTELLIGENCE STACK</span>
+        <h1 id="hero-heading" class="hero__headline">The architecture of an industrial intelligence ecosystem — how the 5 pillars compose into one operational data layer.</h1>
+        <p class="hero__subhead" style="max-width:60ch;">Four columns. Two peer entry points into the intelligence layer. Three deployment shapes. Designed to sit beside the SCADA / MES / historian infrastructure you already run — not to replace it.</p>
+        <div class="cta-group">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Talk%20to%20an%20engineer" class="btn btn--secondary btn--lg">Talk to an engineer</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 THE INDUSTRIAL INTELLIGENCE STACK — INTERACTIVE DIAGRAM (centerpiece) -->
+    <section class="section" data-mode="light" id="architecture" aria-labelledby="stack-heading">
+      <div class="container">
+
+        <!-- what-you'll-learn strip -->
+        <div class="section-head">
+          <span class="eyebrow">WHAT THIS PAGE EXPLAINS</span>
+        </div>
+        <ul class="learn-grid">
+          <li><strong>What runs where</strong> — the column structure of the Industrial Intelligence Stack</li>
+          <li><strong>Which deployment path fits</strong> — your floor topology, per plant</li>
+          <li><strong>How Elpis coexists with SCADA / MES / historian</strong> — sits beside, doesn't replace</li>
+          <li><strong>What changes when the network drops</strong> — store-and-forward + three-way diagnostics</li>
+        </ul>
+
+        <!-- the stack -->
+        <div class="section-head" style="margin-top:var(--space-8);">
+          <span class="eyebrow">THE STACK</span>
+          <h2 id="stack-heading" class="section-title" style="margin-top:var(--space-3);">One operational data layer with two peer entry points.</h2>
+          <p class="diagram-caption-top">One operational data layer with two peer entry points. Hover any column to inspect what runs there. Click a column to zoom in.</p>
+        </div>
+
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 300" width="100%" role="img" aria-label="Four-column Industrial Intelligence Stack: Floor (existing PLCs, controllers, sensors) feeds Column 2, which holds two stacked peers — EdgeConnect on top and Acquisition (mDAQ, mTracker, VAS, E-IDOS) on the bottom — connected by a bi-directional optional peer-cooperation arrow. Column 2 feeds EREMOS V2, which feeds Your Enterprise (SCADA, MES, historian, BI). Flow is left-to-right; the internal peer link is bi-directional.">
+            <defs>
+              <marker id="arc-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker>
+              <marker id="arc-arr-start" markerWidth="9" markerHeight="9" refX="3" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6 Z" fill="#00A0E0"/></marker>
+              <marker id="arc-arr-end" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#00A0E0"/></marker>
+            </defs>
+
+            <!-- Col 1: Floor -->
+            <rect x="8" y="96" width="170" height="108" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="93" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">Floor</text>
+            <text x="93" y="150" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">existing PLCs · controllers</text>
+            <text x="93" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">sensors · instrumentation</text>
+            <text x="93" y="189" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0">CUSTOMER OWNS</text>
+
+            <!-- arrow Floor -> Col 2 (forks to both peers) -->
+            <line x1="182" y1="150" x2="236" y2="150" stroke="#5E6B78" stroke-width="2" marker-end="url(#arc-arr)"/>
+
+            <!-- Col 2: stacked peers group -->
+            <rect x="240" y="40" width="262" height="220" rx="12" fill="#F2FAFE" stroke="#00A0E0" stroke-width="2.5"/>
+            <text x="371" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" letter-spacing="1">COL 2 · ELPIS SHIPS</text>
+
+            <!-- EdgeConnect (top peer) -->
+            <rect x="258" y="74" width="226" height="62" rx="8" fill="#FFFFFF" stroke="#00A0E0" stroke-width="1.5"/>
+            <text x="371" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="14" fill="#0F1419">EdgeConnect</text>
+            <text x="371" y="116" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">protocol-agnostic edge runtime</text>
+            <text x="371" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#5E6B78">canonical CNC vocabulary</text>
+
+            <!-- bi-directional peer cooperation arrow -->
+            <line x1="371" y1="140" x2="371" y2="162" stroke="#00A0E0" stroke-width="2" marker-start="url(#arc-arr-start)" marker-end="url(#arc-arr-end)"/>
+            <text x="371" y="155" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#00A0E0" dx="64">PEER COOPERATION</text>
+            <text x="371" y="155" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#5E6B78" dx="64" dy="11">(optional)</text>
+
+            <!-- Acquisition (bottom peer) -->
+            <rect x="258" y="166" width="226" height="76" rx="8" fill="#FFFFFF" stroke="#00A0E0" stroke-width="1.5"/>
+            <text x="371" y="190" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="14" fill="#0F1419">Acquisition</text>
+            <text x="371" y="208" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">mDAQ · mTracker</text>
+            <text x="371" y="223" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">VAS · E-IDOS</text>
+
+            <!-- arrow Col 2 -> EREMOS V2 -->
+            <line x1="506" y1="150" x2="560" y2="150" stroke="#5E6B78" stroke-width="2" marker-end="url(#arc-arr)"/>
+            <text x="533" y="143" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#00A0E0">MQTT</text>
+
+            <!-- Col 3: EREMOS V2 -->
+            <rect x="564" y="96" width="186" height="108" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="657" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2</text>
+            <text x="657" y="150" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">OEE · alarms · incidents</text>
+            <text x="657" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">reports · multi-tenant</text>
+            <text x="657" y="189" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0">ELPIS SHIPS</text>
+
+            <!-- arrow EREMOS V2 -> Enterprise -->
+            <line x1="754" y1="150" x2="808" y2="150" stroke="#5E6B78" stroke-width="2" marker-end="url(#arc-arr)"/>
+
+            <!-- Col 4: Your Enterprise -->
+            <rect x="812" y="96" width="160" height="108" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="892" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="14" fill="#0F1419">Your Enterprise</text>
+            <text x="892" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">SCADA · MES</text>
+            <text x="892" y="162" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">historian · BI</text>
+            <text x="892" y="189" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0">CUSTOMER OWNS</text>
+          </svg>
+          <figcaption class="diagram-caption-bottom">Customer owns Col 1 (Floor) and Col 4 (Enterprise). Elpis ships Col 2 (EdgeConnect + Acquisition) and Col 3 (EREMOS V2). The flow is left-to-right; the peer relationship inside Col 2 is bi-directional when both are deployed.</figcaption>
+        </figure>
+
+        <div class="interactivity-note">
+          <p><strong>About this mockup.</strong> The shipping page renders this as an interactive panel — hover any column to inspect what runs there, and click a column to zoom into the Connectivity-Edge or Acquisition detail. Progressive hover / zoom / click-to-focus interactivity is an engineering deliverable; this static mockup presents the same eight inspection annotations as labeled cards below, grouped by their three zoom levels.</p>
+        </div>
+
+        <!-- ANNOTATIONS — grouped by zoom level -->
+        <div class="annot-group">
+          <span class="annot-group__lbl">Zoom level 1 — full diagram</span>
+          <div class="annot-grid">
+            <div class="annot-card">
+              <span class="eyebrow">EXISTING INFRASTRUCTURE</span>
+              <h4>Floor (Col 1)</h4>
+              <p>PLCs, controllers, sensors. Brownfield or greenfield. Elpis reads what's there — doesn't require ripping anything out.</p>
+            </div>
+            <div class="annot-card">
+              <span class="eyebrow">PROTOCOL-AGNOSTIC EDGE RUNTIME</span>
+              <h4>Col 2 — EdgeConnect peer</h4>
+              <p>Polls existing controllers over native protocols (FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, S7). Normalizes to canonical CNC vocabulary. MT-LINKi REST integration on the roadmap.</p>
+            </div>
+            <div class="annot-card">
+              <span class="eyebrow">DIRECT-SENSOR ACQUISITION</span>
+              <h4>Col 2 — Acquisition peer</h4>
+              <p>mDAQ + mTracker + VAS + E-IDOS. Direct sensor reads where no PLC exists, where the PLC is locked, or where adding a PLC layer would be more expensive than acquiring the signal directly.</p>
+            </div>
+            <div class="annot-card">
+              <span class="eyebrow">MULTI-TENANT ANALYTICS PLATFORM</span>
+              <h4>EREMOS V2 (Col 3)</h4>
+              <p>OEE, alarms, incidents, reports. Models the real PLANT → AREA → LINE → EQUIPMENT hierarchy. Per-tenant isolation by design.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="annot-group">
+          <span class="annot-group__lbl">Zoom level 2 — Connectivity-Edge</span>
+          <div class="annot-grid">
+            <div class="annot-card">
+              <span class="eyebrow">THREE-WAY DIAGNOSTICS</span>
+              <h4>EdgeConnect runtime</h4>
+              <p>Source / pipeline / sink health surfaced separately. Tells you immediately where the data path broke.</p>
+            </div>
+            <div class="annot-card">
+              <span class="eyebrow">DUAL-IDENTITY APPLIANCE</span>
+              <h4>Edge Gateway hardware</h4>
+              <p>Today: standalone PLC-to-cloud gateway. Tomorrow (when EdgeConnect Linux ships): the canonical EdgeConnect appliance. Same hardware, two lifecycles.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="annot-group">
+          <span class="annot-group__lbl">Zoom level 3 — Acquisition</span>
+          <div class="annot-grid">
+            <div class="annot-card">
+              <span class="eyebrow">FIELD-EDGE ACQUISITION</span>
+              <h4>mDAQ direct-sensor row</h4>
+              <p>4 analog channels (0-10 V or 4-20 mA), 16-bit, 860 S/s. 8 DI + 8 DO. Operates at remote and unmanned sites with battery + 4G.</p>
+            </div>
+            <div class="annot-card">
+              <span class="eyebrow">PEER COOPERATION</span>
+              <h4>EdgeConnect ↔ Acquisition arrow</h4>
+              <p>When both peers deploy, Acquisition can feed EdgeConnect for normalization / routing. EdgeConnect can orchestrate Acquisition devices. Optional, not required.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- §3 THE 4 COLUMNS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="cols-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHAT EACH COLUMN REPRESENTS</span>
+          <h2 id="cols-heading" class="section-title" style="margin-top:var(--space-3);">Four columns, left to right.</h2>
+        </div>
+        <div class="col-walk">
+          <div class="col-block">
+            <span class="col-tag">COL 1</span>
+            <h3>Floor</h3>
+            <p>Your existing PLCs, controllers, sensors, instrumentation, and machine assets. Mixed-vendor: FANUC + Brother + Mazak on one floor; Modbus PLCs beside Siemens S7 beside OPC UA endpoints. Greenfield installs where there's no controller yet, with the sensors connected directly. Brownfield retrofits where the controller is locked behind a vendor's proprietary boundary. The Floor is whatever you already have — Elpis reads it, doesn't replace it.</p>
+          </div>
+          <div class="col-block">
+            <span class="col-tag">COL 2</span>
+            <h3>EdgeConnect + Acquisition (the two peer entry points)</h3>
+            <p>The Elpis-owned layer where signals become canonical operational data. Two stacked peers that cooperate bi-directionally when both are deployed:</p>
+            <p><strong>EdgeConnect (top peer)</strong> — the protocol-agnostic edge runtime. Polls existing controllers over their native protocols, normalizes signals to canonical CNC vocabulary, publishes to EREMOS V2 via MQTT and exposes signals via OPC UA Server. Runs Windows today; Linux on the roadmap.</p>
+            <p><strong>Acquisition (bottom peer)</strong> — the direct-sensor hardware layer. mDAQ for general-purpose industrial signals (flow / pressure / temperature / vibration). mTracker for utilization + OEE telemetry on assets that don't speak a controller protocol. VAS + E-IDOS for vibration analysis and condition monitoring. Publishes to EREMOS V2 via MQTT / HTTPS direct.</p>
+            <p>See <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a> for the EdgeConnect / Edge Gateway capability story. See <a class="pillar-link" href="capabilities-data-acquisition">/capabilities/data-acquisition</a>, <a class="pillar-link" href="capabilities-asset-intelligence">/capabilities/asset-intelligence</a>, and <a class="pillar-link" href="capabilities-condition-monitoring">/capabilities/condition-monitoring</a> for the Acquisition-layer pillars.</p>
+          </div>
+          <div class="col-block">
+            <span class="col-tag">COL 3</span>
+            <h3>EREMOS V2</h3>
+            <p>The multi-tenant analytics platform that turns collected signals into operational decisions. Models the real industrial hierarchy — PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT. Computes OEE via Segments (RUNNING / PLANNED_STOP / UNPLANNED_STOP / IDLE / SETUP) on the signals delivered from Col 2. Persistent alarms with incident workflows. Per-tenant isolation by design.</p>
+            <p>See <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a> for the EREMOS V2 capability story.</p>
+          </div>
+          <div class="col-block">
+            <span class="col-tag">COL 4</span>
+            <h3>Your Enterprise</h3>
+            <p>Your existing SCADA, MES, historian, ERP, IT analytics, BI dashboards, data lake. EREMOS V2 publishes to your enterprise systems via the integration patterns described in the Integration patterns section below. Elpis doesn't replace these layers — it feeds them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 THE PEER ARCHITECTURE -->
+    <section class="section" data-mode="light" aria-labelledby="peer-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">THE PEER ARCHITECTURE — REV3 ARCHITECTURAL TRUTH</span>
+        </div>
+        <p class="rhythm-lead" id="peer-heading">Choose EdgeConnect. Choose Acquisition. Choose both.</p>
+        <p class="entry-strip">SOFTWARE ENTRY POINT · ACQUISITION ENTRY POINT · BOTH OPTIONAL</p>
+        <div class="peer-callout">
+          <p><strong>EdgeConnect and Acquisition are peers, not parent and child.</strong> They are two independent entry points into the intelligence layer. Customer deploys one, the other, or both.</p>
+          <p>Earlier architecture revisions implied that Acquisition feeds EdgeConnect, which then feeds EREMOS V2. That was wrong. mDAQ publishes to EREMOS V2 directly via MQTT / HTTPS — no EdgeConnect required. mTracker publishes directly. VAS / E-IDOS publish directly. EdgeConnect handles the existing-controller side of the floor; Acquisition handles the sensor-direct side.</p>
+          <p>When both peers are deployed, they cooperate bi-directionally: Acquisition signals can route through EdgeConnect for canonical normalization (useful when you want every signal — whether from a PLC or directly from a sensor — to arrive at EREMOS V2 in the same canonical shape). EdgeConnect can orchestrate Acquisition devices when deployed in the same plant (useful for device-management consolidation). <strong>Both forms of cooperation are optional. Neither is required.</strong></p>
+        </div>
+        <p class="peer-subline">This peer relationship is unique to the Elpis stack. It's why the same platform serves a CNC shop with mixed-vendor controllers, an oil-and-gas pipeline with no controllers at all, and a multi-site plant manager with both — without forcing any of them through a deployment shape that doesn't fit.</p>
+      </div>
+    </section>
+
+    <!-- §5 THREE DEPLOYMENT PATHS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="deploy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">THREE DEPLOYMENT SHAPES</span>
+          <h2 id="deploy-heading" class="section-title" style="margin-top:var(--space-3);">Choose the deployment path that fits each plant.</h2>
+        </div>
+        <p class="deploy-fitnote">↓ The "When it fits" row is the self-selection mechanism — find your floor, pick your path.</p>
+        <div class="deploy-grid">
+          <!-- header row -->
+          <div class="dg-corner"></div>
+          <div class="dg-colhead">Brownfield-direct</div>
+          <div class="dg-colhead">Elpis-acquisition</div>
+          <div class="dg-colhead">Hybrid (both peers)</div>
+          <!-- When it fits (emphasized) -->
+          <div class="dg-fit dg-fit-lbl">When it fits</div>
+          <div class="dg-fit">Existing PLCs and controllers expose the signals you need</div>
+          <div class="dg-fit">Greenfield install OR PLC-bypass retrofit where the controller doesn't expose the signal</div>
+          <div class="dg-fit">Mixed floor: some signals come from PLCs, some come from direct sensors</div>
+          <!-- What's deployed -->
+          <div class="dg-rowlbl">What's deployed</div>
+          <div>EdgeConnect runtime + EREMOS V2</div>
+          <div>Acquisition hardware (mDAQ / mTracker / VAS / E-IDOS) + EREMOS V2</div>
+          <div>Both peers + EREMOS V2</div>
+          <!-- What it reads -->
+          <div class="dg-rowlbl">What it reads</div>
+          <div>FOCAS2 / MTConnect / Brother HTTP / Modbus TCP / OPC UA Client / S7 (MT-LINKi REST on roadmap)</div>
+          <div>Direct sensor signals (4-20 mA, 0-10 V, 24 V DC, Modbus RTU, pulse / counter inputs)</div>
+          <div>Both: native protocols + direct sensors</div>
+          <!-- Hardware footprint -->
+          <div class="dg-rowlbl">Hardware footprint</div>
+          <div>Software-only or Edge Gateway appliance (per plant)</div>
+          <div>Acquisition hardware per signal type</div>
+          <div>Edge Gateway + Acquisition hardware as needed</div>
+          <!-- Typical examples -->
+          <div class="dg-rowlbl" style="border-bottom:none;">Typical examples</div>
+          <div style="border-bottom:none;">CNC machining floors, process manufacturing with existing PLCs, OEM machines exposing their controller telemetry</div>
+          <div style="border-bottom:none;">Pipeline pump stations, mining outposts, well heads, off-grid water infrastructure, retrofits where the PLC is locked</div>
+          <div style="border-bottom:none;">Multi-site plant operator standardizing across diverse floor topologies</div>
+        </div>
+        <p class="deploy-body">The deployment shape is decided per plant, not per fleet. A multi-site operator can run brownfield-direct in one plant, Elpis-acquisition-only in another, and hybrid in a third — all reporting into one EREMOS V2 instance with consistent canonical vocabulary, OEE definitions, and alarm semantics across every site.</p>
+      </div>
+    </section>
+
+    <!-- §6 INTEGRATION PATTERNS -->
+    <section class="section" data-mode="light" aria-labelledby="pat-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">HOW ELPIS SITS BESIDE WHAT YOU ALREADY RUN</span>
+          <h2 id="pat-heading" class="section-title" style="margin-top:var(--space-3);">Designed to feed your enterprise, not replace it.</h2>
+        </div>
+        <div class="pat-grid">
+          <div class="pat-card">
+            <span class="eyebrow">PATTERN A</span>
+            <h3>SCADA coexistence</h3>
+            <p>EdgeConnect publishes to MQTT and exposes signals via OPC UA Server. Your existing SCADA system can subscribe to either. Elpis doesn't take over operator HMIs, doesn't take over control logic, doesn't take over alarm acknowledgment in the SCADA. EREMOS V2 provides the cross-site analytics layer; SCADA stays where it is, with its existing operator interfaces and operational responsibilities.</p>
+          </div>
+          <div class="pat-card">
+            <span class="eyebrow">PATTERN B</span>
+            <h3>Historian integration</h3>
+            <p>EREMOS V2 supports historian and time-series integration patterns through customer-approved export, API, MQTT, or database integration paths. The customer's historian remains the long-term archive of record if that's the operational policy; EREMOS V2 surfaces analytics-grade views on top of the same signals. Specific historian destinations are validated per deployment during architecture review.</p>
+          </div>
+          <div class="pat-card">
+            <span class="eyebrow">PATTERN C</span>
+            <h3>MES / ERP integration</h3>
+            <p>EREMOS V2 exposes OEE rollups, downtime breakdowns, incident records, and shift reports via REST API. MES / ERP systems consume those rollups for production planning, maintenance scheduling, or service-hours billing. EREMOS V2 does not push transactions into MES / ERP — it provides the operational signal layer that those systems can read.</p>
+          </div>
+          <div class="pat-card">
+            <span class="eyebrow">PATTERN D</span>
+            <h3>IT analytics / data lake</h3>
+            <p>For organizations operating an enterprise data lake, EREMOS V2 can provide scoped operational exports through customer-approved integration paths — anonymized, scoped to operational signals, on a customer-controlled schedule. Specific cloud destinations are validated during architecture review.</p>
+          </div>
+        </div>
+        <p class="pat-body">Every integration pattern is opt-in per plant. No integration is required for Elpis to deliver value on the floor. The integration patterns become relevant when the customer wants Elpis's operational signals to inform their broader enterprise systems — which is typical for multi-site operators and uncommon for single-plant deployments.</p>
+      </div>
+    </section>
+
+    <!-- §7 COMMON QUESTIONS (inline FAQ) -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">COMMON QUESTIONS</span>
+          <h2 id="faq-heading" class="section-title" style="margin-top:var(--space-3);">What OT Architects ask before scoping an engagement.</h2>
+        </div>
+        <div class="faq">
+          <div class="faq__item">
+            <p class="faq__q">Q1. Does this replace our SCADA?</p>
+            <p class="faq__a">No. EdgeConnect and EREMOS V2 sit beside your SCADA — they don't take over operator HMIs, control logic, or alarm acknowledgment workflows. SCADA stays where it is; Elpis adds the cross-site analytics layer and consolidates protocol coverage so your enterprise systems receive consistent canonical signals regardless of which controller produced them.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q2. Can EdgeConnect run on Linux today?</p>
+            <p class="faq__a">Today, EdgeConnect ships as a Windows service. Linux is on the roadmap — when it ships, it will deploy on the Edge Gateway appliance as the canonical Linux footprint. For Linux-required customers today, the Edge Gateway hardware (standalone PLC-to-cloud gateway today, future canonical EdgeConnect appliance) handles the most common protocol bridging via its embedded Linux runtime.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q3. What happens when the network drops?</p>
+            <p class="faq__a">Per-route store-and-forward. Every signal queues at the source with its quality code preserved. When connectivity returns, signals replay in source order — no lost cycles, no manual recovery step. Three-way diagnostics (source / pipeline / sink) surface immediately during the outage so you can see exactly which path was affected.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q4. How do we integrate with our existing historian?</p>
+            <p class="faq__a">EREMOS V2 supports time-series database and enterprise historian integration patterns through customer-approved export, API, MQTT, or database integration paths. The historian stays the long-term archive of record if that's your operational policy. EREMOS V2 provides the analytics layer on top of the same signals — you don't have to choose between them. Specific historian destinations are validated per deployment during architecture review.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q5. What's the security boundary between OT and IT?</p>
+            <p class="faq__a">EdgeConnect runs entirely on the OT side. License validates locally — no phone-home. Cloud connectivity is opt-in, not required. Plants on isolated OT VLANs install the same way as plants with internet access. Hash-chained configuration audit captures every change with actor identity and timestamp — tamper-evident, replay-ready. Full operational trust posture: see <a class="pillar-link" href="security">/security</a>.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q6. Can one EdgeConnect deployment serve multiple plants?</p>
+            <p class="faq__a">No — that's an anti-pattern, and Elpis explicitly doesn't recommend it. Each plant runs its own EdgeConnect (typically on the Edge Gateway appliance) with a per-gateway UUID established at first start. Multi-site visibility comes from EREMOS V2 aggregating across the per-plant runtimes — not from a single multi-plant EdgeConnect runtime. This protects plant-level isolation, per-site identity, and offline operability per plant.</p>
+          </div>
+          <div class="faq__item">
+            <p class="faq__q">Q7. Where does EdgeConnect run?</p>
+            <p class="faq__a">EdgeConnect runs per plant, typically on customer-owned Windows infrastructure today, or on the Edge Gateway appliance when the Linux runtime ships. The deployment choice is made per plant based on network topology, security posture, and hardware preference. Single-plant deployments often start software-only on existing Windows infrastructure; multi-site standardizations typically converge on the Edge Gateway appliance once EdgeConnect Linux is available, for hardware consistency across sites. Either path is supported — neither is a prerequisite for the other.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">RELATED</span>
+          <h2 id="xlens-heading" class="section-title" style="font-size:var(--size-xl);font-weight:var(--weight-semibold);">Looking for the same thing from another angle?</h2>
+        </div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">What each pillar does, on its own.</span></a>
+          <a class="crosslens-card" href="solutions-edge-connectivity"><span class="eyebrow">SOLUTION · EDGE CONNECTIVITY</span><span class="cl-desc">The outcome-organized version of the brownfield-direct deployment path.</span></a>
+          <a class="crosslens-card" href="security"><span class="eyebrow">SECURITY</span><span class="cl-desc">The operational trust posture in detail.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §9 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your floor topology. We'll scope the architecture.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're scoping a brownfield retrofit, a greenfield install, a multi-site standardization, or a SCADA-coexistence integration — bring us the controller mix, sensor inventory, and existing-systems boundary. Architecture review runs against real protocols and real integration patterns, not slideware.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Talk%20to%20an%20engineer" class="btn btn--secondary btn--lg">Talk to an engineer</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

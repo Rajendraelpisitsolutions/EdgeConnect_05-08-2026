@@ -1,0 +1,320 @@
+@*
+    TagBrowseTreeView — shared lazy-loading tree picker for browse-capable
+    source-protocol wizards (OPC UA Client, EtherNet/IP, future MELSEC
+    with GX Works3 importer). Implements ADR-0015 Rules 9 + 10:
+      * Rule 9 — render BrowseResult as a tree picker with multi-select
+        checkboxes; lazy-expand via OnExpand callback to parent
+      * Rule 10 — "Add Selected" + "Add All Under" actions; the >500-
+        tag confirmation prompt is gated here and surfaced via the
+        OnAutoLoad callback's IsBulkOperation flag so the parent wizard
+        can render its own confirmation dialog (the tree view itself
+        doesn't show modals — that's wizard policy, not tree-view UX)
+
+    State (selection + expansion sets) lives on TagBrowseTreeViewModel
+    so it's testable as a POCO. The Razor is a thin renderer over the
+    model — same pattern as ReloadOutcomePanel, DestinationProtocolPicker.
+
+    Reference: docs/decisions/0015-wizard-contract.md Rule 9, Rule 10
+               docs/sessions/2026-05-28-multi-protocol-pilot-plan-v2.1.md §4.1, §4.2
+*@
+@using ElpisEdgeConnect.Core.Browse
+
+<div data-testid="tag-browse-tree-view" class="d-flex flex-column" style="gap:0.5rem;">
+    @if (Model.Root is null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+            <MudText Typo="Typo.body2">
+                Click <strong>Connect &amp; Browse</strong> to load the
+                device's address space.
+            </MudText>
+        </MudAlert>
+    }
+    else
+    {
+        @* Toolbar — counts + Add actions per Rule 10 *@
+        <div class="d-flex align-center" style="gap:0.75rem; flex-wrap:wrap;">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Selected: <strong>@Model.SelectedNodeIds.Count</strong>
+                <span style="opacity:0.6;"> of @_totalLeafCount available leaves</span>
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       Color="Color.Default"
+                       Disabled="@Model.HasNoSelection"
+                       OnClick="OnClearSelection"
+                       data-testid="tag-browse-clear-selection">
+                Clear selection
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Disabled="@(Model.HasNoSelection || _busy)"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OnAddSelectedAsync"
+                       data-testid="tag-browse-add-selected">
+                Add selected (@Model.SelectedNodeIds.Count)
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Disabled="@_busy"
+                       StartIcon="@Icons.Material.Filled.LibraryAdd"
+                       OnClick="OnAutoLoadAllAsync"
+                       data-testid="tag-browse-auto-load-all">
+                Auto-load all (@_totalLeafCount)
+            </MudButton>
+        </div>
+
+        @if (Result?.Truncated == true)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                <MudText Typo="Typo.body2">
+                    Browse result was truncated.
+                    @if (!string.IsNullOrWhiteSpace(Result?.DiagnosticMessage))
+                    {
+                        <span> @Result.DiagnosticMessage</span>
+                    }
+                </MudText>
+            </MudAlert>
+        }
+
+        @* Recursive tree render — model owns the expand/select sets *@
+        <div data-testid="tag-browse-tree" style="overflow:auto; max-height:480px; border:1px solid var(--mud-palette-lines-default); padding:0.5rem; border-radius:4px;">
+            @RenderNode(Model.Root, 0)
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The current browse result. When non-null, <see cref="Model"/>'s
+    /// Root is updated to <see cref="BrowseResult.Root"/> and the leaf
+    /// count is recomputed. Parent wizards re-render with a new
+    /// BrowseResult after each successful BrowseAsync call.
+    /// </summary>
+    [Parameter] public BrowseResult? Result { get; set; }
+
+    /// <summary>
+    /// Selection + expansion state. Parent constructs once and passes
+    /// in so the state survives re-renders.
+    /// </summary>
+    [Parameter] public TagBrowseTreeViewModel Model { get; set; } = new();
+
+    /// <summary>
+    /// Confirmation threshold for the auto-load action. Defaults to
+    /// 500 per ADR-0015 Rule 10. Set higher (or lower) on a per-wizard
+    /// basis where the operator's typical browse size warrants it.
+    /// </summary>
+    [Parameter] public int AutoLoadConfirmationThreshold { get; set; }
+        = TagBrowseTreeViewModel.DefaultAutoLoadConfirmationThreshold;
+
+    /// <summary>
+    /// Fired when a node's expander is clicked AND the node has
+    /// <see cref="BrowseNode.HasMoreChildren"/> = true (i.e., the
+    /// children need to be lazy-loaded). Parent calls the per-protocol
+    /// browse service and pushes a new <see cref="BrowseResult"/> back.
+    /// </summary>
+    [Parameter] public EventCallback<BrowseNode> OnLazyExpand { get; set; }
+
+    /// <summary>
+    /// Fired when the operator clicks "Add Selected". Parent receives
+    /// the resolved selected Variable nodes (Rule 10 — only Variables
+    /// become tags) and decides whether to confirm vs auto-commit.
+    /// </summary>
+    [Parameter] public EventCallback<TagBrowseAddRequest> OnAddSelected { get; set; }
+
+    /// <summary>
+    /// Fired when the operator clicks "Auto-load all". Parent receives
+    /// every leaf Variable reachable from the current Root. The
+    /// <see cref="TagBrowseAddRequest.IsBulkOperation"/> flag is set
+    /// true and <see cref="TagBrowseAddRequest.ExceedsConfirmationThreshold"/>
+    /// indicates whether the parent should prompt before committing.
+    /// </summary>
+    [Parameter] public EventCallback<TagBrowseAddRequest> OnAutoLoad { get; set; }
+
+    private int _totalLeafCount;
+
+    protected override void OnParametersSet()
+    {
+        if (Result?.Root is { } root)
+        {
+            Model.Root = root;
+            _totalLeafCount = TagBrowseTreeViewModel.CountLeavesUnder(root);
+        }
+    }
+
+    private RenderFragment RenderNode(BrowseNode node, int depth) => __builder =>
+    {
+        var isSelectable = node.Kind == BrowseNodeKind.Variable;
+        var hasChildren = node.Children.Count > 0 || node.HasMoreChildren;
+        var isExpanded = Model.IsExpanded(node.NodeId);
+        var indent = $"padding-left: {depth * 1.25}rem;";
+
+        <div data-testid="tag-browse-node"
+             data-node-id="@node.NodeId"
+             class="d-flex align-center"
+             style="@indent gap:0.25rem; padding-top:0.1rem; padding-bottom:0.1rem;">
+            @if (hasChildren)
+            {
+                <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                               Size="Size.Small"
+                               OnClick="@(() => ToggleExpansionAsync(node))"
+                               aria-label="@((isExpanded ? "Collapse " : "Expand ") + node.DisplayName)"
+                               data-testid="tag-browse-expand-toggle" />
+            }
+            else
+            {
+                <span style="width:1.5rem;"></span>
+            }
+            @if (isSelectable)
+            {
+                <MudCheckBox T="bool"
+                             Value="@Model.IsSelected(node.NodeId)"
+                             ValueChanged="@(v => OnNodeSelectionChanged(node.NodeId, v))"
+                             Dense="true"
+                             Color="Color.Primary"
+                             data-testid="tag-browse-select-checkbox" />
+            }
+            else
+            {
+                <MudIcon Icon="@IconFor(node.Kind)" Size="Size.Small" Color="Color.Secondary" />
+            }
+            <MudText Typo="Typo.body2" Style="font-family: var(--mud-typography-default-family);">
+                @node.DisplayName
+            </MudText>
+            @if (!string.IsNullOrWhiteSpace(node.DataType))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-1">
+                    @node.DataType
+                </MudText>
+            }
+        </div>
+
+        @if (isExpanded)
+        {
+            @foreach (var child in node.Children)
+            {
+                @RenderNode(child, depth + 1)
+            }
+        }
+    };
+
+    private static string IconFor(BrowseNodeKind kind) => kind switch
+    {
+        BrowseNodeKind.Folder => Icons.Material.Filled.Folder,
+        BrowseNodeKind.Object => Icons.Material.Filled.Layers,
+        BrowseNodeKind.Method => Icons.Material.Filled.PlayCircle,
+        BrowseNodeKind.Variable => Icons.Material.Filled.Label,
+        // View added in PR 5 amendment #2 (user lock 2026-05-29) — a
+        // semantically distinct navigation surface; not selectable as a
+        // tag (Rule 10), but operators see a different icon so the
+        // server's curated view structure is visible at a glance.
+        BrowseNodeKind.View => Icons.Material.Filled.Pageview,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+
+    private async Task ToggleExpansionAsync(BrowseNode node)
+    {
+        if (Model.IsExpanded(node.NodeId))
+        {
+            Model.CollapseNode(node.NodeId);
+            return;
+        }
+
+        Model.ExpandNode(node.NodeId);
+        // Lazy-load children if the protocol indicated more exist.
+        if (node.HasMoreChildren && OnLazyExpand.HasDelegate)
+        {
+            await OnLazyExpand.InvokeAsync(node);
+        }
+    }
+
+    private void OnNodeSelectionChanged(string nodeId, bool selected)
+    {
+        if (selected)
+        {
+            Model.SelectNode(nodeId);
+        }
+        else
+        {
+            Model.UnselectNode(nodeId);
+        }
+    }
+
+    // Guards both add paths: the parent's handler is async, and a second
+    // click before it returned re-entered and added every tag twice.
+    private bool _busy;
+
+    private void OnClearSelection() => Model.ClearSelection();
+
+    private async Task OnAddSelectedAsync()
+    {
+        if (_busy || Model.HasNoSelection) return;
+        var variables = Model.ResolveSelectedVariables();
+        if (variables.Count == 0) return;
+        if (OnAddSelected.HasDelegate)
+        {
+            _busy = true;
+            try
+            {
+                await OnAddSelected.InvokeAsync(new TagBrowseAddRequest
+                {
+                    Nodes = variables,
+                    IsBulkOperation = false,
+                    ExceedsConfirmationThreshold = variables.Count > AutoLoadConfirmationThreshold,
+                });
+            }
+            finally
+            {
+                _busy = false;
+            }
+        }
+    }
+
+    private async Task OnAutoLoadAllAsync()
+    {
+        if (_busy || Model.Root is null) return;
+        var leaves = TagBrowseTreeViewModel.EnumerateLeavesUnder(Model.Root).ToArray();
+        if (leaves.Length == 0) return;
+        if (OnAutoLoad.HasDelegate)
+        {
+            _busy = true;
+            try
+            {
+                await OnAutoLoad.InvokeAsync(new TagBrowseAddRequest
+                {
+                    Nodes = leaves,
+                    IsBulkOperation = true,
+                    ExceedsConfirmationThreshold = leaves.Length > AutoLoadConfirmationThreshold,
+                });
+            }
+            finally
+            {
+                _busy = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Payload for <c>OnAddSelected</c> / <c>OnAutoLoad</c> callbacks.
+    /// </summary>
+    public sealed class TagBrowseAddRequest
+    {
+        /// <summary>The Variable nodes to add as tags.</summary>
+        public required IReadOnlyList<BrowseNode> Nodes { get; init; }
+
+        /// <summary>
+        /// True when the operator clicked "Auto-load all" (bulk action).
+        /// False when "Add selected" (operator individually checked).
+        /// </summary>
+        public required bool IsBulkOperation { get; init; }
+
+        /// <summary>
+        /// True when <c>Nodes.Count</c> exceeds the
+        /// <see cref="AutoLoadConfirmationThreshold"/> — parent should
+        /// show a confirmation dialog before committing per Rule 10.
+        /// </summary>
+        public required bool ExceedsConfirmationThreshold { get; init; }
+    }
+}

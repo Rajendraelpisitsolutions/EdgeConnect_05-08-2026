@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/industries.html
+  Purpose:     Static mockup of /industries — the industries hub. Reuses the
+               existing hub/card-grid pattern (per phase3-ia-scope-memo-v2 §3.4);
+               NOT a new IndustryShell. Hero + 6-vertical card grid + bridge +
+               cross-lens + CTA.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       Category-level framing only — no fabricated metrics, no named
+               customers, no defense/space-agency anchor on the hub (reserved
+               for the defense + aerospace vertical pages). Geography anchor
+               ("Operating across India and the Middle East.") is a footprint
+               statement and reproduced verbatim.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industries — built for the floor you actually run · Elpis</title>
+  <meta name="description" content="Mixed-vendor, brownfield, regulated, remote, or high-consequence — Elpis meets each industry's floor where it is. Heavy manufacturing, automotive, pharma, oil & gas, defense, aerospace.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/industries">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Industries">
+  <meta property="og:description" content="Mixed-vendor, brownfield, regulated, remote, or high-consequence — Elpis meets each industry&#x27;s floor where it is. Heavy manufacturing, automotive, pharma, oil &amp; gas, defense, aerospace.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/industries">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Industries">
+  <meta name="twitter:description" content="Mixed-vendor, brownfield, regulated, remote, or high-consequence — Elpis meets each industry&#x27;s floor where it is. Heavy manufacturing, automotive, pharma, oil &amp; gas, defense, aerospace.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 74ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .ind-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .ind-card { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:10px; padding: var(--space-6); background:#fff; text-decoration:none; display:block; transition: border-color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing), box-shadow var(--motion-fast) var(--motion-easing); }
+    .ind-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(15,20,25,0.10); }
+    .ind-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .ind-card p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .ind-card .go { display:inline-block; margin-top: var(--space-3); color: var(--color-brand-teal); font-size: var(--size-sm); font-weight: var(--weight-semibold); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .lens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .lens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .lens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .bridge { max-width: 80ch; color: var(--color-text-body-light); font-size: var(--size-md); line-height: var(--line-body); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">INDUSTRIES</span>
+        <h1 id="hero-heading" class="hero__headline">Built for the floor you actually run.</h1>
+        <p class="hero__subhead">Every industry has a different floor — mixed-vendor and brownfield, regulated and validated, remote and unmanned, or high-consequence and traceability-bound. Elpis is the same protocol-agnostic platform underneath; what changes is which pillars lead and which constraints matter most. Operating across India and the Middle East.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="solutions" class="btn btn--secondary btn--lg">Browse by outcome instead</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- INDUSTRY GRID -->
+    <section class="section" data-mode="light" aria-labelledby="grid-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">INDUSTRIES WE KNOW DEEPLY</span><h2 id="grid-heading" class="section-title">Find your floor.</h2>
+          <p class="bridge" style="margin-top:var(--space-3)">These six are where we've built the deepest playbooks — but the platform isn't industry-specific. Elpis is protocol-agnostic: if your floor runs the controllers, PLCs, sensors, or rotating equipment we support, it fits, whether or not it's listed here.</p>
+        </div>
+        <div class="ind-grid">
+          <a class="ind-card" href="industries-heavy-manufacturing"><h3>Heavy Manufacturing</h3><p>Mixed-vendor CNCs, presses, and PLCs on one operational view — plus condition monitoring on the rotating equipment that can't fail. Brownfield-ready.</p><span class="go">Explore →</span></a>
+          <a class="ind-card" href="industries-automotive"><h3>Automotive</h3><p>High-volume mixed-vendor lines — machining cells, stamping presses, robotic cells — held to one OEE truth across every bay and plant.</p><span class="go">Explore →</span></a>
+          <a class="ind-card" href="industries-pharma"><h3>Pharma</h3><p>Read-only collection beside your existing control systems — OEE on packaging and filling lines, condition monitoring on the critical utilities that gate a batch.</p><span class="go">Explore →</span></a>
+          <a class="ind-card" href="industries-oil-and-gas"><h3>Oil &amp; Gas</h3><p>Remote and unmanned sites, offline-first acquisition over battery and 4G, and condition monitoring on pumps, compressors, and hydraulic systems.</p><span class="go">Explore →</span></a>
+          <a class="ind-card" href="industries-defense"><h3>Defense</h3><p>Offline and air-gapped edge intelligence — license validates locally, no phone-home — with condition monitoring on hydraulic and fluid systems and rotating equipment.</p><span class="go">Explore →</span></a>
+          <a class="ind-card" href="industries-aerospace"><h3>Aerospace</h3><p>Precision-machining and rotating-equipment monitoring with a traceable, edge-timestamped production history you can stand behind.</p><span class="go">Explore →</span></a>
+        </div>
+        <p class="bridge" style="margin-top:var(--space-8); text-align:center; max-width:72ch; margin-left:auto; margin-right:auto;">Don't see your industry? It isn't a gap. The same platform fits food &amp; beverage, metals, water, power, packaging, and more — anywhere the floor speaks a protocol we support or exposes a signal we can read. <a class="footer__link" style="color:var(--color-brand-teal); font-weight:var(--weight-semibold)" href="#cta">Bring us your floor</a> and we'll tell you honestly how it fits.</p>
+      </div>
+    </section>
+
+    <!-- BRIDGE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="bridge-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW TO READ THESE PAGES</span><h2 id="bridge-heading" class="section-title">Same platform, different floor.</h2></div>
+        <p class="bridge">Each industry page is a lens, not a different product. The five capability pillars — connectivity &amp; edge, data acquisition, asset intelligence, condition monitoring, and operational intelligence — are the same everywhere. What an industry page does is foreground the pillars that matter most for that floor, map them to the solutions that fit, and answer the questions that industry asks first. For the building blocks themselves, see <a class="footer__link" style="color:var(--color-brand-teal)" href="capabilities">Capabilities</a>; for outcomes organized by problem, see <a class="footer__link" style="color:var(--color-brand-teal)" href="solutions">Solutions</a>.</p>
+      </div>
+    </section>
+
+    <!-- CROSS-LENS -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Prefer another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="lens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">The five building blocks every industry composes from.</span></a>
+          <a class="lens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Every outcome, organized by the problem it solves.</span></a>
+          <a class="lens-card" href="platform"><span class="eyebrow">PLATFORM</span><span class="cl-desc">Why Elpis exists and how we engage.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Tell us about your floor.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Your industry, your controller and sensor mix, and the constraints that matter — that's enough to scope a proof of value on your real protocols and real signals.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Industry%20scoping" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

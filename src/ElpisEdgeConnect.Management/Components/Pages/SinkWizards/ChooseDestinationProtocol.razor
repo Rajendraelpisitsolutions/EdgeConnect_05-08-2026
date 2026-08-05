@@ -1,0 +1,148 @@
+@*
+    Destination-protocol picker (M.2b.6).
+
+    The Destinations page's "Add Destination" button lands here. Operator
+    picks a protocol; tile catalogue lives in DestinationProtocolPickerModel
+    so "which tiles are clickable" is a pinned POCO contract — mirrors
+    ChooseSourceProtocol's shape exactly.
+
+    M.2b.6 flips MQTT + OPC UA Server to Available. HTTP webhook + TCP
+    socket remain Pending (their sink adapters land in M.2b.7 / M.2b.8).
+
+    Reference: docs/sessions/2026-05-18-mp2b5-mp2b6-route-destination-wizards-plan-v3.md §5
+               docs/sessions/2026-05-18-mp2b5-mp2b6-ux-mockups.md §2.1
+*@
+@page "/destinations/new"
+@using ElpisEdgeConnect.Core.Licensing
+@using ElpisEdgeConnect.Management.Api
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Nav
+@inject IServiceProvider Services
+
+<PageTitle>Add destination · Connectivity Studio</PageTitle>
+
+@* ADR-0016 Rule 3 — page header hidden in EmbeddedMode. *@
+@if (!EmbeddedMode)
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+        <MudTooltip Text="Back to Destinations">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/sinks"))"
+                           Size="Size.Small"
+                           aria-label="Back to Destinations" />
+        </MudTooltip>
+        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Medium" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h5">Add a destination</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Choose where data leaves the gateway. You'll review and activate the change before it goes live.
+            </MudText>
+        </div>
+    </MudStack>
+}
+
+@{
+    // License-resolve the catalogue: a restricted edition (Starter → MQTT only)
+    // hides non-offered tiles entirely, and unlicensed destinations (e.g.
+    // sink-opc-ua-server) show a locked "Requires Premium" state. UI is
+    // explanatory only — the backend gate stays authoritative on save.
+    // Permissive when no license is loaded.
+    var license = Services.GetService(typeof(ILicenseManager)) as ILicenseManager;
+    var edition = license?.Current?.Edition ?? LicenseEdition.Unknown;
+    var tiles = DestinationProtocolPickerModel.Resolve(
+        MqttTestConnectionService.BuildLicenseGate(license), edition);
+}
+<MudGrid Spacing="3" Class="protocol-tiles">
+    @foreach (var tile in tiles)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            @if (tile.Status == DestinationProtocolTileStatus.Available)
+            {
+                var href = tile.TargetHref!;
+                var protocolKey = tile.Key;
+                @* The tile is the wizard's entry point, so it cannot be mouse-only.
+                   role/tabindex put it in the tab order; the key handler gives it
+                   the Enter/Space behaviour a real button would have had. *@
+                <MudPaper Elevation="2" Class="pa-4 protocol-tile protocol-tile-available"
+                          role="button" tabindex="0"
+                          @onclick="@(() => OnTileClicked(href, protocolKey))"
+                          @onkeydown="@((KeyboardEventArgs e) => OnTileKeyDown(e, href, protocolKey))">
+                    <MudStack Spacing="2" AlignItems="AlignItems.Start">
+                        <MudIcon Icon="@tile.IconSvg" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">@tile.DisplayName</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@tile.Description</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                            Available
+                        </MudChip>
+                    </MudStack>
+                </MudPaper>
+            }
+            else if (tile.Status == DestinationProtocolTileStatus.RequiresLicense)
+            {
+                <MudTooltip Text="@($"{tile.DisplayName} requires a Premium license module ({tile.RequiredLicenseModule}). Ask your administrator to enable it.")">
+                    <MudPaper Elevation="0" Class="pa-4 protocol-tile protocol-tile-muted" data-testid="tile-requires-license">
+                        <MudStack Spacing="2" AlignItems="AlignItems.Start">
+                            <MudIcon Icon="@tile.IconSvg" Size="Size.Large" Color="Color.Default" />
+                            <MudText Typo="Typo.h6">@tile.DisplayName</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@tile.Description</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Lock">
+                                Requires Premium
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                </MudTooltip>
+            }
+            else
+            {
+                @* PendingMilestone is a release-planning identifier. It means
+                   nothing to a maintenance engineer, so it never reaches them. *@
+                <MudTooltip Text="@($"EdgeConnect cannot send data over {tile.DisplayName} yet. Use MQTT or OPC UA Server, or ask Elpis support when {tile.DisplayName} is due.")">
+                    <MudPaper Elevation="0" Class="pa-4 protocol-tile protocol-tile-muted">
+                        <MudStack Spacing="2" AlignItems="AlignItems.Start">
+                            <MudIcon Icon="@tile.IconSvg" Size="Size.Large" Color="Color.Default" />
+                            <MudText Typo="Typo.h6">@tile.DisplayName</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@tile.Description</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                                Not available yet
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                </MudTooltip>
+            }
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>
+    /// Fires when the operator picks a protocol tile in EmbeddedMode.
+    /// Receives the protocol key (e.g. <c>"mqtt"</c>, <c>"opcua-server"</c>).
+    /// </summary>
+    [Parameter] public EventCallback<string> OnProtocolChosen { get; set; }
+
+    private async Task OnTileKeyDown(KeyboardEventArgs e, string href, string protocolKey)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            await OnTileClicked(href, protocolKey);
+        }
+    }
+
+    private async Task OnTileClicked(string href, string protocolKey)
+    {
+        if (EmbeddedMode)
+        {
+            if (OnProtocolChosen.HasDelegate)
+            {
+                await OnProtocolChosen.InvokeAsync(protocolKey);
+            }
+        }
+        else
+        {
+            Nav.NavigateTo(href);
+        }
+    }
+}

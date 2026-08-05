@@ -1,0 +1,224 @@
+@*
+    Enable/Disable confirm drawer (M.2b.6.1). Right-anchored MudDrawer
+    per Locked J; loading discipline per Locked O; styling per Locked K
+    + K.1 (never solid red at rest); copy per Locked N.
+
+    Layer discipline: this is a SHELL over EnableDisableConfirmDrawerModel.
+    The model owns state; this file owns layout. No business logic here.
+
+    Bindings:
+      * @bind-Open is two-way to a parent flag (the list page owns it)
+      * The model carries kind/id/diff/impact/state
+      * Primary action click invokes the parent-supplied callback that
+        actually hits the API (kept out of the model per planner-purity
+        + boundary-concern discipline)
+
+    Reference: docs/sessions/2026-05-19-mp2b61-inline-enable-disable-plan-v3.md §1, §2, §6
+               docs/sessions/2026-05-19-mp2b61-inline-enable-disable-plan-v2.md §2
+*@
+@using ElpisEdgeConnect.Management.Components.Shared
+@using ElpisEdgeConnect.Management.Wizards
+
+<MudDrawer Open="@Model.IsOpen"
+           OpenChanged="@OnOpenChanged"
+           Anchor="Anchor.End"
+           Variant="@DrawerVariant.Temporary"
+           Elevation="6"
+           Width="520px"
+           ClipMode="DrawerClipMode.Never">
+    <MudStack Class="pa-5" Style="height:100%; overflow-y:auto;" Spacing="3">
+
+        @* ──── Header ──── *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@HeaderIcon" Color="@HeaderIconColor" Size="Size.Medium" />
+            <MudText Typo="Typo.h6" Style="font-weight:500;">@Model.Header</MudText>
+        </MudStack>
+
+        <MudDivider />
+
+        @* ──── State-specific body ──── *@
+        @switch (Model.State)
+        {
+            case DrawerState.Ready:
+            case DrawerState.Applying:
+                @RenderConfirmBody()
+                break;
+
+            case DrawerState.StaleView:
+                @RenderStaleViewBanner()
+                break;
+
+            case DrawerState.CrossRecord:
+                @RenderCrossRecordBlockers()
+                break;
+
+            case DrawerState.ValidationError:
+                @RenderValidationError()
+                break;
+
+            case DrawerState.Timeout:
+                @RenderTimeoutBanner()
+                break;
+        }
+
+        <MudSpacer />
+
+        @* ──── Footer actions ──── *@
+        <MudDivider />
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+            <MudButton Variant="Variant.Text"
+                       Disabled="@(!Model.IsCancelEnabled)"
+                       OnClick="OnCancel"
+                       Style="text-transform:none;">
+                Cancel
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="@PrimaryColor"
+                       Disabled="@(!Model.IsPrimaryEnabled)"
+                       OnClick="OnPrimary"
+                       Style="text-transform:none; min-width:140px;">
+                @if (Model.IsApplying)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    <span>Applying…</span>
+                }
+                else
+                {
+                    @Model.PrimaryLabel
+                }
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudDrawer>
+
+@code {
+    /// <summary>The state machine that drives the drawer. Required.</summary>
+    [Parameter, EditorRequired] public EnableDisableConfirmDrawerModel Model { get; set; } = default!;
+
+    /// <summary>Primary-action callback. Invoked when the operator clicks the primary button.</summary>
+    [Parameter, EditorRequired] public EventCallback OnPrimaryAction { get; set; }
+
+    /// <summary>Cancel-action callback (or operator-driven dismissal). Invoked when the operator clicks Cancel.</summary>
+    [Parameter] public EventCallback OnCancelAction { get; set; }
+
+    private string HeaderIcon => Model.DesiredEnabled
+        ? Icons.Material.Filled.PowerSettingsNew
+        : Icons.Material.Filled.PauseCircleOutline;
+
+    private Color HeaderIconColor => Model.DesiredEnabled ? Color.Success : Color.Warning;
+
+    // Locked K.1 — Disable button at rest is NEVER solid red at row level;
+    // BUT the drawer's commit action IS solid red (operator is committing).
+    private Color PrimaryColor => Model.State switch
+    {
+        DrawerState.StaleView => Color.Primary,           // "Refresh" — neutral primary, not destructive
+        _ when !Model.DesiredEnabled => Color.Error,      // Disable confirm — solid red on this surface only
+        _ => Color.Primary,
+    };
+
+    private async Task OnPrimary()
+    {
+        // Locked O: BeginApply is the single-fire guard. If it returns
+        // false, the click is ignored.
+        if (Model.State == DrawerState.StaleView)
+        {
+            // Stale-view pivot: primary is now "Refresh" — invoke cancel
+            // callback so the list page repolls + closes drawer.
+            await OnCancelAction.InvokeAsync();
+            return;
+        }
+        if (!Model.BeginApply()) return;
+        await OnPrimaryAction.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        // Locked O: dismissal suppressed during Applying.
+        if (!Model.TryDismiss()) return;
+        await OnCancelAction.InvokeAsync();
+    }
+
+    private async Task OnOpenChanged(bool open)
+    {
+        if (open || Model.IsDismissalSuppressed) return;
+        Model.TryDismiss();
+        await OnCancelAction.InvokeAsync();
+    }
+
+    private RenderFragment RenderConfirmBody() => @<text>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Diff</MudText>
+            <MudPaper Class="pa-2" Elevation="0" Style="background:var(--mud-palette-background-grey); font-family:monospace;">
+                <MudText Typo="Typo.body2">@Model.DiffSummary</MudText>
+            </MudPaper>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ImpactWarning))
+            {
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-2">Impact</MudText>
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                    @Model.ImpactWarning
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-2">Audit</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                A draft will be created, validated, and applied as one operation. Rollback via the audit history page if needed.
+            </MudText>
+        </MudStack>
+    </text>;
+
+    private RenderFragment RenderStaleViewBanner() => @<text>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.body2" Style="font-weight:500;">@EnableDisableConfirmDrawerModel.StaleViewBanner</MudText>
+                @if (Model.CurrentVersion is not null)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Server is now at version: <code>@Model.CurrentVersion</code>
+                    </MudText>
+                }
+            </MudStack>
+        </MudAlert>
+    </text>;
+
+    private RenderFragment RenderCrossRecordBlockers() => @<text>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.body2">
+                    @(Model.DesiredEnabled ? "Cannot enable this " : "Cannot disable this ")@Model.Kind.ToString().ToLowerInvariant().
+                    @(Model.DesiredEnabled ? "The following must be enabled first:" : "The following depend on it:")
+                </MudText>
+                <MudList T="DependencyRef" Dense="true">
+                    @foreach (var blocker in Model.Blockers)
+                    {
+                        <MudListItem T="DependencyRef" Value="@blocker"
+                                     Href="@EnableDisableConfirmDrawerModel.DependencyDeepLink(blocker)">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">
+                                    @blocker.Kind.ToString() <strong>@blocker.Id</strong>
+                                    @if (!string.IsNullOrWhiteSpace(blocker.Name) && blocker.Name != blocker.Id)
+                                    {
+                                        <span style="opacity:0.6;"> — @blocker.Name</span>
+                                    }
+                                </MudText>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudStack>
+        </MudAlert>
+    </text>;
+
+    private RenderFragment RenderValidationError() => @<text>
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            @Model.ErrorMessage
+        </MudAlert>
+    </text>;
+
+    private RenderFragment RenderTimeoutBanner() => @<text>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+            @EnableDisableConfirmDrawerModel.TimeoutBanner
+        </MudAlert>
+    </text>;
+}

@@ -1,0 +1,90 @@
+@*
+    Blazor root component. Houses the HTML document, links the static
+    assets (MudBlazor CSS / Material icons font), and hosts the Router.
+
+    Locked: this is the ONLY place HTML <head>/<body> live. Pages
+    render through MainLayout → MudLayout → page content.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1976D2" />
+    <base href="/" />
+    <title>Connectivity Studio — Elpis EdgeConnect</title>
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    @* Cache-bust site.css. Without a version token the browser holds the old
+       stylesheet indefinitely, and a shell change (the nav rail moving out of
+       the AppBar, for instance) leaves new markup styled by old rules — the
+       sidebar simply vanishes and only a hard refresh brings it back. The
+       token changes whenever the file does, so an ordinary refresh is enough. *@
+    <link rel="stylesheet" href="@($"css/site.css?v={SiteCssVersion}")" />
+    @* The tab icon is the Elpis mark. This used to point at favicon.svg, which
+       was never served from the root — the file sat in wwwroot/js/ and was in
+       fact the logo PNG under an .svg name, so /favicon.svg returned 404 and
+       browsers fell back to their default globe. PNG for modern browsers, ICO
+       behind it for pinned tabs and anything older. *@
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="alternate icon" href="favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="favicon.png" />
+    <HeadOutlet />
+</head>
+<body>
+    @* InteractiveServer rendermode — every routed page gets a Blazor
+       Server circuit, not just a one-shot static-SSR render. Critical
+       for the live-polling pages (Overview, StatusFooter) that would
+       otherwise crash with ObjectDisposedException when their timers
+       fire after the static-render scope is disposed. *@
+    <Routes @rendermode="@RenderMode.InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="js/wizardValidation.js"></script>
+    <script src="js/bundleDownload.js"></script>
+    <script src="js/licenseMail.js"></script>
+</body>
+</html>
+
+@code {
+    // Version token for the site.css link above. Prefers the stylesheet's own
+    // last-write time, so a CSS-only change — which ships without a rebuild —
+    // still busts the cache.
+    //
+    // Two layouts to cover: the installed app keeps wwwroot beside the exe,
+    // while a dev run serves static assets straight from the project folder
+    // and has no wwwroot under bin. If neither is readable we fall back to
+    // process start time, which at least busts on every restart (the assembly
+    // version would not, since CSS can change without it moving).
+    private static readonly string SiteCssVersion = ResolveSiteCssVersion();
+
+    private static string ResolveSiteCssVersion()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "wwwroot", "css", "site.css"),
+            Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css", "site.css"),
+        };
+
+        foreach (var path in candidates)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    return File.GetLastWriteTimeUtc(path).Ticks.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture);
+                }
+            }
+            catch
+            {
+                // Unreadable path — try the next candidate.
+            }
+        }
+
+        return System.Diagnostics.Process.GetCurrentProcess()
+            .StartTime.ToUniversalTime().Ticks
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

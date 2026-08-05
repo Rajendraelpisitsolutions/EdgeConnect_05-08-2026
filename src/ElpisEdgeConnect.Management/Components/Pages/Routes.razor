@@ -1,0 +1,622 @@
+@*
+    Routes list page. Dense tabular view — complements the
+    card-based Overview by giving operators a sort/filter/scan
+    surface as route count grows past the executive-card limit.
+
+    Layout:
+       * Header row with title + route count + "Add route" button
+         (wizard lands in M.2b; greyed out for now).
+       * DataGrid: route id · state · source · sinks · buffer mode +
+         depth · backpressure drops · last observed.
+       * Row click → /routes/{routeId} for the detail view.
+       * Empty state when no routes are configured.
+
+    Polls /api/v1/routes every 3s via PeriodicTimer on the
+    interactive Blazor Server circuit (same pattern as Sources/Sinks).
+*@
+@page "/routes"
+@using ElpisEdgeConnect.Management.Components.Shared
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IAsyncDisposable
+
+<PageTitle>Routes · Connectivity Studio</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">Routes</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Every data path through EdgeConnect — one source pulling, one or more destinations publishing, with the canonical pipeline between them.
+        </MudText>
+    </div>
+    <MudSpacer />
+    <MudButton Variant="@(_routes is { Length: 0 } ? Variant.Outlined : Variant.Filled)" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               Href="/routes/new"
+               Style="text-transform:none;">
+        Add route
+    </MudButton>
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not load routes.</strong> @_loadError
+    </MudAlert>
+}
+else if (_routes is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_routes.Length == 0)
+{
+    <MudPaper Class="pa-8" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);"
+              data-testid="routes-empty-state">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No routes configured yet</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                Routes connect one source to one or more destinations via the canonical pipeline.
+            </MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-2">
+                <MudButton Href="/onboard"
+                           Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.RocketLaunch"
+                           Style="text-transform:none;"
+                           data-testid="routes-empty-state-connect">
+                    Connect a device
+                </MudButton>
+                <MudTooltip Text="Wire an existing source to one or more existing destinations.">
+                    <MudButton Href="/routes/new"
+                               Variant="Variant.Outlined" Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               Style="text-transform:none;">
+                        Add route only
+                    </MudButton>
+                </MudTooltip>
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-1">
+                <strong>Connect a device</strong> sets up source + destination + route in one flow.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudDataGrid T="RouteSummaryDto"
+                 Items="@_routes"
+                 SortMode="SortMode.Multiple"
+                 Filterable="true"
+                 QuickFilter="@QuickFilter"
+                 Dense="true"
+                 Hover="true"
+                 Bordered="false"
+                 RowClick="@OnRowClick"
+                 RowStyleFunc="@RowStyleFunc"
+                 Elevation="1"
+                 Class="rounded-lg">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                @_routes.Length route@(_routes.Length == 1 ? "" : "s") configured
+            </MudText>
+            <MudSpacer />
+            @* Immediate: without it @bind-Value only commits on blur, so typing
+               into the box did nothing at all until focus moved elsewhere — the
+               filter looked broken. The two wizard filters already set it; these
+               three did not. Debounce keeps it off the keystroke path on a list
+               of a few hundred rows. Clearable gives the operator the way back
+               that the "no matches" panel tells them to take. *@
+            <MudTextField @bind-Value="_searchText"
+                          Immediate="true"
+                          DebounceInterval="150"
+                          Clearable="true"
+                          Placeholder="Filter…"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Small"
+                          Margin="Margin.Dense"
+                          Variant="Variant.Outlined"
+                          aria-label="Filter this list"
+                          Style="max-width:280px;" />
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.RouteId" Title="Route">
+                <CellTemplate>
+                    <MudLink Href="@($"/routes/{context.Item.RouteId}")"
+                             Underline="Underline.Hover"
+                             Style="font-weight:500;">
+                        @context.Item.RouteId
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            @* ── Action column (M.2b.6.1 Locked E + H + I two-column model).
+               Promoted to position 2 so the headline remediation surface is
+               always visible without horizontal scroll (post-smoke UX fix). ── *@
+            <TemplateColumn Title="Action" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @{
+                        var id = context.Item.RouteId;
+                        var configEnabled = ConfigEnabledFor(id);
+                        // Locked I — Draining state guards against Enable-Disable-Enable
+                        // thrash mid-shutdown.
+                        var draining = string.Equals(context.Item.StateName, "Draining", StringComparison.Ordinal);
+                    }
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        @if (configEnabled is null)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">—</MudText>
+                        }
+                        else if (draining)
+                        {
+                            <MudTooltip Text="Drain in progress. Wait for stop to complete.">
+                                <span>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                               Disabled="true"
+                                               Style="text-transform:none;">
+                                        @(configEnabled.Value ? "Disable" : "Enable")
+                                    </MudButton>
+                                </span>
+                            </MudTooltip>
+                        }
+                        else if (configEnabled.Value)
+                        {
+                            <MudTooltip Text="Stop this data path. The source keeps running; nothing is delivered until you enable it again.">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small"
+                                           OnClick="@(() => OpenToggleDrawer(id, desired: false))"
+                                           Style="text-transform:none;">
+                                    Disable
+                                </MudButton>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudTooltip Text="Start this data path. Anything buffered is delivered first.">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                           OnClick="@(() => OpenToggleDrawer(id, desired: true))"
+                                           Style="text-transform:none;">
+                                    Enable
+                                </MudButton>
+                            </MudTooltip>
+                        }
+                        @* M.2d.3 — Edit pencil alongside Enable/Disable to match
+                           Sources.razor layout. stopPropagation prevents MudDataGrid
+                           RowClick from intercepting the navigation. ── *@
+                        <MudTooltip Text="Change which source and destinations this route connects.">
+                            <span @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Default"
+                                               OnClick="@(() => Nav.NavigateTo($"/routes/{Uri.EscapeDataString(id)}/edit"))"
+                                               aria-label="@($"Edit route {id}")"
+                                               data-testid="routes-row-edit-button" />
+                            </span>
+                        </MudTooltip>
+                        @* Delete — removes the route only; its source and sinks are
+                           left in place (they may be reused by other routes, and an
+                           unwired source/sink is valid). Audited draft → apply,
+                           guarded by a confirmation dialog. *@
+                        <MudTooltip Text="Delete this data path. Delivery stops immediately; the source and destination themselves are left alone.">
+                            <span @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => ConfirmAndDeleteAsync(id))"
+                                               aria-label="@($"Delete route {id}")"
+                                               data-testid="routes-row-delete-button" />
+                            </span>
+                        </MudTooltip>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.StateName" Title="State">
+                <CellTemplate>
+                    @{
+                        var tooltipText = FaultedTooltip(context.Item);
+                    }
+                    <MudTooltip Text="@tooltipText" Disabled="@(tooltipText is null)">
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                     Size="Size.Small"
+                                     Color="@StateColor(context.Item.StateName)" />
+                            <MudText Typo="Typo.body2">@context.Item.StateName</MudText>
+                        </MudStack>
+                    </MudTooltip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Source!.SourceInstanceId" Title="Source">
+                <CellTemplate>
+                    @if (context.Item.Source is { } src)
+                    {
+                        <MudText Typo="Typo.body2">
+                            @src.SourceInstanceId
+                            <span style="opacity:0.6;"> · @src.ProtocolName</span>
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">none</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Sinks.Count" Title="Destinations">
+                <CellTemplate>
+                    @if (context.Item.Sinks.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">—</MudText>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var sink in context.Item.Sinks)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                         Color="@SinkChipColor(sink)"
+                                         Style="text-transform:none;">
+                                    @sink.SinkInstanceId
+                                </MudChip>
+                            }
+                        </MudStack>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Buffer!.Mode" Title="Buffer">
+                <CellTemplate>
+                    @if (context.Item.Buffer is { } buf)
+                    {
+                        @* StoreAndForward/InMemory are config enum names. The shared
+                           helper says what they mean for the operator's data, and keeps
+                           this page agreeing with RouteDetail. *@
+                        <MudTooltip Text="@OperatorFormat.BufferModeLabel(buf.Mode)">
+                            <MudText Typo="Typo.body2">
+                                <strong>@OperatorFormat.Count(buf.CurrentDepth)</strong> waiting
+                            </MudText>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">—</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.BackpressureDropCount" Title="Backpressure drops" Format="N0">
+                <CellTemplate>
+                    @if (context.Item.BackpressureDropCount == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity:0.4;">0</MudText>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                            @context.Item.BackpressureDropCount.ToString("N0")
+                        </MudChip>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+        </Columns>
+        <NoRecordsContent>
+            @* Without this, filtering to zero rows leaves a bare grid with no
+               explanation and no way back. *@
+            <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="pa-6"
+                      data-testid="routes-no-matches">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Default" />
+                <MudText Typo="Typo.body2">No route matches <strong>@_searchText</strong>.</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Next: clear the filter box to see all @(_routes?.Length ?? 0) routes.
+                </MudText>
+            </MudStack>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+@* Confirm drawer (M.2b.6.1) — Impact section in the drawer body renders
+   the data-flow warning for route-disable per v1 Locked B. *@
+<EnableDisableConfirmDrawer Model="@_drawerModel"
+                            OnPrimaryAction="@OnDrawerApply"
+                            OnCancelAction="@OnDrawerCancel" />
+
+@code {
+    private RouteSummaryDto[]? _routes;
+    private string? _loadError;
+    private string _searchText = string.Empty;
+    private CancellationTokenSource? _cts;
+
+    // M.2b.6.1 — config + drawer state. Same shape as Sources/Sinks.
+    private GatewayConfiguration? _currentConfig;
+    private string? _currentVersion;
+    private readonly EnableDisableConfirmDrawerModel _drawerModel = new();
+    private string? _focusedRowId;
+    private Task? _pollLoop;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadFocusQueryParam();
+        await RefreshAsync();
+    }
+
+    private void ReadFocusQueryParam()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("focus", out var values) && !string.IsNullOrWhiteSpace(values))
+        {
+            _focusedRowId = values.ToString();
+        }
+    }
+
+    private string RowStyleFunc(RouteSummaryDto item, int _) =>
+        string.Equals(item.RouteId, _focusedRowId, StringComparison.Ordinal)
+            ? "background: var(--mud-palette-warning-hover);"
+            : string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected on dispose */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _routes = await HttpClient.GetFromJsonAsync<RouteSummaryDto[]>("/api/v1/routes")
+                ?? Array.Empty<RouteSummaryDto>();
+            try
+            {
+                _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+                _currentVersion = null;
+            }
+            catch
+            {
+                _currentConfig = null;
+                _currentVersion = null;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { /* component torn down */ }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private bool? ConfigEnabledFor(string routeId)
+    {
+        if (_currentConfig is null) return null;
+        foreach (var r in _currentConfig.Routes)
+        {
+            if (string.Equals(r.RouteId, routeId, StringComparison.Ordinal))
+            {
+                return r.Enabled;
+            }
+        }
+        return null;
+    }
+
+    // ─── Drawer wiring (M.2b.6.1) ───────────────────────────────────────
+
+    private void OpenToggleDrawer(string routeId, bool desired)
+    {
+        if (_currentConfig is null) return;
+        try
+        {
+            var plan = EnableDisablePlanner.Plan(_currentConfig, ConfigEntityKind.Route, routeId, desired);
+            if (plan.Outcome == EnableDisablePlanOutcome.NoOp)
+            {
+                _drawerModel.Open(ConfigEntityKind.Route, routeId, displayName: routeId,
+                    desiredEnabled: desired, plan.Impact, _currentVersion);
+                Snackbar.Add(_drawerModel.NoOpSnackbarText, Severity.Info);
+                _drawerModel.TryDismiss();
+                return;
+            }
+            _drawerModel.Open(ConfigEntityKind.Route, routeId, displayName: routeId,
+                desiredEnabled: desired, plan.Impact, _currentVersion);
+            if (plan.Outcome == EnableDisablePlanOutcome.CrossRecordRefused)
+            {
+                _drawerModel.BeginApply();
+                _drawerModel.RecordCrossRecord(plan.Blockers);
+            }
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add($"Route '{routeId}' not found.", Severity.Error);
+        }
+    }
+
+    private async Task OnDrawerApply()
+    {
+        var verb = _drawerModel.DesiredEnabled ? "enable" : "disable";
+        var url = $"/api/v1/routes/{Uri.EscapeDataString(_drawerModel.InstanceId)}/{verb}";
+        try
+        {
+            var body = new EnableDisableRequestDto
+            {
+                ExpectedConfigurationVersion = _drawerModel.ExpectedConfigurationVersion,
+            };
+            var resp = await HttpClient.PostAsJsonAsync(url, body);
+            EnableDisableResponseDto? dto = null;
+            try { dto = await resp.Content.ReadFromJsonAsync<EnableDisableResponseDto>(); }
+            catch { }
+            if (dto is null) { _drawerModel.RecordValidationError($"Unexpected response ({(int)resp.StatusCode})."); return; }
+            switch (dto.Outcome)
+            {
+                case EnableDisableOutcome.Applied:
+                    _drawerModel.RecordApplied(dto.AuditRecordId ?? "");
+                    Snackbar.Add(_drawerModel.AppliedSnackbarText, Severity.Success);
+                    await RefreshAsync();
+                    break;
+                case EnableDisableOutcome.NoOp:
+                    Snackbar.Add(_drawerModel.NoOpSnackbarText, Severity.Info);
+                    _drawerModel.TryDismiss();
+                    break;
+                case EnableDisableOutcome.Conflict:
+                    if (dto.Error?.Code == "CONFIG.STALE_VIEW")
+                    {
+                        _drawerModel.RecordStaleView(dto.Error.CurrentVersion);
+                    }
+                    else if (dto.Error?.Code == "CONFIG.CROSS_RECORD_REFUSED")
+                    {
+                        var blockers = dto.Error.Dependents?.Select(d => new DependencyRef(
+                                Enum.TryParse<ConfigEntityKind>(d.Kind, ignoreCase: true, out var k) ? k : ConfigEntityKind.Route,
+                                d.Id, d.Name))
+                            .ToList() ?? new List<DependencyRef>();
+                        _drawerModel.RecordCrossRecord(blockers);
+                    }
+                    else
+                    {
+                        _drawerModel.RecordValidationError(dto.Error?.Message ?? "Conflict.");
+                    }
+                    break;
+            }
+        }
+        catch (TaskCanceledException) { _drawerModel.RecordTimeout(); }
+        catch (Exception ex) { _drawerModel.RecordValidationError(ex.Message); }
+    }
+
+    private async Task OnDrawerCancel()
+    {
+        if (_drawerModel.State == DrawerState.Closed) { await RefreshAsync(); }
+    }
+
+    // ─── Delete wiring ──────────────────────────────────────────────────
+
+    private async Task ConfirmAndDeleteAsync(string routeId)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            title: "Delete route",
+            message: $"Data will stop flowing through '{routeId}' as soon as this is applied, and anything "
+                   + "still waiting in its buffer is discarded. The source and destinations themselves are "
+                   + "left in place — only the link between them is removed. You can roll this back from "
+                   + "Configuration → History.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            await DeleteRouteAsync(routeId);
+        }
+    }
+
+    private async Task DeleteRouteAsync(string routeId)
+    {
+        try
+        {
+            var resp = await HttpClient.DeleteAsync(
+                $"/api/v1/routes/{Uri.EscapeDataString(routeId)}?actor=studio-ui");
+
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Route '{routeId}' deleted.", Severity.Success);
+            }
+            else if ((int)resp.StatusCode == 404)
+            {
+                Snackbar.Add($"Route '{routeId}' no longer exists.", Severity.Info);
+            }
+            else if ((int)resp.StatusCode == 409)
+            {
+                Snackbar.Add(
+                    $"Could not delete '{routeId}': the configuration changed or failed validation. Refresh and retry.",
+                    Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add("Could not delete this route — it is unchanged and still running. Reload the page and try again; if it repeats, check Diagnostics.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+
+        await RefreshAsync();
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<RouteSummaryDto> args)
+    {
+        if (args.Item is { RouteId: var id })
+        {
+            Nav.NavigateTo($"/routes/{id}");
+        }
+    }
+
+    private bool QuickFilter(RouteSummaryDto item)
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return true;
+        var q = _searchText.Trim();
+        if (item.RouteId.Contains(q, StringComparison.OrdinalIgnoreCase)) return true;
+        if (item.StateName.Contains(q, StringComparison.OrdinalIgnoreCase)) return true;
+        if (item.Source is { } s
+            && (s.SourceInstanceId.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || s.ProtocolName.Contains(q, StringComparison.OrdinalIgnoreCase))) return true;
+        foreach (var sink in item.Sinks)
+        {
+            if (sink.SinkInstanceId.Contains(q, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
+    private static Color StateColor(string? state) => state switch
+    {
+        "Running" => Color.Success,
+        "Degraded" => Color.Warning,
+        "Failed" or "Blocked" or "Faulted" => Color.Error,
+        "Disabled" => Color.Dark,
+        "Configured / Not running" => Color.Warning,
+        // Configured / Starting / Draining / Stopping / Stopped — neutral.
+        _ => Color.Default,
+    };
+
+    // Tooltip text for the State chip when the route is Faulted.
+    // Locked format mirrors Sources/Destinations: "{ErrorCode}: {Message}".
+    private static string? FaultedTooltip(RouteSummaryDto r)
+    {
+        if (r.StateName != "Faulted" && r.StateName != "Failed") return null;
+        if (r.LastErrorCode is null) return null;
+        if (r.LastErrorMessage is null) return r.LastErrorCode;
+        return $"{r.LastErrorCode}: {r.LastErrorMessage}";
+    }
+
+    private static Color SinkChipColor(RouteSinkSummaryDto s)
+    {
+        if (s.IsDegraded) return Color.Warning;
+        return s.AdapterStateName switch
+        {
+            "Running" => Color.Success,
+            "Degraded" => Color.Warning,
+            "Stopped" or "Failed" or "Faulted" => Color.Error,
+            _ => Color.Default,
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

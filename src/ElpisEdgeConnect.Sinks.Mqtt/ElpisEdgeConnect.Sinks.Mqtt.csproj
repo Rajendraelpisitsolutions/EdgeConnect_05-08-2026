@@ -1,0 +1,46 @@
+<!--
+  ElpisEdgeConnect.Sinks.Mqtt: MQTT sink adapter implementing ISinkAdapter.
+  Supports Batch (JSON array) and PerTag (raw scalar per topic) publish
+  modes. PerTag mode provides EREMOS V2 compatibility.
+
+  Reference: PHASE2_ENTRY.md, docs/phase1-exit/phase1-exit-checklist.md
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sinks.Mqtt</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sinks.Mqtt</AssemblyName>
+    <Description>MQTT sink adapter for Elpis EdgeConnect with Batch and PerTag publish modes</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822;CA1848</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sinks.Mqtt.Tests" />
+    <!--
+      EREMOS V2 revalidation (Integration.Tests/Eremos/TopicShapeAnalyzer)
+      consumes MqttTopicResolver.Sanitize directly to perform collision-
+      detection against the exact production sanitization rule. Using
+      the same code prevents drift between test and production behaviour
+      — which is exactly what the EREMOS V2 v2 plan §5.2.1 invariant
+      ("validation augments, never replaces") protects against.
+    -->
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

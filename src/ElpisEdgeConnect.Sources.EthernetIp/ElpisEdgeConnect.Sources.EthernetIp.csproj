@@ -1,0 +1,69 @@
+<!--
+  ElpisEdgeConnect.Sources.EthernetIp: Allen-Bradley EtherNet/IP source adapter
+  implementing ISourceAdapter. Reads tags from Rockwell PLCs (CompactLogix /
+  ControlLogix / MicroLogix / Micro800 / GuardLogix) via the libplctag.NET
+  wrapper around the native libplctag library (MPL-2.0, dual-licensed).
+
+  Per the multi-protocol pilot expansion plan v2.1 (locked 2026-05-28).
+  This is a SKELETON project introduced at milestone kickoff (2026-05-29) —
+  no adapter logic yet. The skeleton:
+    * sets the milestone marker visible in git log + solution explorer
+    * vendors the libplctag.NET package dependency from day one
+    * lets the test project reference it from day one
+
+  Implementation arrives across weeks 3–7 per the plan trail:
+    Week 3 — connection lifecycle skeleton + libplctag.NET integration
+    Week 4 — UDT walker + vendored TagInfo/UdtInfo decoders + type mapper
+    Week 5 — wizard + COV layer + ReconfigureAsync override
+    Week 6 — integration tests + per-tag diagnostics + reliability soak
+    Week 7 — QA hardening + wizard polish
+
+  Mapper deprecation hedge (v2.1 §3.2): we vendor our own TagInfo + UdtInfo
+  decoders rather than relying on libplctag.NET's deprecated mapper system
+  (Issue #406, open since Jul-2024). Native libplctag deployment is handled
+  by the libplctag.NativeImport package's runtimes/ folder per RID.
+
+  Reference: docs/sessions/2026-05-28-multi-protocol-pilot-plan-v2.1.md §1.2, §3, §5.2
+             docs/sessions/2026-05-29-multi-protocol-pilot-expansion-kickoff.md §3
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.EthernetIp</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.EthernetIp</AssemblyName>
+    <Description>Allen-Bradley EtherNet/IP source adapter for Elpis EdgeConnect — Rockwell CompactLogix / ControlLogix / MicroLogix / Micro800 / GuardLogix via libplctag.NET.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CA1720: enum member names Int / String match the Allen-Bradley Logix
+         datatype vocabulary; renaming would hurt readability. CA1848 / CA1822
+         suppressed to match the Modbus / S7 adapter projects. -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1720</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.EthernetIp.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!--
+      libplctag.NET MPL-2.0 — wraps the native libplctag C library
+      (dual-licensed MPL-2.0 OR LGPL-2+). Native binaries for win-x64 /
+      linux-x64 / linux-arm64 ship in libplctag.NativeImport's runtimes/
+      folder and auto-extract at first use. Confirmed Linux-clean per
+      v2.1 §3.5.
+    -->
+    <PackageReference Include="libplctag" Version="1.5.2" />
+  </ItemGroup>
+
+</Project>

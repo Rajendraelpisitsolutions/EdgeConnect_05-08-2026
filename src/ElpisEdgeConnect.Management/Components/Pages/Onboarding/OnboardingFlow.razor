@@ -1,0 +1,471 @@
+@*
+    OnboardingFlow — the Connect-a-device meta-wizard.
+
+    Composes the existing protocol pickers + protocol-instance wizards into
+    a single guided flow with one atomic apply at the end. Replaces the
+    current 3-wizards × 3-Applies × 4-page-jumps friction with one ceremony.
+
+    Step order — one half of the flow finished before the next begins:
+
+        0. Welcome              (conditional — only when GatewayId is auto-provisioned)
+        1. Source protocol      (embedded ChooseSourceProtocol)
+        2. Configure source     (embedded protocol-specific source wizard)
+        3. Destination protocol (embedded ChooseDestinationProtocol)
+        4. Configure destination(embedded protocol-specific destination wizard)
+        5. Configure route
+        6. Review & connect
+
+    The two pickers used to run back to back (source protocol, destination
+    protocol, THEN both configuration screens). That asked the operator to
+    commit to a destination before they had finished describing the device in
+    front of them, and it put two long form screens back to back at the end.
+    Picking a tile auto-advances, so the flow now reads: choose the source,
+    fill it in, choose the destination, fill it in, wire the route, connect.
+
+    Persistence pattern (N1 from v2.1 / ADR-0016 Rule 2):
+       All steps are mounted simultaneously; CSS d-none toggles which is
+       visible. Blazor keeps component instances alive across Back/Next,
+       so probe results + form values survive step transitions.
+
+       The two configuration steps and the route step mount LAZILY (after
+       the matching protocol picker chooses one)
+       because they need a concrete protocol component reference.
+       Changing the protocol picker invalidates that mount — see the
+       "Going back to Step 1 will discard your source configuration"
+       confirm dialog.
+
+    Reference: docs/decisions/0016-onboarding-meta-wizard.md
+               docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md
+*@
+@page "/onboard"
+@using System.Linq
+@using System.Text.RegularExpressions
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Components.Pages.SourceWizards
+@using ElpisEdgeConnect.Management.Components.Pages.SinkWizards
+@using ElpisEdgeConnect.Management.Components.Pages.RouteWizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+
+<PageTitle>Connect a device · Connectivity Studio</PageTitle>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="my-4">
+        <strong>Failed to load gateway state.</strong> @_loadError
+    </MudAlert>
+}
+else if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3 page-heading">
+        <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Size="Size.Medium" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h5">Connect a device</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                One ceremony: pick a source, pick a destination, wire them, and apply.
+            </MudText>
+        </div>
+    </MudStack>
+
+    <OnboardingProgress CurrentStep="@_currentStep" SkipWelcome="@_skipWelcome" />
+
+    @* ─── Step 0 — Welcome (conditional) ──────────────────────────────────── *@
+    <div class="@StepVisibility(0)">
+        @if (!_skipWelcome)
+        {
+            <WelcomeStep @bind-GatewayId="_gatewayId"
+                         @bind-GatewayName="_gatewayName"
+                         OnChanged="@StateHasChangedAsync" />
+        }
+    </div>
+
+    @* ─── Step 1 — Source protocol picker ─────────────────────────────────── *@
+    <div class="@StepVisibility(1)">
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Pick a source protocol</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Which protocol does the device you're connecting speak?
+            </MudText>
+            <ChooseSourceProtocol EmbeddedMode="true" OnProtocolChosen="@OnSourceProtocolChosen" />
+        </MudPaper>
+    </div>
+
+    @* ─── Step 2 — Configure source ───────────────────────────────────────── *@
+    @* Mount the protocol-specific wizard ONCE per protocol selection. Switching
+       protocols in Step 1 unmounts this and mounts a fresh one — operator gets
+       a confirm dialog before that happens (handled in GoBackAsync). *@
+    <div class="@StepVisibility(2)">
+        @if (_sourceIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-source-id-collision">
+                A source with id <code>@_sourceIdCollision</code> already exists on this gateway.
+                Choose a different source id before continuing.
+            </MudAlert>
+        }
+        @* Every operator-available source protocol is embedded here. Picker Keys
+           come from SourceProtocolPickerModel. *@
+        @switch (_sourceProtocol)
+        {
+            case "modbus":
+                <AddModbusSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "modbus-rtu":
+                <AddModbusSource EmbeddedMode="true" RtuMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "focas2":
+                <AddFocas2Source EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "brother-http":
+                <AddBrotherHttpSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "ethernet-ip":
+                <AddEthernetIpSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "s7":
+                <AddS7Source EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "opcua-client":
+                <AddOpcUaClientSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "mtconnect":
+                <AddMTConnectSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "melsec":
+                <AddMelsecSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            default:
+                @if (_sourceProtocol is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4">
+                        Protocol <code>@_sourceProtocol</code> doesn't have an embeddable wizard yet.
+                        Use the standalone wizard via the Sources page for now.
+                    </MudAlert>
+                }
+                break;
+        }
+    </div>
+
+    @* ─── Step 3 — Destination protocol picker ───────────────────────────── *@
+    <div class="@StepVisibility(3)">
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Pick a destination</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Where should EdgeConnect deliver the data?
+            </MudText>
+            <ChooseDestinationProtocol EmbeddedMode="true" OnProtocolChosen="@OnSinkProtocolChosen" />
+        </MudPaper>
+    </div>
+
+    @* ─── Step 4 — Configure destination ─────────────────────────────────── *@
+    <div class="@StepVisibility(4)">
+        @if (_sinkIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-sink-id-collision">
+                A destination with id <code>@_sinkIdCollision</code> already exists on this gateway.
+                Choose a different destination id before continuing.
+            </MudAlert>
+        }
+        @switch (_sinkProtocol)
+        {
+            case "mqtt":
+                <AddMqttDestination EmbeddedMode="true" OnInstanceBuilt="@OnSinkInstanceBuilt" />
+                break;
+            case "opcua-server":
+                <AddOpcUaServerDestination EmbeddedMode="true" OnInstanceBuilt="@OnSinkInstanceBuilt" />
+                break;
+            default:
+                @if (_sinkProtocol is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4">
+                        Protocol <code>@_sinkProtocol</code> doesn't have an embeddable wizard yet.
+                    </MudAlert>
+                }
+                break;
+        }
+    </div>
+
+    @* ─── Step 5 — Configure route ────────────────────────────────────────── *@
+    @* Mount only when both source + sink instances are buildable (N3 — the
+       route wizard's PrePopulated parameters need real config objects).
+       The OnInstanceBuilt callbacks from the two configure steps populate
+       _sourceInstance and _sinkInstance which this step consumes. *@
+    <div class="@StepVisibility(5)">
+        @if (_routeIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-route-id-collision">
+                A route with id <code>@_routeIdCollision</code> already exists on this gateway.
+                Choose a different route id before continuing.
+            </MudAlert>
+        }
+        @if (_sourceInstance is not null && _sinkInstance is not null)
+        {
+            <AddRoute EmbeddedMode="true"
+                      PrePopulatedSource="@_sourceInstance"
+                      PrePopulatedSink="@_sinkInstance"
+                      OnInstanceBuilt="@OnRouteInstanceBuilt" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                Configure the source and the destination before wiring the route.
+            </MudAlert>
+        }
+    </div>
+
+    @* ─── Step 6 — Review & connect ──────────────────────────────────────── *@
+    <div class="@StepVisibility(6)">
+        <ReviewAndConnect Source="@_sourceInstance"
+                          Sink="@_sinkInstance"
+                          Route="@_routeInstance"
+                          GatewayIdOverride="@(_skipWelcome ? null : _gatewayId)"
+                          GatewayNameOverride="@(_skipWelcome ? null : _gatewayName)"
+                          CurrentGatewayId="@_currentGatewayId" />
+    </div>
+
+    <OnboardingNavigation CanGoBack="@(_currentStep > FirstActiveStep())"
+                          CanGoNext="@CanGoNext()"
+                          IsLastStep="@(_currentStep == 6)"
+                          Busy="@_busy"
+                          OnBack="@GoBackAsync"
+                          OnNext="@GoNextAsync"
+                          OnCancel="@OnCancelAsync" />
+}
+
+@code {
+    /// <summary>Pattern that auto-provisioned GatewayIds match (per ADR-0016 R5).</summary>
+    private static readonly Regex AutoProvisionedIdPattern = new("^gw-[a-z0-9._-]+$", RegexOptions.Compiled);
+
+    // Load state
+    private bool _loading = true;
+    private string? _loadError;
+
+    // Welcome-step state
+    private bool _skipWelcome;
+    private string _gatewayId = string.Empty;
+    private string _gatewayName = string.Empty;
+    // Snapshot of the GatewayId as loaded — preserved for the Review step
+    // to show "change from X to Y" when the operator edited it.
+    private string _currentGatewayId = string.Empty;
+
+    // Picker state
+    private string? _sourceProtocol;
+    private string? _sinkProtocol;
+
+    // Existing ids in the live config — captured at load so a duplicate id is
+    // caught HERE (at the naming step), not at the final bundled apply where it
+    // 400s with a confusing "Apply failed". Mirrors the merger's uniqueness rules.
+    private HashSet<string> _existingSourceIds = new(StringComparer.Ordinal);
+    private HashSet<string> _existingSinkIds = new(StringComparer.Ordinal);
+    private HashSet<string> _existingRouteIds = new(StringComparer.Ordinal);
+    // The colliding id for the current step, or null when unique. Drives the
+    // inline error + gates Next so the operator can't reach Review with a clash.
+    private string? _sourceIdCollision;
+    private string? _sinkIdCollision;
+    private string? _routeIdCollision;
+
+    // Buildable instance state — populated by the embedded wizards via
+    // OnInstanceBuilt callbacks. null means the wizard's model isn't yet
+    // valid; non-null is what the bundled apply will commit (Step 7).
+    private SourceInstanceConfig? _sourceInstance;
+    private SinkInstanceConfig? _sinkInstance;
+    private RouteConfig? _routeInstance;
+
+    // Navigation state
+    private int _currentStep;
+    // _busy is wired to the apply ceremony in v2.1 §5 Step 7; initialised
+    // explicitly to satisfy CS0649 before that lands.
+#pragma warning disable CS0414 // field assigned but never used yet
+    private bool _busy = false;
+#pragma warning restore CS0414
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var config = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (config is null)
+            {
+                _loadError = "Configuration endpoint returned empty response.";
+                return;
+            }
+
+            _gatewayId = config.Gateway.GatewayId;
+            _gatewayName = config.Gateway.GatewayName;
+            _currentGatewayId = config.Gateway.GatewayId;
+
+            // Snapshot existing ids for early duplicate detection in the steps.
+            _existingSourceIds = new HashSet<string>(config.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+            _existingSinkIds = new HashSet<string>(config.Sinks.Select(s => s.InstanceId), StringComparer.Ordinal);
+            _existingRouteIds = new HashSet<string>(config.Routes.Select(r => r.RouteId), StringComparer.Ordinal);
+
+            // Welcome step only fires when GatewayId is still on the auto-provisioned
+            // shape (ADR-0016 R5 — `gw-{hostname-slug}`). If the operator already
+            // set a custom id, skip the Welcome step entirely.
+            _skipWelcome = !AutoProvisionedIdPattern.IsMatch(config.Gateway.GatewayId);
+            _currentStep = _skipWelcome ? 1 : 0;
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private int FirstActiveStep() => _skipWelcome ? 1 : 0;
+
+    private string StepVisibility(int step) => _currentStep == step ? "" : "d-none";
+
+    private bool CanGoNext()
+    {
+        return _currentStep switch
+        {
+            0 => !string.IsNullOrWhiteSpace(_gatewayId) && !string.IsNullOrWhiteSpace(_gatewayName),
+            1 => _sourceProtocol is not null,
+            2 => _sourceInstance is not null && _sourceIdCollision is null,
+            3 => _sinkProtocol is not null,
+            4 => _sinkInstance is not null && _sinkIdCollision is null,
+            5 => _routeInstance is not null && _routeIdCollision is null,
+            6 => false, // review step uses its own Connect button
+            _ => false,
+        };
+    }
+
+    private void OnSourceInstanceBuilt(SourceInstanceConfig? source)
+    {
+        _sourceInstance = source;
+        // Early duplicate check: flag a clash with an existing source id so the
+        // operator fixes it HERE, not at the final apply.
+        _sourceIdCollision = source is not null && _existingSourceIds.Contains(source.InstanceId)
+            ? source.InstanceId
+            : null;
+        // OnInstanceBuilt fires from the wizard's OnAfterRenderAsync, which
+        // runs AFTER our render — StateHasChanged here is needed to refresh
+        // the Next button's CanGoNext() gate immediately on validity change.
+        StateHasChanged();
+    }
+
+    private void OnSinkInstanceBuilt(SinkInstanceConfig? sink)
+    {
+        _sinkInstance = sink;
+        _sinkIdCollision = sink is not null && _existingSinkIds.Contains(sink.InstanceId)
+            ? sink.InstanceId
+            : null;
+        StateHasChanged();
+    }
+
+    private void OnRouteInstanceBuilt(RouteConfig? route)
+    {
+        _routeInstance = route;
+        _routeIdCollision = route is not null && _existingRouteIds.Contains(route.RouteId)
+            ? route.RouteId
+            : null;
+        StateHasChanged();
+    }
+
+    private async Task OnSourceProtocolChosen(string protocolKey)
+    {
+        // If the operator changed protocol after configuring Step 3,
+        // discard the now-stale source instance + route (route depended on it).
+        if (_sourceProtocol is not null && _sourceProtocol != protocolKey)
+        {
+            _sourceInstance = null;
+            _routeInstance = null;
+            _sourceIdCollision = null;
+            _routeIdCollision = null;
+        }
+        _sourceProtocol = protocolKey;
+        // Auto-advance — picking a tile is the operator's commit gesture.
+        await GoNextAsync();
+    }
+
+    private async Task OnSinkProtocolChosen(string protocolKey)
+    {
+        if (_sinkProtocol is not null && _sinkProtocol != protocolKey)
+        {
+            _sinkInstance = null;
+            _routeInstance = null;
+            _sinkIdCollision = null;
+            _routeIdCollision = null;
+        }
+        _sinkProtocol = protocolKey;
+        await GoNextAsync();
+    }
+
+    private Task GoNextAsync()
+    {
+        if (!CanGoNext()) return Task.CompletedTask;
+        if (_currentStep < 6)
+        {
+            _currentStep++;
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task GoBackAsync()
+    {
+        if (_currentStep <= FirstActiveStep()) return;
+
+        // Going back from Configure source (2) to the source picker (1) puts the
+        // operator in a position to change protocol, which unmounts the
+        // just-configured wizard and loses its state. Same for Configure
+        // destination (4) → destination picker (3). Confirm before allowing it.
+        if (_currentStep == 2 && _sourceInstance is not null)
+        {
+            var ok = await ConfirmAsync(
+                "Change source protocol?",
+                "Going back will let you pick a different source protocol. " +
+                "Your current source configuration will be discarded if you change protocols.");
+            if (!ok) return;
+        }
+        else if (_currentStep == 4 && _sinkInstance is not null)
+        {
+            var ok = await ConfirmAsync(
+                "Change destination protocol?",
+                "Going back will let you pick a different destination. " +
+                "Your current destination configuration will be discarded if you change protocols.");
+            if (!ok) return;
+        }
+
+        _currentStep--;
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message)
+    {
+        var result = await DialogService.ShowMessageBox(
+            title,
+            message,
+            yesText: "Continue",
+            cancelText: "Stay here");
+        return result == true;
+    }
+
+    private async Task OnCancelAsync()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Exit setup?",
+            "All progress will be lost. Continue?",
+            yesText: "Yes, exit",
+            cancelText: "Stay here");
+        if (result == true)
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private Task StateHasChangedAsync()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+}

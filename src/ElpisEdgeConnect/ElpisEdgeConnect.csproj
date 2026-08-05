@@ -1,0 +1,43 @@
+<!--
+  ElpisEdgeConnect.csproj — .NET 8 Worker Service
+  Supports: MT-LINKi REST API, FOCAS2 DLL (P/Invoke), HTTP REST data sources
+-->
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect</AssemblyName>
+    <Description>Elpis EdgeConnect — Industrial Edge Integration Platform supporting MT-LINKi, FOCAS2, MTConnect, Brother HTTP, and MQTT publishing</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MQTT client for publishing machine data to broker -->
+    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+
+    <!-- Resilience (retry + circuit breaker) for HTTP data source -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+    <PackageReference Include="Polly" Version="8.4.2" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+
+    <!-- Structured logging -->
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+
+    <!-- Configuration binding and hot-reload -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+
+    <!-- Health checks for Docker/Kubernetes -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.11" />
+
+    <!-- JSON serialization -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+
+    <!-- MT-LINKi uses REST API via built-in HttpClient — no additional packages needed -->
+    <!-- MT-LINKi uses REST API via HttpClient — no additional packages needed -->
+  </ItemGroup>
+
+</Project>

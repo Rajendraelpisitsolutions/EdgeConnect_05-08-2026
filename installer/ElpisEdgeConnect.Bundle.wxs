@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Elpis EdgeConnect — WiX "Burn" bundle.
+  Wraps the MSI (installer/ElpisEdgeConnect.wxs -> publish/ElpisEdgeConnect.msi)
+  in a double-clickable setup .exe with a standard install UI. The .exe elevates,
+  shows progress, and chains the MSI.
+
+  Build (from repo root, after the MSI is built):
+    wix build installer/ElpisEdgeConnect.Bundle.wxs -arch x64 \
+      -ext WixToolset.BootstrapperApplications.wixext \
+      -o publish/ElpisEdgeConnect-Setup.exe
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <!-- Version is included in the Name so the setup wizard header + Add/Remove
+       Programs entry show it (the standard BA header renders [WixBundleName]).
+       Keep this in sync with Version below on each release. -->
+  <Bundle Name="Elpis EdgeConnect $(Version)"
+          Manufacturer="Elpis IT Solutions"
+          Version="$(Version)"
+          IconSourceFile="installer\elpis.ico"
+          UpgradeCode="c8f3d2b5-a04e-4d19-9b32-6a7e8f9d0c12">
+
+    <BootstrapperApplication>
+      <!-- Standard install UI: welcome + Install button + progress + finish.
+           LicenseUrl="" suppresses the license page (we have none to show here).
+           LogoFile puts the Elpis logo in the setup wizard header. Path is
+           relative to the repo root, where `wix build` is invoked. -->
+      <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense"
+                                              LicenseUrl=""
+                                              LogoFile="installer\elpis-logo.png" />
+    </BootstrapperApplication>
+
+    <Chain>
+      <!-- The self-contained apps already include the .NET runtime, so no
+           prerequisite packages are needed — just install the MSI. -->
+      <MsiPackage SourceFile="$(MsiPath)" Vital="yes" />
+    </Chain>
+
+  </Bundle>
+</Wix>

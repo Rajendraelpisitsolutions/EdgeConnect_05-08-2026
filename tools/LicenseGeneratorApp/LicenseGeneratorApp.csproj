@@ -1,0 +1,35 @@
+<!--
+  Elpis EdgeConnect — License Generator (admin desktop tool).
+  A WinForms form that produces a signed license.json for gateway activation.
+  Reuses ElpisEdgeConnect.Core's CanonicalJson + LicenseSignatureValidator so the
+  generated file is byte-for-byte compatible with the runtime's verifier.
+
+  NOT part of ElpisEdgeConnect.sln (Windows-only). Published as a standalone,
+  self-contained win-x64 desktop app. See docs for the publish command.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.LicenseGeneratorApp</RootNamespace>
+    <AssemblyName>ElpisLicenseGenerator</AssemblyName>
+    <!-- Standalone tool — do not inherit the repo's strict analyzer gate. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AnalysisLevel>none</AnalysisLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

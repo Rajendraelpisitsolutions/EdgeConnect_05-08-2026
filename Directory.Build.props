@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    Repository-wide product version. Imported automatically by every project in
+    the solution (MSBuild walks up for the nearest Directory.Build.props).
+
+    Keep this in sync with the installer version in installer/*.wxs, which are
+    built with  -d Version=<this>  (see the build recipe in those files). Bumping
+    a release = change this one value and pass the same to `wix build`.
+  -->
+  <PropertyGroup>
+    <Version>2.1.0.4</Version>
+    <FileVersion>2.1.0.4</FileVersion>
+    <InformationalVersion>2.1.0.4</InformationalVersion>
+  </PropertyGroup>
+</Project>

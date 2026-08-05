@@ -1,0 +1,122 @@
+@*
+    Import-draft dialog. Two input paths:
+      * File browse (primary) — operator picks a .json file from disk;
+        the dialog reads it into the JSON buffer client-side.
+      * Paste textarea (secondary) — for the "on the clipboard" case.
+
+    The file path is the default because pasting a 14+ KB gateway.json
+    into the textarea was hitting Blazor's SignalR receive-message
+    limit (raised to 5 MiB in ManagementHostingExtensions, but the
+    file path sidesteps the issue entirely by streaming chunks).
+
+    On confirm the dialog returns the JSON string to the parent page
+    which POSTs it to /api/v1/config/drafts.
+*@
+
+@using System.IO
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Pick a <code>gateway.json</code> file from disk, or paste one
+            below. The draft will be persisted but NOT validated — use the
+            <strong>Validate</strong> action on the resulting row to check
+            before applying.
+        </MudText>
+
+        <MudFileUpload T="IBrowserFile"
+                       Accept=".json,application/json"
+                       MaximumFileCount="1"
+                       FilesChanged="OnFilePicked"
+                       Class="mb-3">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.UploadFile"
+                           Style="text-transform:none;">
+                    Browse for gateway.json
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+
+        @if (_pickedFileName is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                Loaded <code>@_pickedFileName</code> (@_pickedFileSize bytes). You can edit below before importing.
+            </MudText>
+        }
+
+        <MudTextField @bind-Value="_json" Label="gateway.json"
+                      Variant="Variant.Outlined"
+                      Lines="20"
+                      Style="font-family:monospace; font-size:0.85em;"
+                      Immediate="true" />
+        @if (_validationHint is not null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_validationHint</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Style="text-transform:none;">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_json))"
+                   Style="text-transform:none;">
+            Import
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>Upper bound on file size to read from the browser file pick. 5 MiB matches the SignalR receive cap.</summary>
+    private const long MaxFileBytes = 5 * 1024 * 1024;
+
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _json = string.Empty;
+    private string? _validationHint;
+    private string? _pickedFileName;
+    private long _pickedFileSize;
+
+    private async Task OnFilePicked(IBrowserFile file)
+    {
+        if (file is null) return;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(MaxFileBytes);
+            using var reader = new StreamReader(stream);
+            _json = await reader.ReadToEndAsync();
+            _pickedFileName = file.Name;
+            _pickedFileSize = file.Size;
+            _validationHint = null;
+        }
+        catch (IOException ex) when (ex.Message.Contains("exceeds", StringComparison.OrdinalIgnoreCase))
+        {
+            _validationHint = $"File is larger than the {MaxFileBytes / 1024 / 1024} MiB cap. Trim it or paste below.";
+        }
+        catch (Exception ex)
+        {
+            _validationHint = $"Could not read file: {ex.Message}";
+        }
+    }
+
+    private void Submit()
+    {
+        // Fast client-side JSON-shape sanity check so we don't bounce
+        // out to the API just to discover the body isn't JSON. The API
+        // will do full validation; this is a UX gate.
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(_json);
+            _validationHint = null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _validationHint = $"Not valid JSON: {ex.Message}";
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(_json));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
