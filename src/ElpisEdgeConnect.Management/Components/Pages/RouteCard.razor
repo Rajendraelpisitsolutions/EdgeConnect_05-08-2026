@@ -41,24 +41,6 @@
             </MudChip>
         </MudStack>
 
-        @* The answer to "what is broken, and what do I do next?". Rendered
-           only when something is wrong, so healthy cards stay quiet. *@
-        @if (trouble is { } t)
-        {
-            <div class="mb-3 pa-2" style="@TroubleStyle(t)" data-testid="route-trouble">
-                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
-                    <MudIcon Icon="@t.Icon" Color="@t.Tone" Size="Size.Small" aria-hidden="true" />
-                    <div style="flex-grow:1; min-width:0;">
-                        <MudText Typo="Typo.body2" Style="font-weight:640; line-height:1.35;">
-                            @t.Headline
-                        </MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
-                            @t.NextStep
-                        </MudText>
-                    </div>
-                </MudStack>
-            </div>
-        }
 
         @if (Route.Source is not null)
         {
@@ -189,16 +171,21 @@
                    Frame the number by what it means for the operator instead. *@
                 <MudText Typo="Typo.caption" Style="flex-grow:1; min-width:0;"
                          data-testid="route-buffer">
-                    <span style="display:block;">
-                        <strong>@OperatorFormat.Count(Route.Buffer.CurrentDepth)</strong> messages waiting to send
-                        <span style="opacity:0.65;">· @OperatorFormat.BufferModeLabel(Route.Buffer.Mode)</span>
-                    </span>
-                    <span style="display:block; opacity:0.65;">
-                        @OperatorFormat.Count(Route.Buffer.TotalDrained) delivered since start
-                        @if (Route.Buffer.SizeBytes > 0)
-                        {
-                            <text>· @OperatorFormat.Bytes(Route.Buffer.SizeBytes) held on disk</text>
-                        }
+                    @* One line. The buffer-mode clause is the same sentence on
+                       every card on the page, so inline it was noise repeated
+                       per route — it belongs on hover. *@
+                    <span style="display:block;" title="@OperatorFormat.BufferModeLabel(Route.Buffer.Mode)">
+                        <strong>@OperatorFormat.Count(Route.Buffer.CurrentDepth)</strong> waiting
+                        <span style="opacity:0.65;">
+                            @* The @if needs whitespace before it. Written as
+                               "delivered@if (...)" Razor never transitions into
+                               code and prints the block as literal text. *@
+                            · @OperatorFormat.Count(Route.Buffer.TotalDrained) delivered
+                            @if (Route.Buffer.SizeBytes > 0)
+                            {
+                                <text>· @OperatorFormat.Bytes(Route.Buffer.SizeBytes) on disk</text>
+                            }
+                        </span>
                     </span>
                     @if (Route.Buffer.TotalDropped > 0)
                     {
@@ -223,23 +210,37 @@
         @* An error inside the live window is a fault happening NOW. Anything
            older degrades to a quiet, uncoloured note — a 19-minute-old blip
            must never read as a live outage. *@
+        @* One fault line at the foot of the card. A broken card is otherwise the
+           same shape as a healthy one — same rows, same height — so scanning a
+           board of routes does not mean re-reading a different layout each time.
+
+           The card used to open with a red banner AND close with a raw adapter
+           dump, which said the same thing twice and tripled the card's height.
+           The banner is gone; the plain sentence below replaces both, and the
+           adapter's own words stay one click away for whoever needs them. *@
         @if (Route.Source?.LastErrorAtUtc is { } errAt && !OperatorFormat.IsStale(errAt))
         {
-            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3"
-                      data-testid="route-source-error-live">
-                <MudText Typo="Typo.caption">
-                    <strong>Source failing now: @(Route.Source?.LastErrorCode ?? "Error")</strong>
-                    @if (Route.Source?.LastErrorMessage is { } msg)
-                    {
-                        <text> — @msg</text>
-                    }
-                    <br />
-                    <span style="opacity:0.8;" title="@OperatorFormat.Absolute(errAt)">
-                        Started @OperatorFormat.Ago(errAt) — check the device is powered and
-                        reachable, then open its log above.
-                    </span>
-                </MudText>
-            </MudAlert>
+            var fault = PlainFault(Route.Source?.LastErrorCode, Route.Source?.LastErrorMessage);
+            <div class="route-fault" data-testid="route-source-error-live">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small"
+                         Color="Color.Error" aria-hidden="true" />
+                <div style="min-width:0;">
+                    <span class="route-fault-headline">@fault.What</span>
+                    <span class="route-fault-step">@fault.Next</span>
+                    <details class="route-error-detail">
+                        <summary>
+                            <code>@(Route.Source?.LastErrorCode ?? "Error")</code>
+                            <span style="opacity:.7;" title="@OperatorFormat.Absolute(errAt)">
+                                · since @OperatorFormat.Ago(errAt)
+                            </span>
+                        </summary>
+                        @if (Route.Source?.LastErrorMessage is { } msg)
+                        {
+                            <div class="route-error-detail-body">@msg</div>
+                        }
+                    </details>
+                </div>
+            </div>
         }
         @if (Route.Source?.LastErrorAtUtc is { } oldErrAt && OperatorFormat.IsStale(oldErrAt))
         {
@@ -263,21 +264,30 @@
         {
             @if (sink.LastErrorAtUtc is { } sinkErrAt && !OperatorFormat.IsStale(sinkErrAt))
             {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2"
-                          data-testid="route-sink-error-live">
-                    <MudText Typo="Typo.caption">
-                        <strong>Cannot deliver to @sink.SinkInstanceId: @(sink.LastErrorCode ?? "Error")</strong>
-                        @if (sink.LastErrorMessage is { } sinkMsg)
-                        {
-                            <text> — @sinkMsg</text>
-                        }
-                        <br />
-                        <span style="opacity:0.8;" title="@OperatorFormat.Absolute(sinkErrAt)">
-                            Started @OperatorFormat.Ago(sinkErrAt) — data is being held in the
-                            buffer. Check the destination service is up and reachable.
-                        </span>
-                    </MudText>
-                </MudAlert>
+                @* Same split as the source block above: the banner at the top of
+                   the card carries the verdict and the next step, so this one
+                   carries only what a support engineer needs. *@
+                var sf = PlainFault(sink.LastErrorCode, sink.LastErrorMessage, isSink: true);
+                <div class="route-fault" data-testid="route-sink-error-live">
+                    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small"
+                             Color="Color.Error" aria-hidden="true" />
+                    <div style="min-width:0;">
+                        <span class="route-fault-headline">@sf.What</span>
+                        <span class="route-fault-step">@sf.Next</span>
+                        <details class="route-error-detail">
+                            <summary>
+                                <code>@(sink.LastErrorCode ?? "Error")</code>
+                                <span style="opacity:.7;" title="@OperatorFormat.Absolute(sinkErrAt)">
+                                    · since @OperatorFormat.Ago(sinkErrAt)
+                                </span>
+                            </summary>
+                            @if (sink.LastErrorMessage is { } sinkMsg)
+                            {
+                                <div class="route-error-detail-body">@sinkMsg</div>
+                            }
+                        </details>
+                    </div>
+                </div>
             }
             @if (sink.LastErrorAtUtc is { } oldSinkAt && OperatorFormat.IsStale(oldSinkAt))
             {
@@ -347,7 +357,79 @@
     };
 
     // One verdict per card: what is wrong, and what to do next.
-    private sealed record RouteTrouble(string Headline, string NextStep, Color Tone, string Icon);
+    /// <summary>A fault in words the person standing at the machine can act on.</summary>
+    private sealed record PlainFaultText(string What, string Next);
+
+    /// <summary>
+    /// Turns an adapter's error code and message into one plain sentence plus one
+    /// next step.
+    ///
+    /// Matched on the code FAMILY, not the exact code: every protocol names its
+    /// failures differently (MODBUS.CONNECT_FAILED, FOCAS2.COLLECT_ERROR,
+    /// OPCUA.BADSESSIONCLOSED) but the operator's action is the same for all of
+    /// them — a device that cannot be reached is a cable, a power switch or an
+    /// address, whichever protocol reported it. Anything unrecognised falls
+    /// through to a neutral sentence rather than a guess; the adapter's own
+    /// words are always one click away underneath.
+    /// </summary>
+    private static PlainFaultText PlainFault(string? code, string? message, bool isSink = false)
+    {
+        var c = (code ?? string.Empty).ToUpperInvariant();
+        var m = (message ?? string.Empty).ToLowerInvariant();
+        var thing = isSink ? "destination" : "device";
+
+        // A missing native driver is a gateway problem, not a plant problem —
+        // no amount of checking cables will fix it, so say so plainly.
+        if (m.Contains("could not load") || m.Contains(".dll") || m.Contains(".so"))
+        {
+            return new PlainFaultText(
+                "A driver file this protocol needs is missing on the gateway.",
+                "Nothing is wrong with the machine. Send this to Elpis support — the file has to be installed beside EdgeConnect.");
+        }
+
+        if (c.Contains("AUTH") || c.Contains("UNAUTHORIZED") || c.Contains("CREDENTIAL")
+            || m.Contains("unauthorized") || m.Contains("bad username") || m.Contains("not authorized"))
+        {
+            return new PlainFaultText(
+                $"The {thing} refused the login.",
+                "Check the username and password in Edit, then save.");
+        }
+
+        if (c.Contains("TIMEOUT") || m.Contains("timed out") || m.Contains("timeout"))
+        {
+            return new PlainFaultText(
+                $"The {thing} did not answer in time.",
+                "It may be busy or on a slow link. If it repeats, raise the timeout in Edit.");
+        }
+
+        if (c.Contains("CONNECT") || c.Contains("UNREACHABLE") || c.Contains("REFUSED")
+            || m.Contains("not reachable") || m.Contains("no connection")
+            || m.Contains("refused") || m.Contains("broken pipe"))
+        {
+            return isSink
+                ? new PlainFaultText(
+                    "Cannot reach this destination.",
+                    "Data is safe in the buffer meanwhile. Check the service is running and reachable from this gateway.")
+                : new PlainFaultText(
+                    "Cannot reach this device.",
+                    "Check it is powered on, plugged in, and that its address has not changed.");
+        }
+
+        return isSink
+            ? new PlainFaultText(
+                "This destination reported an error.",
+                "Data is held in the buffer. Open the detail below, or check Diagnostics.")
+            : new PlainFaultText(
+                "This device reported an error.",
+                "Open the detail below, or open its log for the full history.");
+    }
+
+    // Only the tone survives: it colours the card's left edge and decides
+    // whether the state chip is filled. The headline and next-step text this
+    // used to carry are now produced by PlainFault at the point of use, so the
+    // wording sits next to the error it describes instead of at the top of the
+    // card describing something further down.
+    private sealed record RouteTrouble(Color Tone, string Icon);
 
     private static string AccentCss(RouteTrouble? t) => t?.Tone switch
     {
@@ -359,13 +441,6 @@
     private static string CardStyle(RouteTrouble? t) =>
         $"height:100%; border-left:4px solid {AccentCss(t)};";
 
-    private static string TroubleStyle(RouteTrouble t) => t.Tone switch
-    {
-        Color.Error => "border:1px solid var(--mud-palette-error); background:rgba(220,38,38,0.06); border-radius:6px;",
-        Color.Warning => "border:1px solid var(--mud-palette-warning); background:rgba(245,158,11,0.06); border-radius:6px;",
-        _ => "border:1px solid var(--mud-palette-lines-default); border-radius:6px;",
-    };
-
     // First match wins, most urgent first. An error older than the stale
     // window is history, not a live fault — that distinction is the point.
     private RouteTrouble? BuildTrouble()
@@ -375,63 +450,42 @@
 
         if (src?.LastErrorAtUtc is { } srcAt && !OperatorFormat.IsStale(srcAt))
         {
-            return new RouteTrouble(
-                $"No data from {src.SourceInstanceId} — {src.LastErrorCode ?? "connection error"}",
-                $"Failing since {OperatorFormat.Ago(srcAt)}. Check the device is powered and reachable, then open its log below.",
-                Color.Error, Icons.Material.Filled.Error);
+            return new RouteTrouble(Color.Error, Icons.Material.Filled.Error);
         }
 
         foreach (var s in Route.Sinks)
         {
             if (s.LastErrorAtUtc is { } sinkAt && !OperatorFormat.IsStale(sinkAt))
             {
-                return new RouteTrouble(
-                    $"Cannot deliver to {s.SinkInstanceId} — {s.LastErrorCode ?? "send error"}",
-                    $"Failing since {OperatorFormat.Ago(sinkAt)}. Data is held in the buffer meanwhile. Check that destination is up and reachable.",
-                    Color.Error, Icons.Material.Filled.Error);
+                return new RouteTrouble(Color.Error, Icons.Material.Filled.Error);
             }
         }
 
         if (Route.LastErrorCode is { } routeCode)
         {
-            return new RouteTrouble(
-                $"Route is faulted — {routeCode}",
-                Route.LastErrorMessage ?? "Open Diagnostics for the fault detail, correct the configuration, then apply it again.",
-                Color.Error, Icons.Material.Filled.ReportProblem);
+            return new RouteTrouble(Color.Error, Icons.Material.Filled.ReportProblem);
         }
 
         if (Route.StateName is "Stopped")
         {
-            return new RouteTrouble(
-                "Route is stopped — nothing is moving",
-                "Start it from the Routes page, or confirm it was stopped on purpose.",
-                Color.Error, Icons.Material.Filled.PauseCircleOutline);
+            return new RouteTrouble(Color.Error, Icons.Material.Filled.PauseCircleOutline);
         }
 
         if (Route.StateName is "Faulted" or "Failed")
         {
-            return new RouteTrouble(
-                "Route has faulted — nothing is moving",
-                "Open Diagnostics for the fault detail, then restart the route.",
-                Color.Error, Icons.Material.Filled.ReportProblem);
+            return new RouteTrouble(Color.Error, Icons.Material.Filled.ReportProblem);
         }
 
         if (Route.Buffer is { TotalDropped: > 0 } dropped)
         {
-            return new RouteTrouble(
-                $"Data lost — {OperatorFormat.Count(dropped.TotalDropped)} messages dropped",
-                "The buffer overflowed because the destination could not keep up. Fix the destination first, then check the queue below stops rising.",
-                Color.Error, Icons.Material.Filled.ReportProblem);
+            return new RouteTrouble(Color.Error, Icons.Material.Filled.ReportProblem);
         }
 
         foreach (var s in Route.Sinks)
         {
             if (s.IsDegraded)
             {
-                return new RouteTrouble(
-                    $"{s.SinkInstanceId} is not delivering",
-                    "Data is buffering, not lost yet. Check that destination is reachable before the buffer fills.",
-                    Color.Warning, Icons.Material.Filled.Warning);
+                return new RouteTrouble(Color.Warning, Icons.Material.Filled.Warning);
             }
         }
 
@@ -439,45 +493,30 @@
         {
             if (s.IsDraining)
             {
-                return new RouteTrouble(
-                    $"{s.SinkInstanceId} is catching up on held data",
-                    "It recovered and the backlog is being sent. No action needed — watch the queue below fall.",
-                    Color.Info, Icons.Material.Filled.Sync);
+                return new RouteTrouble(Color.Info, Icons.Material.Filled.Sync);
             }
         }
 
         if (src?.LastPointAtUtc is { } lastPt && OperatorFormat.IsStale(lastPt))
         {
-            return new RouteTrouble(
-                $"{src.SourceInstanceId} has sent nothing for {OperatorFormat.Ago(lastPt)}",
-                "The connection is up but no values are arriving. Check the device is running and its tag list still matches.",
-                Color.Warning, Icons.Material.Filled.HourglassEmpty);
+            return new RouteTrouble(Color.Warning, Icons.Material.Filled.HourglassEmpty);
         }
 
         if (Route.StateName is "Degraded")
         {
-            return new RouteTrouble(
-                "Route is degraded",
-                "Data is still moving but something below is unhealthy. Check the source and destination lines.",
-                Color.Warning, Icons.Material.Filled.Warning);
+            return new RouteTrouble(Color.Warning, Icons.Material.Filled.Warning);
         }
 
         if (src?.LastErrorAtUtc is { } oldSrc)
         {
-            return new RouteTrouble(
-                $"Recovered — last error {OperatorFormat.Ago(oldSrc)}",
-                $"{src.LastErrorCode ?? "Error"} on {src.SourceInstanceId}. Nothing new since; no action needed unless it repeats.",
-                Color.Default, Icons.Material.Filled.History);
+            return new RouteTrouble(Color.Default, Icons.Material.Filled.History);
         }
 
         foreach (var s in Route.Sinks)
         {
             if (s.LastErrorAtUtc is { } oldSink)
             {
-                return new RouteTrouble(
-                    $"Recovered — last error {OperatorFormat.Ago(oldSink)}",
-                    $"{s.LastErrorCode ?? "Error"} on {s.SinkInstanceId}. Nothing new since.",
-                    Color.Default, Icons.Material.Filled.History);
+                return new RouteTrouble(Color.Default, Icons.Material.Filled.History);
             }
         }
 

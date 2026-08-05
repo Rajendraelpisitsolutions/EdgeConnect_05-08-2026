@@ -288,7 +288,7 @@ public sealed class OpcUaServerSinkWizardModel
             messages.Add(new WizardValidationMessage(
                 "opcua.instance-id.empty",
                 "InstanceId",
-                "Instance id is required.",
+                "Destination id is required.",
                 "#field-instance-id"));
         }
 

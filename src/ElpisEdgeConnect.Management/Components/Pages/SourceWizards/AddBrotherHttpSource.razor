@@ -60,8 +60,8 @@
         <MudGrid Spacing="2">
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
-                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
-                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Label="@(_isEdit ? "Source id (cannot be changed)" : "Source id *")"
+                              HelperText="@(_isEdit ? "The id is fixed once the source exists. Delete and re-add to rename it." : "Unique. Letters, digits, dot, hyphen, underscore.")"
                               Variant="Variant.Outlined" Immediate="true"
                               Disabled="@_isEdit"
                               Error="@(!string.IsNullOrEmpty(_instanceIdError))"
@@ -70,7 +70,7 @@
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
-                              HelperText="Operator-readable; defaults to instance id if empty."
+                              HelperText="A friendly name for lists and tooltips. Defaults to the source id."
                               Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" md="6">
@@ -187,7 +187,7 @@
         @* Wiring section is Add-mode only. Edit mode never mutates routes
            per M.2d.2 v2 §5.5 invariant — pin tested by sub-step 8.5's
            Put_RoutePreservation test. *@
-        <WizardSection Index="4" Title="Wire to a route">
+        <WizardSection Index="4" Title="Wire data into a route">
             <MudRadioGroup T="string" @bind-Value="_wiringChoice">
                 <MudRadio T="string" Value="@("none")">Do not wire yet (source lands disabled)</MudRadio>
                 <MudRadio T="string" Value="@("newRoute")">Create a new route now</MudRadio>
@@ -198,7 +198,7 @@
                 <MudGrid Spacing="2" Class="mt-2">
                     <MudItem xs="12" md="6">
                         <MudTextField @bind-Value="_routeId" Label="Route id *"
-                                      HelperText="Unique route identifier. Auto-suggested from instance id."
+                                      HelperText="Unique. Suggested from the source id — edit it if you prefer."
                                       Variant="Variant.Outlined" Immediate="true" />
                     </MudItem>
                     <MudItem xs="12" md="6">
@@ -393,7 +393,7 @@
         }
         else if (_existingSourceIds.Contains(_model.InstanceId))
         {
-            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different instance id.";
+            _instanceIdError = $"A source with the id '{_model.InstanceId}' already exists on this gateway. Pick a different source id.";
         }
         else
         {

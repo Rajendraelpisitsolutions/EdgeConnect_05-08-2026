@@ -104,15 +104,30 @@ public sealed class Focas2SourceAdapter : ISourceAdapter, ISourceRetirement
 
     /// <summary>
     /// Dispatch helper for the production constructor. When
+    /// <see cref="Focas2SimulatorOptions.IsEnabled"/> is true, returns a
+    /// <see cref="Focas2SimulatorApi"/> that dials an external CNC simulator at
+    /// the address the source is configured with. Otherwise, when
     /// <see cref="Focas2DemoModeOptions.IsEnabled"/> is true (M.2b.3.1),
     /// returns a <see cref="Focas2DemoApi"/> instead of the real
     /// <see cref="Focas2NativeApi"/>. The choice is frozen for the
     /// process lifetime (Locked F).
     /// </summary>
+    /// <remarks>
+    /// The simulator is checked first: it names an external system the operator
+    /// deliberately started, which is a more specific request than the built-in
+    /// synthetic controller.
+    /// </remarks>
     private static IFocas2Api ChooseProductionApi()
-        => Focas2DemoModeOptions.IsEnabled
+    {
+        if (Focas2SimulatorOptions.IsEnabled)
+        {
+            return new Focas2SimulatorApi();
+        }
+
+        return Focas2DemoModeOptions.IsEnabled
             ? new Focas2DemoApi()
             : new Focas2NativeApi();
+    }
 
     /// <summary>
     /// Test-only accessor exposing the live <see cref="IFocas2Api"/>
@@ -359,6 +374,14 @@ public sealed class Focas2SourceAdapter : ISourceAdapter, ISourceRetirement
         if (_api is Focas2DemoApi)
         {
             metrics["demoMode"] = true;
+        }
+
+        // Same reasoning for the simulator backend: an operator looking at the
+        // Sources detail page must be able to tell that this data came from a
+        // simulator and not from a controller on the shop floor.
+        if (_api is Focas2SimulatorApi)
+        {
+            metrics["simulatorMode"] = true;
         }
 
         var health = new AdapterHealth

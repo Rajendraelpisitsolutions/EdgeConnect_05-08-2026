@@ -135,11 +135,6 @@ public static class OperatorFormat
     }
 
     /// <summary>
-    /// Buffer mode in operator language: what actually happens to data when a
-    /// destination goes away. Shared so Overview, Routes, RouteDetail and the
-    /// route wizard cannot describe the same mode three different ways.
-    /// </summary>
-    /// <summary>
     /// Config keys such as "opcua-server" are not words an operator uses.
     /// Shared so the list page and the detail page cannot drift apart.
     /// </summary>
@@ -153,6 +148,11 @@ public static class OperatorFormat
         _ => kind,
     };
 
+    /// <summary>
+    /// Buffer mode in operator language: what actually happens to data when a
+    /// destination goes away. Shared so Overview, Routes, RouteDetail and the
+    /// route wizard cannot describe the same mode three different ways.
+    /// </summary>
     public static string BufferModeLabel(string mode) => mode switch
     {
         "StoreAndForward" => "held on disk if a destination drops",

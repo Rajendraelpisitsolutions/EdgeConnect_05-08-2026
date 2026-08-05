@@ -288,7 +288,7 @@ public sealed class MqttSinkWizardModel
             messages.Add(new WizardValidationMessage(
                 Code: "mqtt.instance-id.empty",
                 Path: "InstanceId",
-                Message: "Instance id is required.",
+                Message: "Destination id is required.",
                 FieldAnchor: "#field-instance-id"));
         }
 

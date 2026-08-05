@@ -44,15 +44,15 @@
         <MudGrid Spacing="2">
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
-                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
-                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Label="@(_isEdit ? "Source id (cannot be changed)" : "Source id *")"
+                              HelperText="@(_isEdit ? "The id is fixed once the source exists. Delete and re-add to rename it." : "Unique. Letters, digits, dot, hyphen, underscore.")"
                               Variant="Variant.Outlined" Immediate="true"
                               Disabled="@_isEdit"
                               UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
-                              HelperText="Operator-readable; defaults to instance id if empty."
+                              HelperText="A friendly name for lists and tooltips. Defaults to the source id."
                               Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" md="6">
@@ -265,7 +265,7 @@
                     <MudItem xs="12" md="6">
                         <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
                                       Label="Route id *"
-                                      HelperText="Auto-suggested from instance id; edit to override."
+                                      HelperText="Suggested from the source id — edit it if you prefer."
                                       Variant="Variant.Outlined" Immediate="true" />
                     </MudItem>
                     <MudItem xs="12" md="6">
@@ -440,7 +440,7 @@
         if (!_isEdit && !string.IsNullOrWhiteSpace(_model.InstanceId)
             && _existingSourceIds.Contains(_model.InstanceId))
         {
-            _instanceIdError = $"A source named '{_model.InstanceId}' already exists.";
+            _instanceIdError = $"A source with the id '{_model.InstanceId}' already exists on this gateway. Pick a different source id.";
         }
         if (!_isEdit && !_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
         {

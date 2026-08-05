@@ -51,12 +51,12 @@
     <ChildContent>
     <WizardValidationBanner Messages="@BuildValidationMessages()" />
 
-    <WizardSection Index="1" Title="Source">
+    <WizardSection Index="1" Title="Device identity">
         <MudGrid Spacing="2">
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
-                              Label="@(_isEdit ? "Source id (immutable in Edit)" : "Source id *")"
-                              HelperText="@(_isEdit ? "Source id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Label="@(_isEdit ? "Source id (cannot be changed)" : "Source id *")"
+                              HelperText="@(_isEdit ? "The id is fixed once the source exists. Delete and re-add to rename it." : "Unique. Letters, digits, dot, hyphen, underscore.")"
                               Variant="Variant.Outlined" Immediate="true"
                               Disabled="@_isEdit"
                               UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
@@ -656,7 +656,7 @@
         }
         else if (_existingSourceIds.Contains(_model.InstanceId))
         {
-            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different source id.";
+            _instanceIdError = $"A source with the id '{_model.InstanceId}' already exists on this gateway. Pick a different source id.";
         }
         else
         {

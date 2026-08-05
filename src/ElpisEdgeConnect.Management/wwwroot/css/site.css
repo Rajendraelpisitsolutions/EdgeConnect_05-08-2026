@@ -216,6 +216,90 @@ html, body {
    Inline styles still win where a button deliberately wants something else. */
 .mud-button-root { text-transform: none; }
 
+/* ---- route cards: a broken card must not dwarf a healthy one ----
+
+   A failing route rendered ~3x the height of a working one, because the raw
+   adapter text (a DLL search path, a broken-pipe trace) ran to seven lines
+   inside the card. On a three-route board that pushed the other two routes
+   off screen — the operator lost the fleet view to read a stack trace they
+   had not asked for.
+
+   The detail is a native <details>, closed by default. No component state, no
+   script, and it survives a re-render of the card, which a MudCollapse bound
+   to a field would not on a page that polls every few seconds. */
+.route-card .route-error-detail {
+    font-size: .75rem;
+    line-height: 1.45;
+}
+.route-card .route-error-detail > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: .3rem;
+    flex-wrap: wrap;
+}
+/* Chevron on the left, drawn rather than inherited, so it points down when
+   open in every browser. */
+.route-card .route-error-detail > summary::-webkit-details-marker { display: none; }
+.route-card .route-error-detail > summary::before {
+    content: "B8";
+    font-size: .7em;
+    opacity: .6;
+    transition: transform 120ms ease;
+}
+.route-card .route-error-detail[open] > summary::before { transform: rotate(90deg); }
+.route-card .route-error-detail > summary code {
+    background: rgba(0, 0, 0, .06);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: .95em;
+}
+/* The message is reference material, so it is capped and scrolls rather than
+   growing the card without limit. */
+.route-card .route-error-detail-body {
+    margin-top: .35rem;
+    max-height: 8.5rem;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+    opacity: .85;
+}
+
+/* One fault line at the foot of the card — not a second red panel. A tinted
+   strip carries the severity without the weight of a full alert box, so a
+   broken card stays close to the height of a healthy one and a board of
+   routes still scans in one pass. */
+.route-card .route-fault {
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+    margin-top: .6rem;
+    padding: .45rem .55rem;
+    border-radius: 6px;
+    background: rgba(220, 38, 38, .06);
+    border: 1px solid rgba(220, 38, 38, .22);
+}
+.route-card .route-fault-headline {
+    display: block;
+    font-size: .8rem;
+    font-weight: var(--w-emphasis);
+    line-height: 1.3;
+    color: var(--mud-palette-text-primary);
+}
+.route-card .route-fault-step {
+    display: block;
+    font-size: .74rem;
+    line-height: 1.35;
+    color: var(--mud-palette-text-secondary);
+    margin-top: .1rem;
+}
+.route-card .route-fault .route-error-detail { margin-top: .3rem; }
+
+/* Density: the same information, less card. */
+.route-card.pa-4 { padding: .85rem 1rem; }
+.route-card .mud-alert.mud-dense { padding: .4rem .6rem; }
+.route-card .mud-divider { margin-top: .5rem !important; margin-bottom: .5rem !important; }
+
 /* ---- protocol picker tiles: one height, three legible states ----
 
    Available tiles are a bare MudPaper in the grid cell. Unavailable ones are
