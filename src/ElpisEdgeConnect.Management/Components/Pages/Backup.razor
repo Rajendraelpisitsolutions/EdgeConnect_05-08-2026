@@ -1,0 +1,133 @@
+@*
+    Backup page (M.1c.3). One purpose: let an operator pull a
+    redacted, signed-audit-attached backup of the gateway as a single
+    zip download.
+
+    Restore is deliberately absent — lands in M.2a with the
+    configuration draft/apply pipeline. A placeholder card tells the
+    operator the workflow without claiming a capability the runtime
+    doesn't have yet.
+
+    The download is a plain anchor to /api/v1/backup with the
+    `download` attribute. The browser handles streaming, filename
+    (from Content-Disposition), and the "save as" dialog. No JS
+    gymnastics, no Blob handling.
+*@
+@page "/backup"
+
+<PageTitle>Backup · Connectivity Studio</PageTitle>
+
+<div class="page-heading">
+    <span class="page-heading__icon"><MudIcon Icon="@Icons.Material.Filled.SettingsBackupRestore" Size="Size.Medium" /></span>
+    <div class="page-heading__text">
+        <div class="page-heading__title">Backup</div>
+        <div class="page-heading__desc">
+            Download a complete backup of your gateway configuration, change history, and audit log.
+        </div>
+    </div>
+</div>
+
+<MudGrid Spacing="3">
+    @* ---- Download card (the marquee) ---- *@
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                <MudIcon Icon="@Icons.Material.Filled.Archive" Size="Size.Medium" Color="Color.Primary" />
+                <MudText Typo="Typo.h6">Download backup</MudText>
+            </MudStack>
+
+            @* Says what the file DOES for the operator, not how it is built. The
+               zip's internal filenames, its checksum scheme and the JSONPath
+               redaction map are support concerns; they moved to the expander
+               below so they are still reachable without leading with them. *@
+            <MudText Typo="Typo.body2" Class="mb-3">
+                A single file containing everything needed to rebuild this gateway's
+                configuration — every source, destination and route, plus the full
+                history of changes and who made them.
+            </MudText>
+
+            @* Warning, not Info: this is a caveat that changes what the operator
+               must do later, and it was previously a subordinate clause third in
+               an info box. Restoring onto a rebuilt machine with no credentials
+               and no trusted certificates is the difference between a backup that
+               works and a bad afternoon — so it leads. *@
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4"
+                      data-testid="backup-secrets-notice">
+                <strong>Passwords and certificates are not included.</strong>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    They are removed before the file is created, so it can be stored
+                    or sent to Elpis support without exposing credentials.
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    When this configuration is restored on another machine you will
+                    need to re-enter each destination's password and re-trust its
+                    certificates before data flows again.
+                </MudText>
+            </MudAlert>
+
+            @* Kept for whoever opens the zip — support, or an auditor checking
+               what left the gateway. Closed by default; native <details> so it
+               survives a re-render and needs no component state. *@
+            <details class="mb-4" data-testid="backup-contents">
+                <summary style="cursor:pointer;">What's inside the file</summary>
+                <ul style="margin:0.5rem 0 0; padding-left:1.5rem;">
+                    <li><strong>gateway.json</strong> — the current configuration, with secrets removed</li>
+                    <li><strong>history/*.json</strong> — every configuration that was previously applied</li>
+                    <li><strong>audit.log</strong> — the full record of who changed what, and when</li>
+                    <li><strong>manifest.json</strong> — checksums, gateway identity, and a list of exactly which values were removed</li>
+                </ul>
+            </details>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton Href="/api/v1/backup"
+                           Target="_blank"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           Style="text-transform:none;">
+                    Download backup
+                </MudButton>
+                @* The literal template placeholders ({gatewayId}, {ISO timestamp})
+                   were printed as-is, so the caption showed a filename that never
+                   appears on disk. Describe the shape instead — the point is only
+                   to help the operator find it in their Downloads folder. *@
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-flex align-center">
+                    Saved with this gateway's name and today's date in the filename.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    @* ---- Restore placeholder ---- *@
+    <MudItem xs="12" md="4">
+        <MudPaper Elevation="1" Class="pa-6" Style="height:100%;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.RestorePage" Size="Size.Medium" Color="Color.Default" />
+                <MudText Typo="Typo.h6">Restore</MudText>
+            </MudStack>
+
+            @* "Milestone M.2a" is an internal release identifier — it appeared
+               here twice and meant nothing to the person holding the backup.
+               What they need is the fact (restore is not self-service yet) and
+               the way forward (support will do it), not a description of how the
+               unbuilt feature will work. *@
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Restoring from a backup isn't available in the Studio yet. Send the
+                backup file to Elpis support and they will restore it for you.
+            </MudText>
+
+            <MudTooltip Text="Not available yet — send the backup file to Elpis support to have it restored.">
+                <span>
+                    <MudButton Variant="Variant.Outlined"
+                               Disabled="true"
+                               StartIcon="@Icons.Material.Filled.Upload"
+                               Class="mt-3"
+                               Style="text-transform:none;">
+                        Restore from backup
+                    </MudButton>
+                </span>
+            </MudTooltip>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

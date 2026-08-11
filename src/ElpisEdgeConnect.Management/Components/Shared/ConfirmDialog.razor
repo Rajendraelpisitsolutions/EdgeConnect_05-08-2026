@@ -1,0 +1,111 @@
+@*
+    Shared NON-destructive confirmation — "are you sure you want to leave, go
+    back, or discard what you have typed?".
+
+    Sibling of ConfirmDeleteDialog and deliberately the same anatomy, so the two
+    read as one family: tinted header band with a ringed emblem, a body with
+    room to breathe, and a tinted action bar where both choices carry equal hit
+    area. The difference is temperature — amber, not red — because nothing here
+    is removed from the gateway. The operator only loses what they typed into
+    the step they are standing in, and a red dialog for that would cry wolf on
+    the treatment reserved for deletes.
+
+    Replaces DialogService.ShowMessageBox at the onboarding call sites. The
+    message box rendered an untitled slab of body text with two identical-weight
+    links, so "Continue" — the choice that throws work away — looked exactly as
+    safe as "Stay here".
+
+    Every string is a parameter: the flow asks several different questions
+    ("Change source protocol?", "Exit setup?") and collapsing them into one
+    shared sentence would lose the only information the operator needs.
+
+    Geometry and colour live in wwwroot/css/site.css under .confirm-dialog —
+    the class hooks below are the contract between the two files, so renaming
+    one without the other silently unstyles the dialog.
+*@
+
+<MudDialog Class="confirm-dialog" ActionsClass="confirm-dialog__actions">
+    <TitleContent>
+        <div class="confirm-dialog__head">
+            <span class="confirm-dialog__icon" aria-hidden="true">
+                <MudIcon Icon="@Icon" />
+            </span>
+            <div>
+                <MudText Typo="Typo.h6" Class="confirm-dialog__title">@Title</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="confirm-dialog__body">
+            <p class="confirm-dialog__message">@Message</p>
+
+            @* The cost of continuing, stated plainly and LAST so it is the final
+               thing read before the buttons. Boxed, because as trailing prose it
+               is exactly what a hurried operator skims past. *@
+            @if (!string.IsNullOrWhiteSpace(Consequence))
+            {
+                <div class="confirm-dialog__consequence" data-testid="confirm-dialog-consequence">
+                    <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Size="Size.Small" aria-hidden="true" />
+                    <span>@Consequence</span>
+                </div>
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Class="confirm-dialog__cancel"
+                   data-testid="confirm-dialog-cancel">
+            @CancelLabel
+        </MudButton>
+        @* Warning, not Error: the confirm action is the one that costs the
+           operator work, so it must lead the row — but it is not destructive. *@
+        <MudButton Color="Color.Warning" Variant="Variant.Filled"
+                   OnClick="Submit" Class="confirm-dialog__confirm"
+                   data-testid="confirm-dialog-confirm">
+            @ConfirmLabel
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// Shared presentation for every non-destructive confirmation, so the call
+    /// sites cannot drift apart. BackdropClick is disabled deliberately: a
+    /// question about losing work has to be answered, not dismissed by a stray
+    /// click outside the dialog. Escape still cancels, which is the safe choice.
+    /// </summary>
+    public static readonly DialogOptions Options = new()
+    {
+        // Small (~600px) rather than ExtraSmall (~444px): the consequence strip
+        // wrapped to four cramped lines at the narrower size.
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        BackdropClick = false,
+        CloseOnEscapeKey = true,
+    };
+
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Dialog heading, e.g. "Change source protocol?".</summary>
+    [Parameter] public string Title { get; set; } = "Are you sure?";
+
+    /// <summary>What the operator is about to do, in plain language.</summary>
+    [Parameter] public string Message { get; set; } = string.Empty;
+
+    /// <summary>What they lose by continuing. Rendered as a highlighted strip; null hides it.</summary>
+    [Parameter] public string? Consequence { get; set; }
+
+    /// <summary>Header emblem. Defaults to a back-arrow, which suits the "going back" cases.</summary>
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Undo;
+
+    /// <summary>Confirm button text.</summary>
+    [Parameter] public string ConfirmLabel { get; set; } = "Continue";
+
+    /// <summary>Cancel button text.</summary>
+    [Parameter] public string CancelLabel { get; set; } = "Stay here";
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}

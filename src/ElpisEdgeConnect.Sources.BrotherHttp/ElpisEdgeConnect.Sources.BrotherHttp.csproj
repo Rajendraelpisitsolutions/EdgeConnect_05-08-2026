@@ -1,0 +1,41 @@
+<!--
+  ElpisEdgeConnect.Sources.BrotherHttp: Brother HTTP source adapter implementing ISourceAdapter.
+  Reads CNC machine data from Brother Speedio (and other Brother CNC models) via their
+  built-in HTTP web monitoring interface (port 80). No proprietary licenses required.
+  Migrated from legacy src/ElpisEdgeConnect/DataSources/BrotherHttpDataSource.cs (M.P2.4).
+
+  Reference: docs/sessions/2026-05-20-mp24-brother-http-plan-v2.md,
+             docs/sessions/2026-05-21-mp24-brother-http-plan-v3.md,
+             docs/sessions/2026-05-21-mp24-brother-http-plan-v3.1.md,
+             ARCHITECTURE_BLUEPRINT.md Section 4.2
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.BrotherHttp</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.BrotherHttp</AssemblyName>
+    <Description>Brother HTTP source adapter for Elpis EdgeConnect — Brother CNC data collection via built-in web monitoring interface</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA2101</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.BrotherHttp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

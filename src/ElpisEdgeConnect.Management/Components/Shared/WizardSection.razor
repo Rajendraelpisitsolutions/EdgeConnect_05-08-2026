@@ -1,0 +1,63 @@
+@*
+    WizardSection — shared numbered-card primitive for the six wizards.
+    M.2d.1 deliverable per the v2 plan §5.2 (round-1 #2 — the most useful
+    missing primitive surfaced in ChatGPT review).
+
+    Responsibilities (chrome only):
+      * MudPaper wrapper with consistent elevation + padding + margin.
+      * Numbered title — "{Index}. {Title}".
+      * Optional description text rendered as a caption.
+      * ChildContent slot — the section body.
+
+    What this is NOT responsible for (anti-coupling lock — round-2 #10):
+      * Field layout — wizards decide MudGrid / table / flex / charts /
+        custom panes inside ChildContent. WizardSection does NOT wrap
+        ChildContent in MudGrid.
+
+    DoD §6 anti-layout-coupling check: this file contains zero
+    MudGrid constructs.
+
+    Reference: docs/sessions/2026-05-21-m2d1-shared-primitives-plan-v2.md §5.2
+*@
+
+@* The heading keeps its exact "{Index}. {Title}" text — that format is a tested
+   contract (WizardSectionTests.Render_NumberedTitle_FormatsAsIndexDotSpaceTitle).
+   The number is merely WRAPPED so it can be tinted; the text content, and so the
+   accessible name, is unchanged. Spacing moved from utility classes to
+   .wizard-section__head, which also draws the rule separating the heading from
+   the fields — the panel previously ran heading straight into inputs with
+   nothing marking where the section began.
+   The inline font-weight:500 is gone deliberately: the weight-scale normaliser in
+   site.css rewrites stray 500s to 400, so that inline rule was making the heading
+   render LIGHTER than body emphasis. .wizard-section__title carries the weight. *@
+<MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section" data-testid="wizard-section">
+    <div class="wizard-section__head">
+        <MudText Typo="Typo.subtitle1" Class="wizard-section__title"
+                 data-testid="wizard-section-title"><span class="wizard-section__index">@Index.</span> @Title</MudText>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="wizard-section__desc" data-testid="wizard-section-description">@Description</MudText>
+        }
+    </div>
+    @ChildContent
+</MudPaper>
+
+@code {
+    /// <summary>Section number rendered as the title prefix (e.g. <c>1. Identity</c>).</summary>
+    [Parameter, EditorRequired] public int Index { get; set; }
+
+    /// <summary>Section title text.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional help text rendered as a small caption directly below the
+    /// numbered title. When null or empty, no caption is rendered.
+    /// </summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>
+    /// The section body. Wizards decide the inner layout (MudGrid for
+    /// field grids, plain markup for tables, panes, charts, etc.).
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

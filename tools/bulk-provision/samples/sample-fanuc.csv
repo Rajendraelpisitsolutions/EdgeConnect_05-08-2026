@@ -1,0 +1,4 @@
+deviceId,deviceName,host,enabled
+cnc-001,Lathe-A1,192.168.10.21,true
+cnc-002,Lathe-A2,192.168.10.22,true
+cnc-003,Mill-B1,192.168.10.31,false

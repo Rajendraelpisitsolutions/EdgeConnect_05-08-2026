@@ -1,0 +1,200 @@
+@*
+    Bottom status bar — live rollup so operators always know whether
+    the gateway is healthy without leaving the current page.
+
+    Polls every 3 seconds via PeriodicTimer started on first render
+    (interactive Blazor Server circuit). Reads only the locally-loaded
+    API client — no direct DI access to Core (locked rule).
+*@
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+@* role="status" + aria-live="polite" so a rollup that changes while the operator
+   is working elsewhere on the page is announced, rather than silently repainting
+   32px of chrome they are not looking at. "polite" queues behind whatever the
+   screen reader is already saying — this is ambient state, never an interrupt. *@
+<MudPaper Elevation="2" Square="true" Class="status-footer px-4 py-1"
+          role="status" aria-live="polite"
+          Style="position:fixed; bottom:0; left:0; right:0; height:32px;
+                 display:flex; align-items:center; gap:16px;
+                 border-top:1px solid var(--mud-palette-lines-default);">
+    @* Glyph as well as colour — the footer is read peripherally, and a green dot
+       and a red dot are the same dot to a colour-blind operator. *@
+    <MudIcon Icon="@OverallIcon"
+             Size="Size.Small"
+             Color="@OverallColor"
+             aria-hidden="true" />
+    <MudText Typo="Typo.caption">@OverallLabel</MudText>
+
+    <MudDivider Vertical="true" FlexItem="true" />
+
+    @* "delivering", not "running": the count is RouteHealth's verdict, and
+       "running" is the pipeline state this footer used to count — the word that
+       let the footer say 4/4 while four cards read "Not delivering". *@
+    <MudText Typo="Typo.caption">
+        <strong>@_routesUp</strong>/@_routesTotal routes delivering
+    </MudText>
+
+    @if (_degradedSinks > 0)
+    {
+        <MudDivider Vertical="true" FlexItem="true" />
+        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Warning" />
+        <MudText Typo="Typo.caption">@_degradedSinks degraded destination@(_degradedSinks == 1 ? "" : "s")</MudText>
+    }
+
+    <MudSpacer />
+
+    <MudText Typo="Typo.caption" Style="opacity:0.6;" data-testid="footer-version">
+        Elpis EdgeConnect @AppVersion
+    </MudText>
+    <MudDivider Vertical="true" FlexItem="true" />
+    <MudText Typo="Typo.caption" Style="opacity:0.6;" data-testid="footer-copyright">
+        @AppCopyright
+    </MudText>
+</MudPaper>
+
+@code {
+    // Full application version shown in the footer — read from the assembly's
+    // InformationalVersion (stamped from Directory.Build.props), stripped of the
+    // "+gitHash" suffix. Shows all four parts (e.g. 2.1.0.6) to match the
+    // installer; the assembly Version.ToString(3) previously truncated it to
+    // "2.1.0".
+    private static readonly string AppVersion =
+        "v" + (System.Reflection.CustomAttributeExtensions
+                   .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
+                       typeof(StatusFooter).Assembly)
+                   ?.InformationalVersion?.Split('+')[0]
+               ?? typeof(StatusFooter).Assembly.GetName().Version?.ToString(4)
+               ?? "?");
+
+    // Copyright shown in the footer — read from the assembly's Copyright
+    // attribute (stamped from Directory.Build.props) so it stays consistent
+    // with the DLL metadata and the License Generator app footer.
+    private static readonly string AppCopyright =
+        System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyCopyrightAttribute>(
+                typeof(StatusFooter).Assembly)
+            ?.Copyright
+        ?? "Copyright © 2026 Elpis IT Solutions";
+
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+    private int _routesTotal;
+    private int _routesUp;
+    private int _degradedSinks;
+
+    // The `_degradedSinks == 0` clause is now belt-and-braces: a degraded
+    // destination already keeps its route out of _routesUp. Kept because the
+    // count is polled and displayed independently, so the two must not be able
+    // to disagree if that ever stops being true.
+    private Color OverallColor => _routesTotal == 0
+        ? Color.Default
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? Color.Success
+            : _routesUp == 0
+                ? Color.Error
+                : Color.Warning;
+
+    // Carries the same meaning as OverallColor, in shape. The two are written as
+    // one ladder on purpose: a glyph that disagrees with its colour is worse than
+    // no glyph at all, so any edit to one must be made to the other.
+    private string OverallIcon => _routesTotal == 0
+        ? Icons.Material.Filled.RadioButtonUnchecked
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? Icons.Material.Filled.CheckCircle
+            : _routesUp == 0
+                ? Icons.Material.Filled.Error
+                : Icons.Material.Filled.Warning;
+
+    private string OverallLabel => _routesTotal == 0
+        ? "No routes configured"
+        : _routesUp == _routesTotal && _degradedSinks == 0
+            ? "All systems healthy"
+            : _routesUp == 0
+                ? "All routes down"
+                : "Degraded";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on dispose
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var routes = await HttpClient.GetFromJsonAsync<RouteSummaryDto[]>("/api/v1/routes");
+            if (routes is null) return;
+            _routesTotal = routes.Length;
+            _routesUp = 0;
+            _degradedSinks = 0;
+            foreach (var r in routes)
+            {
+                // RouteHealth.IsHealthy, not r.StateName. StateName describes the
+                // PIPELINE: a route whose source is Stopped and whose sink is
+                // disconnected still reports "Running", so this footer counted it
+                // as up and printed "All systems healthy" over a board of red
+                // cards — the footer is read peripherally and was the surface most
+                // likely to be believed. One definition, one answer.
+                if (RouteHealth.IsHealthy(r)) _routesUp++;
+                foreach (var s in r.Sinks)
+                {
+                    if (s.IsDegraded) _degradedSinks++;
+                }
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component scope torn down between ticks; loop will exit.
+        }
+        catch
+        {
+            // Footer never throws — the Overview page surfaces the real error.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null)
+            {
+                await _pollLoop;
+            }
+        }
+        catch
+        {
+            // best-effort
+        }
+        finally
+        {
+            _cts?.Dispose();
+        }
+    }
+}

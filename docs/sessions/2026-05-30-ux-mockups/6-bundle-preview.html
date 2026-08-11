@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Generate Diagnostic Bundle (manifest preview)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+    <style>
+        /* page-local: the three-question legend on the tier section headers */
+        .tier-head { display:flex; align-items:center; gap:10px; margin: 4px 0 10px 0; }
+        .tier-head h2 { font-size:16px; font-weight:500; margin:0; }
+        .tier-head .q { font-size:11px; color:#757575; text-transform:uppercase; letter-spacing:0.06em; }
+        .tier-bar { width:4px; align-self:stretch; border-radius:2px; }
+        .tier-bar.include { background:#2e7d32; }
+        .tier-bar.mask { background:#ed6c02; }
+        .tier-bar.strip { background:#d32f2f; }
+        .tier-bar.exclude { background:#9e9e9e; }
+        .gen-bar { position:sticky; bottom:0; background:white; border-top:1px solid #e0e0e0;
+                   margin:24px -24px -24px; padding:16px 24px; display:flex; align-items:center; gap:16px; }
+        .info-line { font-size:12px; color:#757575; }
+        .info-line code { font-size:11px; }
+    </style>
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Diagnostics</a> / Generate Diagnostic Bundle</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">📦</div>
+        <div>
+            <h1>Generate Diagnostic Bundle</h1>
+            <div class="subtitle">
+                A support artifact you can safely email. Review exactly what will leave the
+                gateway <strong>before</strong> the ZIP is created. Secrets are masked or
+                stripped; the license file is never included. Generating records a
+                <code>BUNDLE.GENERATED</code> entry in the gateway audit log.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — Bundle manifest preview (ADR-0020 Rule 3, sub-milestone G3).</strong>
+        This is the operator sign-off gate. The page must let an operator answer three
+        questions before <em>Generate</em> is clickable: <strong>what will leave</strong>,
+        <strong>why was something excluded</strong>, and <strong>what was masked</strong>.
+        Numbers come from a real dry-run (the preview manifest == the generated manifest).
+    </div>
+
+    <!-- Summary -->
+    <div class="card">
+        <div class="verdict-summary">
+            <div class="stat total">
+                <div class="label">Entries included</div>
+                <div class="value">6</div>
+            </div>
+            <div class="stat transformed">
+                <div class="label">Fields masked</div>
+                <div class="value">2</div>
+            </div>
+            <div class="stat missing">
+                <div class="label">Fields stripped</div>
+                <div class="value">0</div>
+            </div>
+            <div class="stat">
+                <div class="label">Surfaces excluded</div>
+                <div class="value" style="color:#9e9e9e">2</div>
+            </div>
+            <div class="stat exact">
+                <div class="label">Bundle size</div>
+                <div class="value">38&nbsp;KB</div>
+            </div>
+        </div>
+        <div style="margin-top:8px;">
+            <div class="info-line" style="margin-bottom:6px;"><strong style="color:#424242;">Contributors (5)</strong> — exactly what produced this bundle:</div>
+            <table class="data-table" style="max-width:720px;">
+                <tbody>
+                    <tr><td style="width:170px;"><code>identity</code> <span class="chip chip-default">Identity</span></td><td>Gateway id, name, site/area labels</td></tr>
+                    <tr><td><code>config</code> <span class="chip chip-default">Config</span></td><td>Active configuration <span class="info-line">(redacted)</span></td></tr>
+                    <tr><td><code>history</code> <span class="chip chip-default">History</span></td><td>Previous configuration versions <span class="info-line">(redacted)</span></td></tr>
+                    <tr><td><code>audit</code> <span class="chip chip-default">Audit</span></td><td>Audit log</td></tr>
+                    <tr><td><code>route-inventory</code> <span class="chip chip-default">Inventory</span></td><td>Topology summary (counts + route ids)</td></tr>
+                </tbody>
+            </table>
+            <div class="info-line" style="margin-top:6px;">Diagnostics health snapshots arrive as a <code>diagnostics</code> contributor in v1.1.</div>
+        </div>
+    </div>
+
+    <!-- Q1: what will leave -->
+    <div class="card">
+        <div class="tier-head">
+            <div class="tier-bar include"></div>
+            <h2>✓ Will be included</h2>
+            <span class="q">Q1 — what leaves the gateway</span>
+        </div>
+        <table class="data-table">
+            <thead><tr><th>Entry</th><th>What it is</th><th style="text-align:right">Size</th></tr></thead>
+            <tbody>
+                <tr><td><code>gateway-identity.json</code></td><td>Gateway id, name, site/area labels</td><td style="text-align:right">0.2&nbsp;KB</td></tr>
+                <tr><td><code>gateway.json</code></td><td>Active configuration <span class="info-line">(redacted)</span></td><td style="text-align:right">12&nbsp;KB</td></tr>
+                <tr><td><code>history/0001…json</code>, <code>0002…json</code></td><td>2 previous configuration versions <span class="info-line">(redacted)</span></td><td style="text-align:right">9&nbsp;KB</td></tr>
+                <tr><td><code>audit.log</code></td><td>47 audit entries (verbatim — contains no secrets)</td><td style="text-align:right">14&nbsp;KB</td></tr>
+                <tr><td><code>route-inventory.json</code></td><td>2 sources · 1 sink · 2 routes <span class="chip chip-success-outline">1 enabled</span> <span class="chip chip-default">1 disabled</span></td><td style="text-align:right">0.3&nbsp;KB</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Q3: what was masked / stripped -->
+    <div class="card">
+        <div class="tier-head">
+            <div class="tier-bar mask"></div>
+            <h2>● Will be masked</h2>
+            <span class="q">Q3 — what was masked (key kept, value blanked)</span>
+        </div>
+        <table class="data-table">
+            <thead><tr><th>File</th><th>Field</th><th>In the bundle</th></tr></thead>
+            <tbody>
+                <tr><td><code>gateway.json</code></td><td><code>sources[1].connection.credentials.password</code></td><td><span class="masked">*** (14 bytes)</span></td></tr>
+                <tr><td><code>gateway.json</code></td><td><code>sinks[0].connection.password</code></td><td><span class="masked">*** (11 bytes)</span></td></tr>
+            </tbody>
+        </table>
+
+        <div class="tier-head" style="margin-top:16px;">
+            <div class="tier-bar strip"></div>
+            <h2>✕ Will be stripped</h2>
+            <span class="q">key removed entirely</span>
+        </div>
+        <div class="info-line" style="padding:4px 2px;">No fields stripped in this bundle. (Private-key / certificate <em>bytes</em> would appear here, key name and all.)</div>
+    </div>
+
+    <!-- Secret-shape detector warnings -->
+    <div class="card">
+        <div class="banner banner-warning">
+            <span class="banner-icon">⚠️</span>
+            <span class="banner-text">
+                <strong>1 value looks secret-shaped — and it WILL be included in the bundle exactly as stored.</strong>
+                The detector only flags it for your review; it does <strong>not</strong> mask, strip, or change it.
+                If this is a real secret, click <em>Cancel</em>, remove or relocate it in your configuration, and
+                regenerate. Otherwise, acknowledge below to confirm the bundle is safe to share.
+            </span>
+        </div>
+        <table class="data-table">
+            <thead><tr><th>File</th><th>Field</th><th>Detector</th></tr></thead>
+            <tbody>
+                <tr><td><code>gateway.json</code></td><td><code>sinks[0].publishing.customAttr</code></td><td><span class="chip chip-warning-outline">looks like a JWT</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Q2: why excluded -->
+    <div class="card">
+        <div class="tier-head">
+            <div class="tier-bar exclude"></div>
+            <h2>⌀ Will be excluded</h2>
+            <span class="q">Q2 — why something is not in the bundle</span>
+        </div>
+        <table class="data-table">
+            <thead><tr><th>Surface</th><th>Reason</th></tr></thead>
+            <tbody>
+                <tr><td><code>license.json</code></td><td>License material is never bundled (ADR-0020 Rule 1 — customer/site binding stays on the gateway).</td></tr>
+                <tr><td>OS event log</td><td>Not collected — may contain unrelated host data.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Safe sharing + reason + acknowledge + generate -->
+    <div class="card" style="padding-bottom:0;">
+        <div class="banner banner-success" style="margin-bottom:14px;">
+            <span class="banner-icon">🔒</span>
+            <span class="banner-text">
+                <strong>Safe to share.</strong>
+                Passwords, tokens, and key material are masked or stripped before the ZIP is created, and the
+                license file (with its customer/site binding) never leaves the gateway. Share the resulting ZIP
+                only over a channel appropriate to your organisation — the one secret-shaped value flagged above
+                is the only item to double-check first.
+            </span>
+        </div>
+
+        <!-- Reason for generating (optional) -->
+        <div style="margin-bottom:14px;">
+            <label class="info-line" style="display:block; margin-bottom:4px; color:#424242; font-weight:500;">
+                Reason for generating <span style="font-weight:400; color:#757575;">(optional)</span>
+            </label>
+            <input class="select" type="text" style="width:100%; max-width:560px;"
+                   placeholder="e.g. support ticket #1234 — intermittent MQTT disconnects">
+            <div class="info-line" style="margin-top:4px;">Recorded in the <code>BUNDLE.GENERATED</code> audit entry alongside the operator and a manifest hash.</div>
+        </div>
+
+        <!-- Acknowledgement — required ONLY when secret-shape warnings exist -->
+        <label class="banner banner-warning" style="margin-bottom:14px; cursor:pointer; align-items:center;">
+            <input type="checkbox" style="width:18px; height:18px; flex:none;">
+            <span class="banner-text">
+                I have reviewed the <strong>1</strong> value flagged as secret-shaped
+                (<code>sinks[0].publishing.customAttr</code>), understand it will be included verbatim,
+                and confirm this bundle is safe to share.
+            </span>
+        </label>
+
+        <div class="info-line" style="margin-bottom:8px;">
+            <strong style="color:#424242;">bundle-info.json</strong> &nbsp;·&nbsp;
+            spec&nbsp;<code>v1</code> &nbsp;·&nbsp; redaction&nbsp;engine&nbsp;<code>v1</code> &nbsp;·&nbsp;
+            gateway&nbsp;<code>gw-itest</code> &nbsp;·&nbsp; by&nbsp;<code>operator-x</code> &nbsp;·&nbsp;
+            <span title="written to the audit chain on generate">will record <code>BUNDLE.GENERATED</code></span>
+        </div>
+        <div class="gen-bar">
+            <button class="btn btn-filled" disabled style="opacity:.5; cursor:not-allowed;">⤓ Generate bundle</button>
+            <button class="btn btn-text">Cancel</button>
+            <div class="spacer"></div>
+            <span class="info-line">⚠ Generate stays disabled until you acknowledge the secret-shaped value. (No warnings → no acknowledgement needed.) Nothing has left the gateway yet — this is a preview.</span>
+        </div>
+    </div>
+
+    <div class="footer-help">
+        <span><strong>Safe to email.</strong> Passwords, tokens, and key material are masked or stripped before the ZIP exists.</span>
+        <span><strong>Provenance.</strong> A <code>manifest.json</code> inside the ZIP lists every redaction; <code>bundle-info.json</code> records who generated it and with which engine.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

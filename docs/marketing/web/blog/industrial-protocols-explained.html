@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industrial Protocols Explained Simply: OPC UA, MQTT, Modbus, FOCAS2, MTConnect & S7 &middot; Elpis</title>
+  <meta name="description" content="A plain-language guide to the protocols behind factory data - FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA (client and server), Siemens S7, and MQTT - and how to choose the right one for each machine.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/blog/industrial-protocols-explained">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Industrial Protocols Explained Simply: OPC UA, MQTT, Modbus, FOCAS2, MTConnect & S7 &middot; Elpis">
+  <meta property="og:description" content="A plain-language guide to the protocols behind factory data - FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA (client and server), Siemens S7, and MQTT - and how to choose the right one for each machine.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/blog/industrial-protocols-explained">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Industrial Protocols Explained Simply: OPC UA, MQTT, Modbus, FOCAS2, MTConnect & S7 &middot; Elpis">
+  <meta name="twitter:description" content="A plain-language guide to the protocols behind factory data - FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA (client and server), Siemens S7, and MQTT - and how to choose the right one for each machine.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Industrial Protocols Explained Simply",
+    "description": "A plain-language guide to the protocols behind factory data and how to choose the right one for each machine.",
+    "datePublished": "2026-06-07",
+    "dateModified": "2026-06-07",
+    "author": { "@type": "Organization", "name": "Elpis IT Solutions" },
+    "publisher": { "@type": "Organization", "name": "Elpis IT Solutions", "logo": { "@type": "ImageObject", "url": "https://www.elpisitsolutions.com/assets/brand/favicon-512.png" } },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.elpisitsolutions.com/blog/industrial-protocols-explained" },
+    "image": "https://www.elpisitsolutions.com/assets/og-default.png"
+  }
+  </script>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="/assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="/platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="/eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="/architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="/security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="/capabilities" class="nav__item">Capabilities</a>
+          <a href="/solutions" class="nav__item">Solutions</a>
+          <a href="/industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="/mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="/mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="/vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="/e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="/services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="/services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="/services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="/services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main">
+
+    <section class="section article-hero" data-mode="dark-deep">
+      <div class="container container--narrow">
+        <p class="eyebrow"><a href="/blog/" class="article-hero__crumb">Industrial Intelligence Blog</a> &middot; Connectivity &amp; Edge</p>
+        <h1 class="article-hero__title">Industrial Protocols Explained Simply: OPC UA, MQTT, Modbus, FOCAS2, MTConnect &amp; S7</h1>
+        <p class="article-hero__meta">7 June 2026 &middot; 6 min read</p>
+      </div>
+    </section>
+
+    <section class="section" data-mode="light">
+      <div class="container container--narrow article">
+        <img class="article__hero-img" src="/assets/blog/industrial-protocols-explained-hero.png" alt="Diagram: industrial protocols mapped into a canonical model at the edge" width="1600" height="900">
+
+        <p class="article__lead">The moment you start an industrial data project, you hit an alphabet soup &mdash; FOCAS2, MTConnect, Modbus, OPC UA, MQTT, S7 &mdash; and a lot of confident-but-conflicting advice about which one you "should" use. Much of the confusion comes from treating them as interchangeable. They're not; they do different jobs.</p>
+
+        <h2>A plain-language map</h2>
+        <p>It helps to group them.</p>
+        <p><strong>CNC-oriented protocols &mdash; talking to machine tools:</strong></p>
+        <ul class="article__list">
+          <li><strong>FOCAS2</strong> &mdash; FANUC's API for FANUC CNCs over Ethernet. A supported way to read available CNC data such as spindle speed, run state, part counts, and alarms, depending on controller configuration and exposed functions.</li>
+          <li><strong>MTConnect</strong> &mdash; an open manufacturing standard. Machines, or an adapter, publish data in a common XML format over HTTP. Available on a range of newer multi-vendor CNCs.</li>
+          <li><strong>Brother HTTP</strong> &mdash; Brother machines can expose data through their own HTTP interface; useful if you run Brother CNCs.</li>
+        </ul>
+        <p><strong>General industrial protocols &mdash; broader equipment:</strong></p>
+        <ul class="article__list">
+          <li><strong>Modbus TCP</strong> &mdash; simple and widely used, supported by many PLCs, meters, and older machines fronted by a controller. Limited structure, but very widely supported.</li>
+          <li><strong>Siemens S7</strong> &mdash; the protocol for communicating with Siemens PLCs, common on automated lines.</li>
+          <li><strong>OPC UA</strong> &mdash; more than a protocol: a standardized information model that carries structure and metadata Modbus does not. In EdgeConnect, OPC UA is supported in both directions: as an OPC UA Client to consume data from OPC UA-enabled systems, and as an OPC UA Server to expose mapped data to SCADA, MES, HMI, historians, or other OPC UA clients.</li>
+        </ul>
+        <p><strong>Transport &mdash; moving data onward:</strong></p>
+        <ul class="article__list">
+          <li><strong>MQTT</strong> &mdash; a lightweight publish/subscribe transport. This is a common point of confusion: <strong>OPC UA and MQTT are not direct competitors.</strong> OPC UA is about <em>modelling and accessing</em> device data; MQTT is about <em>moving</em> data efficiently to subscribers. A real architecture often uses both.</li>
+        </ul>
+
+        <h2>Where each applies</h2>
+        <p>Match the protocol to the machine: FANUC &rarr; FOCAS2; newer multi-vendor CNC &rarr; MTConnect; Brother &rarr; Brother HTTP; Siemens PLC &rarr; S7; meters and legacy equipment &rarr; Modbus TCP; structured device servers &rarr; OPC UA; and MQTT to publish the result onward.</p>
+
+        <h2>Protocol selection checklist</h2>
+        <p>When deciding how to connect a given machine, work through:</p>
+        <ul class="article__list">
+          <li><strong>Controller type</strong> &mdash; make, model, and generation.</li>
+          <li><strong>Available interface</strong> &mdash; what the controller physically and logically exposes (and which options are enabled).</li>
+          <li><strong>Required data</strong> &mdash; the specific values you need from it.</li>
+          <li><strong>Polling / update rate</strong> &mdash; how often those values must be read.</li>
+          <li><strong>Data model needs</strong> &mdash; do you need rich structure and metadata, or just raw values?</li>
+          <li><strong>Destination system</strong> &mdash; where the data goes next, and what it expects.</li>
+          <li><strong>Supportability</strong> &mdash; whether the interface is something you can rely on and maintain over time.</li>
+        </ul>
+
+        <h2>Common mistakes</h2>
+        <ul class="article__list">
+          <li><strong>Believing one protocol fits the whole floor.</strong> A real plant usually needs several. The goal isn't picking "the" protocol &mdash; it's handling the mix.</li>
+          <li><strong>The "OPC UA vs MQTT" trap.</strong> Asking which to choose is usually the wrong question; they solve different layers.</li>
+          <li><strong>Assuming newer means better.</strong> An older machine on Modbus still has valuable data; the job is to collect it, not to replace the machine.</li>
+        </ul>
+
+        <h2>How Elpis approaches it</h2>
+        <p>Rather than forcing one protocol, <a href="/edgeconnect">EdgeConnect</a> speaks the native protocol of each controller &mdash; FANUC FOCAS2, MTConnect, Brother HTTP, Modbus TCP, Siemens S7, and OPC UA Client today &mdash; and maps supported readings into a canonical vocabulary where the required values are available. It can then publish onward through MQTT or expose mapped data through OPC UA Server, so protocol diversity is handled once, at the edge, instead of leaking into every downstream system. FANUC MT-LINKi REST is on the roadmap.</p>
+        <p>Inventory your controllers by type; three or four protocols often cover a large part of the floor. See the <a href="/capabilities-connectivity-edge">Connectivity &amp; Edge capability overview</a> for more.</p>
+
+        <div class="article__cta">
+          <h3>See it on your own floor</h3>
+          <p>Explore the platform, or get in touch to walk through your controller mix.</p>
+          <div class="article__cta-actions">
+            <a href="/platform" class="btn btn--primary">Explore the platform</a>
+            <a href="/contact" class="btn btn--secondary">Contact us</a>
+          </div>
+        </div>
+
+        <p class="article__sig">Elpis IT Solutions builds an Industrial Intelligence Ecosystem &mdash; from shop-floor signal to enterprise decision. Operating across India and the Middle East.</p>
+
+      </div>
+    </section>
+
+  </main>
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="/assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="/edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="/eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="/edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="/mdaq" class="footer__link">mDAQ</a>
+          <a href="/mtracker" class="footer__link">mTracker</a>
+          <a href="/vas" class="footer__link">VAS</a>
+          <a href="/e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="/platform" class="footer__link">Platform</a>
+          <a href="/capabilities" class="footer__link">Capabilities</a>
+          <a href="/solutions" class="footer__link">Solutions</a>
+          <a href="/industries" class="footer__link">Industries</a>
+          <a href="/services" class="footer__link">Services</a>
+          <a href="/architecture" class="footer__link">Architecture</a>
+          <a href="/security" class="footer__link">Security</a>
+          <a href="/blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="/resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="/roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="/resources-brochures" class="footer__link">Brochures</a>
+          <a href="/resources" class="footer__link">Pitch deck</a>
+          <a href="/resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="/customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="/privacy" class="footer__link">Privacy</a>
+          <a href="/terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

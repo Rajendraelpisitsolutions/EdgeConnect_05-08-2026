@@ -1,0 +1,93 @@
+@*
+    WizardActions — shared footer button-row primitive for the six wizards.
+    M.2d.1 deliverable per the v2 plan §5.5.
+
+    Responsibilities:
+      * Save button (required) — primary action.
+      * Cancel button (required) — text action.
+      * Test Connection button (optional) — only rendered when
+        OnTestConnection is supplied.
+      * AdditionalActions slot (optional) — for future Validate / Deploy /
+        Preview / Reset / Runtime-Tap-launch / etc. buttons that may
+        emerge in future milestones. Cheap future-proofing
+        (round-2 #11 in the M.2d.1 review).
+      * Busy + CanSave gating of disabled states.
+
+    Reference: docs/sessions/2026-05-21-m2d1-shared-primitives-plan-v2.md §5.5
+*@
+
+<MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" data-testid="wizard-actions">
+    @if (OnTestConnection.HasDelegate)
+    {
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Cable"
+                   OnClick="@OnTestConnection"
+                   Disabled="@Busy"
+                   Style="text-transform:none;"
+                   data-testid="wizard-actions-test-connection">
+            @TestConnectionLabel
+        </MudButton>
+    }
+
+    @if (AdditionalActions is not null)
+    {
+        <div data-testid="wizard-actions-additional">
+            @AdditionalActions
+        </div>
+    }
+
+    <MudButton Variant="Variant.Text"
+               OnClick="@OnCancel"
+               Disabled="@Busy"
+               Style="text-transform:none;"
+               data-testid="wizard-actions-cancel">
+        @CancelLabel
+    </MudButton>
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Save"
+               OnClick="@OnSave"
+               Disabled="@(Busy || !CanSave)"
+               Style="text-transform:none;"
+               data-testid="wizard-actions-save">
+        @SaveLabel
+    </MudButton>
+</MudStack>
+
+@code {
+    /// <summary>Required — invoked when the Save button is clicked.</summary>
+    [Parameter, EditorRequired] public EventCallback OnSave { get; set; }
+
+    /// <summary>Required — invoked when the Cancel button is clicked.</summary>
+    [Parameter, EditorRequired] public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// Optional. When supplied, the Test Connection button is rendered;
+    /// when null/unset, the button is omitted entirely.
+    /// </summary>
+    [Parameter] public EventCallback OnTestConnection { get; set; }
+
+    /// <summary>Text on the Save button. Defaults to <c>"Save changes"</c>.</summary>
+    [Parameter] public string SaveLabel { get; set; } = "Save changes";
+
+    /// <summary>Text on the Cancel button.</summary>
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+
+    /// <summary>Text on the Test Connection button (if shown).</summary>
+    [Parameter] public string TestConnectionLabel { get; set; } = "Test Connection";
+
+    /// <summary>Drives the Save button's enabled state. When false, the Save button is disabled regardless of Busy.</summary>
+    [Parameter] public bool CanSave { get; set; } = true;
+
+    /// <summary>Drives the disabled state of all buttons (Save, Cancel, Test Connection).</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>
+    /// Optional slot for additional action buttons that emerge in future
+    /// milestones (Validate, Deploy, Preview, Reset, etc.). Rendered
+    /// between Test Connection (if present) and the Cancel/Save pair.
+    /// Renders zero DOM when null.
+    /// </summary>
+    [Parameter] public RenderFragment? AdditionalActions { get; set; }
+}

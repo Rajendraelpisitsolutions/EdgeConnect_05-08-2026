@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/platform.html
+  Purpose:     Static mockup of /platform — the vendor-worldview synthesis page.
+               Faithful to page-platform-spec-v1.md (v2.1 LOCKED). 9-section
+               structure: Hero → Why Elpis exists → 5-pillar synthesis →
+               Commercial engagement → Trust posture summary → Where we operate
+               + trust anchors → Inline FAQ → Cross-lens → Final CTA. ALL copy
+               lifted verbatim from spec §3.1–§3.9 + §1.4 metadata. Reuses
+               styles.css + standardized nav/footer.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Honesty notes (spec §6 anti-patterns + §7 sign-off):
+    - Pillar 1 today-list: FOCAS2, MTConnect, Brother HTTP, Modbus TCP,
+      OPC UA Client, S7. FANUC MT-LINKi REST = ROADMAP only (never today-list).
+    - EdgeConnect = Windows today, Linux on the roadmap.
+    - E-IDOS = standalone sensor-agnostic appliance (NOT mDAQ-based); VAS runs
+      on mDAQ. E-IDOS streaming to EREMOS V2 = near-term roadmap, not today.
+    - Per-plant identity: each plant its own EdgeConnect runtime; multi-site
+      visibility via EREMOS V2 aggregation — never one multi-plant runtime.
+    - "Beside, not replacing" for SCADA/historian/MES/CMMS.
+    - 3 LOCKED trust anchors reproduced VERBATIM, each opening its own sentence.
+    - No customer/competitor names, no fabricated metrics, no cert claims, no
+      banned vocabulary, no "Book a demo" CTA.
+    - architecture.html cross-links target a page being built in parallel
+      (expected/allowed per task brief).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform — Industrial Intelligence Ecosystem · Elpis</title>
+  <meta name="description" content="Modular Industrial Intelligence platform — protocol-agnostic edge runtime, canonical vocabulary, deployable per plant. India + Middle East. Defense and space-agency programs.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/platform">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Platform">
+  <meta property="og:description" content="Modular Industrial Intelligence platform — protocol-agnostic edge runtime, canonical vocabulary, deployable per plant. India + Middle East. Defense and space-agency programs.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/platform">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Platform">
+  <meta name="twitter:description" content="Modular Industrial Intelligence platform — protocol-agnostic edge runtime, canonical vocabulary, deployable per plant. India + Middle East. Defense and space-agency programs.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-5) var(--space-6); margin: var(--space-7) 0 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout > p { color: var(--color-text-heading-light); font-size: var(--size-md); font-weight: var(--weight-semibold); line-height: var(--line-body); margin:0 0 var(--space-4); }
+    .callout ul { list-style:none; padding:0; margin:0; }
+    .callout li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .callout li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .callout li strong { color: var(--color-text-heading-light); }
+    /* 5-pillar synthesis grid */
+    .pillar-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+    .pillar-syn { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-6); background:#fff; }
+    .pillar-syn .lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+    .pillar-syn h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin: var(--space-2) 0 var(--space-3); }
+    .pillar-syn p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .pillar-syn .pillar-link { display:inline-block; margin-top: var(--space-3); font-size: var(--size-sm); }
+    .section-footer { margin-top: var(--space-7); padding: var(--space-5) var(--space-6); border-left:4px solid var(--color-brand-teal); background: var(--color-surface-light-hero); font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 80ch; }
+    .section-footer strong { color: var(--color-text-heading-light); }
+    /* 4 engagement-shape cards */
+    .engage-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+    .engage-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background:#fff; }
+    .engage-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .engage-card p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .symmetry-note { margin-top: var(--space-6); padding: var(--space-5) var(--space-6); border-left:4px solid var(--color-brand-teal); background: var(--color-surface-light-hero); font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 82ch; }
+    .symmetry-note strong { color: var(--color-text-heading-light); }
+    .discipline-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 82ch; line-height: var(--line-body); }
+    /* trust posture bullets */
+    .trust-list { list-style:none; padding:0; margin: var(--space-6) 0 0; max-width: 82ch; }
+    .trust-list li { padding: var(--space-4) 0 var(--space-4) var(--space-6); position:relative; border-bottom:1px solid var(--color-border-light-subtle); color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-list li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .trust-list strong { color: var(--color-text-heading-light); }
+    /* where we operate anchor lines */
+    .anchor-line { margin: var(--space-6) 0 0; padding: var(--space-5) var(--space-6); border-left:4px solid var(--color-brand-teal); background: var(--color-surface-light-hero); max-width: 82ch; }
+    .anchor-line strong { display:block; font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .anchor-line span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .context-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 82ch; line-height: var(--line-body); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    /* FAQ */
+    .faq { margin-top: var(--space-6); max-width: 82ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .faq__a strong { color: var(--color-text-heading-light); }
+    /* cross-lens */
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .light-tinted .pillar-link, [data-mode="light"] .pillar-link, [data-mode="light-tinted"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">THE PLATFORM</span>
+        <h1 id="hero-heading" class="hero__headline">The Industrial Intelligence Ecosystem — one platform for the data path between your factory floor and your operations team.</h1>
+        <p class="hero__subhead" style="max-width:60ch;">Protocol-agnostic edge runtime. Five capability pillars that deploy independently or together. Hardware and software designed to grow together. Operating across India and the Middle East. Deployed in defense and space-agency programs.</p>
+        <div class="cta-group">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Platform%20scoping" class="btn btn--secondary btn--lg">Talk to us about scoping</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 WHY ELPIS EXISTS -->
+    <section class="section" data-mode="light" aria-labelledby="why-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">WHY ELPIS EXISTS</span><h2 id="why-heading" class="section-title">Built for how industrial operations actually work.</h2></div>
+        <p>Industrial OT teams want one operational view across every controller on their floor. They want canonical signals at every downstream system. They want predictive maintenance that actually triggers on real condition signatures, not on calendar schedules. They want multi-site visibility without losing per-plant operability. And they want all of this without ripping out the SCADA, historian, MES, and CMMS infrastructure that already works.</p>
+        <p>What they usually get instead is a stack of per-vendor monitoring tools, per-protocol custom scripts that break on firmware updates, integration platforms that are opinionated about the operations team's existing systems, and "AI-powered" dashboards that don't survive contact with real production reality. The promise of "Industry 4.0" gets diluted by tooling that doesn't match how industrial operations actually work.</p>
+        <p>Elpis was built differently. One protocol-agnostic edge runtime that speaks every controller's native protocol. Canonical normalization at the edge so every downstream system reads the same vocabulary. Hardware that handles the cases controllers don't cover. An analytics platform that models the real industrial hierarchy. Modular per pillar — pick what fits your floor, scale on your terms. Beside the systems you already run, not replacing them.</p>
+
+        <div class="callout">
+          <p>Platform principles. Five operating commitments that shape every architectural and product decision Elpis makes:</p>
+          <ul>
+            <li><strong>Customer owns operational data.</strong> Every signal, every workflow, every audit record belongs to the customer's tenant. Routing decisions stay customer-controlled even when OEMs or AMC providers are in the loop.</li>
+            <li><strong>Offline-first before cloud.</strong> EdgeConnect and EREMOS V2 run offline by default. Cloud connectivity is opt-in, not required. Air-gapped plants are first-class deployments.</li>
+            <li><strong>Modular before monolithic.</strong> Pillars deploy independently. Sites scale on their terms — no forced bundling, no all-or-nothing engagements.</li>
+            <li><strong>Integrate before replace.</strong> SCADA, historian, MES, and CMMS stay where they are. Elpis adds the cross-vendor canonical layer; the existing systems consume canonical signals instead of vendor-specific ones.</li>
+            <li><strong>Per-plant identity before fleet abstraction.</strong> Each plant runs its own EdgeConnect runtime with per-gateway identity. Multi-site visibility comes from EREMOS V2 aggregating across per-plant runtimes — never from a single multi-plant runtime.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- §3 WHAT THE PLATFORM ACTUALLY IS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="what-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT THE PLATFORM ACTUALLY IS</span><h2 id="what-heading" class="section-title">Five capability pillars composing one Industrial Intelligence Ecosystem.</h2></div>
+        <div class="pillar-grid">
+          <article class="pillar-syn">
+            <span class="lbl">PILLAR 1</span>
+            <h3>Connectivity &amp; Edge</h3>
+            <p>EdgeConnect (the protocol-agnostic edge runtime, Windows today + Linux on the roadmap) + Edge Gateway (ruggedized appliance, dual identity — standalone today, canonical EdgeConnect appliance once Linux ships). Polls existing controllers in their native protocols (FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, S7). FANUC MT-LINKi REST integration on the roadmap. Canonical vocabulary at the edge.</p>
+            <a class="pillar-link" href="capabilities-connectivity-edge">See the deep-dive → /capabilities/connectivity-edge</a>
+          </article>
+          <article class="pillar-syn">
+            <span class="lbl">PILLAR 2</span>
+            <h3>Data Acquisition</h3>
+            <p>mDAQ — ruggedized acquisition hardware for direct sensor reads where no PLC exists, where the PLC is locked, or where adding a PLC layer would be more expensive than acquiring the signal directly. Greenfield installs, PLC-bypass retrofits, remote and unmanned sites.</p>
+            <a class="pillar-link" href="capabilities-data-acquisition">See the deep-dive → /capabilities/data-acquisition</a>
+          </article>
+          <article class="pillar-syn">
+            <span class="lbl">PILLAR 3</span>
+            <h3>Asset Intelligence</h3>
+            <p>mTracker — utilization, location, and OEE telemetry on equipment that doesn't speak a controller protocol. Multi-site asset visibility for plant operators; OEM service-hours billing and warranty triggers for OEM machine builders. Customer-controlled routing for OEM-channel deployments.</p>
+            <a class="pillar-link" href="capabilities-asset-intelligence">See the deep-dive → /capabilities/asset-intelligence</a>
+          </article>
+          <article class="pillar-syn">
+            <span class="lbl">PILLAR 4</span>
+            <h3>Condition Monitoring</h3>
+            <p>VAS (Vibration Analyser System runs on mDAQ — bearing issues, imbalance, misalignment, looseness, and cracks on rotating machinery (pumps, motors, gearboxes, fans, compressors), conveyors, and structural components) + E-IDOS (standalone sensor-agnostic appliance for hydraulic and lubrication oil-health — particle contamination, water saturation, oil flow; ISO 4406 / NAS 1638).</p>
+            <a class="pillar-link" href="capabilities-condition-monitoring">See the deep-dive → /capabilities/condition-monitoring</a>
+          </article>
+          <article class="pillar-syn">
+            <span class="lbl">PILLAR 5</span>
+            <h3>Operational Intelligence</h3>
+            <p>EREMOS V2 — multi-tenant analytics platform. Models the real industrial hierarchy (PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT). Computes OEE via Segments against your OEE definition. Persistent alarms with incident workflows. Per-tenant isolation by design.</p>
+            <a class="pillar-link" href="capabilities-operational-intelligence">See the deep-dive → /capabilities/operational-intelligence</a>
+          </article>
+        </div>
+        <p class="section-footer"><strong>The pillars deploy independently and compose intentionally.</strong> Each ships with its own commercial conversation; combinations are negotiated based on the actual deployment shape. The 4-column Industrial Intelligence Stack architecture shows how the pillars connect → <a class="pillar-link" href="architecture">/architecture</a>.</p>
+      </div>
+    </section>
+
+    <!-- §4 HOW WE ENGAGE COMMERCIALLY -->
+    <section class="section" data-mode="light" aria-labelledby="engage-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW WE ENGAGE COMMERCIALLY</span><h2 id="engage-heading" class="section-title">Commercial confidence without premature pricing.</h2></div>
+        <div class="engage-grid">
+          <article class="engage-card">
+            <h3>Modular per pillar</h3>
+            <p>Pillars deploy independently. A site can start with Connectivity &amp; Edge (consolidate mixed-vendor monitoring), add Operational Intelligence (OEE + alarms + incident workflows), then scale into Condition Monitoring (predictive maintenance) when the maintenance program is ready. No "all-or-nothing" forced bundling. Each pillar carries its own commercial conversation; combinations are negotiated based on the actual deployment shape.</p>
+          </article>
+          <article class="engage-card">
+            <h3>Edge + cloud, customer-controlled</h3>
+            <p>EdgeConnect and EREMOS V2 run offline-first by default. Cloud connectivity is <strong>opt-in, not required</strong>. Plants on isolated OT VLANs install and run the platform the same way as plants with internet access. When cloud is part of the deployment, the customer controls the routing — which signals route where, on what schedule, with what scope. Hybrid edge-plus-cloud combinations are common; the customer decides the boundary.</p>
+          </article>
+          <article class="engage-card">
+            <h3>OEM / integrator engagement</h3>
+            <p>OEM machine builders embed mTracker in shipped equipment for service-hours billing, warranty triggers, and remote diagnostics — under customer-controlled routing where the OEM sees only what their customer authorizes. System integrators partner on multi-site standardization projects. Integrator engagements scope per project, not per long-term resale contract.</p>
+          </article>
+          <article class="engage-card">
+            <h3>AMC / service support</h3>
+            <p>Maintenance and AMC providers across India and the Middle East deliver predictive maintenance and condition monitoring on customer floors using Elpis hardware (VAS for vibration, E-IDOS for oil-health) plus EREMOS V2 incident workflows. The AMC channel is an existing deployment reality, not a future partner program — customer-controlled signal routing makes AMC engagements scoped, auditable, and reversible per asset and per contract.</p>
+          </article>
+        </div>
+        <p class="symmetry-note"><strong>The same platform supports both OEM and AMC business models without requiring separate stacks.</strong> OEM machine builders embedding telemetry in shipped equipment and AMC providers delivering service on customer floors run against the same EdgeConnect runtime, the same EREMOS V2 incident workflows, and the same customer-controlled routing model. The deployment shapes differ; the platform doesn't fragment.</p>
+        <p class="discipline-note">Commercial scope is established through architecture review and deployment scoping. Detailed pricing follows approved scope — per engagement, based on pillar combination, deployment footprint, and plant count. SKU grids, per-tag pricing, and subscription detail are published once the customer commercial baseline is established.</p>
+      </div>
+    </section>
+
+    <!-- §5 TRUST POSTURE SUMMARY -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span><h2 id="trust-heading" class="section-title">Trust posture summary — full walkthrough at <a class="pillar-link" href="security">/security</a>.</h2></div>
+        <ul class="trust-list">
+          <li><strong>Offline-first by default, no phone-home.</strong> EdgeConnect license validates locally. Plants on isolated OT VLANs install and run the same way as plants with internet. Cloud connectivity is opt-in.</li>
+          <li><strong>Hash-chained configuration audit.</strong> Every change — protocol-driver enables, routing changes, threshold edits — captured with actor identity and timestamp. Tamper-evident, replay-ready, audit-survivable.</li>
+          <li><strong>Per-tenant isolation in EREMOS V2.</strong> Customer-controlled routing for AMC channel, OEM channel, and multi-tenant analytics deployments. Each tenant sees only what's authorized to it.</li>
+        </ul>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §6 WHERE WE OPERATE -->
+    <section class="section" data-mode="light" aria-labelledby="operate-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHERE WE OPERATE</span><h2 id="operate-heading" class="section-title">Today, on the ground.</h2></div>
+        <div class="anchor-line"><strong>Operating across India and the Middle East.</strong><span>Current deployment footprint. Plants, multi-site operators, OEM machine builders, and AMC providers across both regions. International relevance without overclaiming "global."</span></div>
+        <div class="anchor-line"><strong>Deployed in defense and space-agency programs.</strong><span>Anonymous framing covering both space-agency rotating-equipment monitoring (VAS on precision rotating equipment) and defense-ministry oil-and-fluid condition-monitoring (E-IDOS via third-party supplier integration). The named customers stay confidential per the locked external-claim policy; the category descriptor is the proof point Elpis publishes.</span></div>
+        <div class="anchor-line"><strong>Maintenance and AMC providers across India and the Middle East.</strong><span>Active AMC partner channel — existing buyer reality, not a future partner program. Named partners arrive with the Phase 4 partner portal.</span></div>
+        <p class="context-note">Named customer stories arrive in Phase 3 with explicit named-customer sign-off. Defense and space-agency customer names remain off-the-record per the locked external-claim policy.</p>
+      </div>
+    </section>
+
+    <!-- §7 COMMON QUESTIONS (inline FAQ) -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What CTOs and procurement reviewers ask before scoping a vendor engagement.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">What's the commercial model?</p><p class="faq__a">Modular per pillar. Each pillar (Connectivity &amp; Edge, Data Acquisition, Asset Intelligence, Condition Monitoring, Operational Intelligence) carries its own commercial conversation; combinations are negotiated based on actual deployment shape. Pricing scopes per engagement based on pillar combination, deployment footprint (software-only vs appliance, per-plant count), and plant geography. Architecture review and scoping happen first; pricing follows the scope.</p></div>
+          <div class="faq__item"><p class="faq__q">How does engagement typically scope?</p><p class="faq__a">Architecture review → scoping → phased rollout. Architecture review starts with the controller mix, sensor inventory, existing-systems boundary (SCADA / historian / MES / CMMS coexistence), and the per-plant deployment shape preference. Scoping translates the architecture into a concrete pillar combination + plant count + timeline. Phased rollout starts bottom-up by asset criticality — instrument the highest-criticality assets first, build threshold + workflow discipline there before scaling out.</p></div>
+          <div class="faq__item"><p class="faq__q">Do you support OEM and AMC partner engagements?</p><p class="faq__a">Yes. OEM machine builders embed mTracker for service-hours billing, warranty triggers, and remote diagnostics under customer-controlled routing. AMC providers deliver predictive maintenance and condition monitoring on customer floors using VAS + E-IDOS + EREMOS V2 incident workflows. Both engagement shapes use customer-controlled signal routing — the customer decides which signals route to which OEM or AMC for which assets. AMC is an existing buyer reality across India and the Middle East today, not a future channel program.</p></div>
+          <div class="faq__item"><p class="faq__q">What's the deployment philosophy?</p><p class="faq__a">Beside, not replacing. EdgeConnect and EREMOS V2 sit beside your SCADA, historian, MES, and CMMS — they don't take over operator HMIs, control logic, alarm acknowledgment, work-order management, or scheduling. Per-plant identity, not per-fleet — each plant runs its own EdgeConnect runtime with a per-gateway UUID; multi-site visibility comes from EREMOS V2 aggregating across per-plant runtimes. Offline-first by default; cloud connectivity is opt-in.</p></div>
+          <div class="faq__item"><p class="faq__q">What does this NOT do — where do our existing systems stay?</p><p class="faq__a">Your SCADA stays where it is (operator HMIs, control logic, alarm acknowledgment workflows). Your historian stays where it is (long-term archive of record). Your MES stays where it is (work-order management, scheduling, labor tracking). Your CMMS stays where it is (maintenance system of record). EdgeConnect publishes to MQTT and exposes signals via OPC UA Server (your existing SCADA can subscribe to either). EREMOS V2 exposes OEE rollups, alarms, and reports via REST API, MQTT, and webhook integrations. Your existing systems consume canonical signals instead of vendor-specific ones. Full integration patterns → <a class="pillar-link" href="architecture">/architecture</a>.</p></div>
+          <div class="faq__item"><p class="faq__q">Where do you operate today and where do you ship?</p><p class="faq__a">Operating across India and the Middle East. Plants, multi-site operators, OEM machine builders, and AMC providers across both regions. Deployed in defense and space-agency programs. Customer names remain anonymized per the locked external-claim policy. International relevance without overclaiming "global." Geography expansion happens per scoped engagement — when the customer mix and deployment scale justify it, not as a forced multi-region positioning claim.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">The 5 building blocks every solution composes from.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">The outcomes built on the platform.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §9 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your operations problem. We'll scope the platform fit.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're evaluating Elpis for a single plant, scoping a multi-site standardization, or scoping an OEM / AMC partner engagement — bring us the operational scope and the existing-systems boundary. Architecture review runs against real protocols, real integration patterns, real floor topology — not slideware.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Platform%20scoping" class="btn btn--secondary btn--lg">Talk to us about scoping</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

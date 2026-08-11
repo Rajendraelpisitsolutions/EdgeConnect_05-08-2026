@@ -1,0 +1,57 @@
+<!--
+  ElpisEdgeConnect.Sources.S7: Siemens S7 source adapter for the
+  EdgeConnect canonical pipeline. Wraps Sharp7 (pure-C# S7 client port,
+  MIT-licensed) so any S7-300 / S7-1200 / S7-1500 reachable on the OT
+  network can publish points to MQTT, OPC UA Server, etc.
+
+  Phase 4 status (Milestone I):
+    * Project + config + parser + decoder + adapter (this commit).
+    * Snap7-server-backed integration tests — deferred (native dep).
+    * Real-PLC validation against Customer B's S7-300 and S7-1200 — gated
+      on customer access (Phase 4 weeks 6-7).
+
+  Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone I
+             docs/licensing/module-catalog.md (source-s7)
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.S7</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.S7</AssemblyName>
+    <Description>Siemens S7 source adapter for Elpis EdgeConnect</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CA1720 (identifier contains type name): the S7Datatype enum uses
+      Siemens's exact protocol vocabulary — Int, String, Char, Byte, etc.
+      Renaming them would harm operator readability against PLC programs
+      authored in TIA Portal. Suppress project-wide.
+    -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA1720</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.S7.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Sharp7 — pure C# port of Snap7's S7 client. MIT-licensed; no native
+      dependencies. Supports ISO-on-TCP to S7-300, S7-400, S7-1200, S7-1500
+      (Optimized + Standard DB modes).
+    -->
+    <PackageReference Include="Sharp7" Version="1.1.84" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

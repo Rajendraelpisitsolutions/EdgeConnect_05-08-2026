@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions-multi-site-operations.html
+  Purpose:     Static mockup of /solutions/multi-site-operations — a SolutionPanel
+               (§15) solution page. Inherits the LOCKED CNC pattern-setter
+               structure (solutions-cnc-machining.html). Faithful to
+               page-solutions-multi-site-operations-spec-v1.md (page content v3,
+               LOCKED 2026-06-04). 11 sections (10-section core + optional
+               Typical Engagement, P-A).
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       LOAD-BEARING: per-gateway identity / anti-multi-plant-EdgeConnect
+               carried in §3 ¶2, §5 Q2+Q5, §8 annotation, §9 Cue 2 (per locked
+               /architecture v2.1 FAQ Q6 — one runtime per plant; EREMOS V2
+               aggregates ACROSS plants, never one multi-plant runtime).
+               P-G: FOCAS2/MTConnect/Brother HTTP/Modbus TCP/OPC UA Client/S7
+               today; FANUC MT-LINKi REST roadmap. No outcome metrics; "cut"/
+               "reduce" verbs only. mTracker = OEE inputs; EREMOS V2 computes/
+               aggregates OEE.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Site Operations — One Fleet View, Every Plant · Elpis</title>
+  <meta name="description" content="One operational view across 10+ plants. Each site runs its own resilient edge runtime; EREMOS V2 aggregates the fleet. Consistent OEE, alarms and shift reports.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions-multi-site-operations">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Multi-Site Operations">
+  <meta property="og:description" content="One operational view across 10+ plants. Each site runs its own resilient edge runtime; EREMOS V2 aggregates the fleet. Consistent OEE, alarms and shift reports.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions-multi-site-operations">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Multi-Site Operations">
+  <meta name="twitter:description" content="One operational view across 10+ plants. Each site runs its own resilient edge runtime; EREMOS V2 aggregates the fleet. Consistent OEE, alarms and shift reports.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .lead-p { margin-top: var(--space-5); max-width: 78ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .incl-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .incl-grid h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .incl-grid ul { list-style:none; padding:0; }
+    .incl-grid li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .incl-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .incl-grid strong { color: var(--color-text-heading-light); }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .out-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-3) var(--space-8); margin-top: var(--space-6); list-style:none; padding:0; }
+    .out-grid li { padding-left: var(--space-6); position:relative; color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); padding-bottom: var(--space-3); }
+    .out-grid li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .out-grid strong { color: #FFFFFF; }
+    .timeline { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .tl-step { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .tl-step .lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+    .tl-step p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin-top: var(--space-2); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">SOLUTION · MULTI-SITE OPERATIONS</span>
+        <h1 id="hero-heading" class="hero__headline">Ten-plus plants on one operational view.</h1>
+        <p class="hero__subhead">EdgeConnect deploys at every plant — its own runtime, its own identity, its own offline resilience. One EREMOS V2 tenant aggregates the fleet. Consistent OEE definitions, alarm semantics, and shift reports across every site you operate.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Book a scoping call for your fleet <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+        <p class="trust-strip">Per-gateway UUID · Customer/site binding · Multi-tenant aggregation · Offline-resilient at every site · Same southbound stack everywhere: FOCAS2 · MTConnect · Brother HTTP · Modbus TCP · OPC UA Client · Siemens S7 (MT-LINKi REST on the roadmap).</p>
+      </div>
+    </section>
+
+    <!-- §2 THE MULTI-SITE REALITY -->
+    <section class="section" data-mode="light" aria-labelledby="reality-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE MULTI-SITE REALITY</span><h2 id="reality-heading" class="section-title">A fleet view that doesn't actually view the fleet.</h2></div>
+        <p>Every plant in your fleet has its own monitoring story. Plant A runs an old vendor SCADA. Plant B has a custom monitoring stack a previous IT director built. Plant C just joined the group through an acquisition, and you haven't even surveyed its floor yet. Each one produces its own OEE number, its own alarm list, its own shift report. The numbers don't reconcile. The semantics don't match. The reports arrive in different formats on different cadences.</p>
+        <p>Corporate operations gets the worst of every world: a fleet view that doesn't actually view the fleet. Someone in the central office stitches plant-level reports into a quarterly board deck and labels the math "approximate." Performance comparisons across sites stay aspirational. Acquiring a new plant means another long integration project before the new site even shows up in the corporate view.</p>
+        <p>The trap is treating fleet visibility as an aggregation problem — building a central data warehouse that pulls from each plant's existing tools. That works until the next plant's tools change, or the next acquisition brings a system you've never seen. The real answer is the inverse: standardize the data layer at the edge, plant by plant, and the fleet view becomes a subscription, not an integration project.</p>
+        <p class="pullquote">"A fleet view that doesn't actually view the fleet."</p>
+      </div>
+    </section>
+
+    <!-- §3 HOW ELPIS SOLVES FLEET VISIBILITY -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW ELPIS SOLVES FLEET VISIBILITY</span></div>
+        <div class="callout">
+          <p><strong>How this differs from single-plant monitoring scaled by hand.</strong> The usual path to a fleet view is to keep each plant's monitoring tool and reconcile centrally — a data warehouse pulling per-plant exports, or a central team re-keying numbers into a board deck. It holds together until the next plant's tools change, or an acquisition arrives with a system nobody has seen. Elpis takes the inverse path: standardize the <strong>data layer at the edge</strong> of every plant, so each site emits the same canonical signals in the same shape, and the fleet view becomes a <strong>subscription to a consistent stream</strong> instead of a reconciliation project. The per-plant tools stay where they are; Elpis adds the consistent cross-fleet layer beside them.</p>
+        </div>
+        <div class="lead-p"><strong>One platform, deployed at every plant.</strong><span>EdgeConnect runs locally at each site — a Windows service on a small box in the control cabinet, sized to that plant's controller count. Every site uses the same platform, the same southbound protocols, the same canonical vocabulary. New sites onboard the way the first one did. There is no per-plant integration project — which is the part the <strong style="display:inline">Connectivity &amp; Edge</strong> capability makes possible. See the underlying capability story → <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a>.</span></div>
+        <div class="lead-p"><strong>Each plant runs its own runtime — and the fleet view comes from aggregation, not from one central runtime.</strong><span>This is the architectural spine of the whole solution. Each EdgeConnect carries a stable per-gateway UUID and customer/site binding established at first start, so Plant A's data is unambiguously Plant A's data. Each plant publishes its canonical stream to a central MQTT broker (yours or one we set up), and <strong style="display:inline">one EREMOS V2 tenant subscribes and aggregates across every site</strong> — every plant, every shift, every machine on one operational view, without any per-plant data-warehouse stitching. There is deliberately <em>no</em> single multi-plant EdgeConnect; fleet visibility is built by aggregating the per-plant runtimes, which is what keeps plant-level isolation, per-site identity, and offline operability intact when one plant disconnects. Acquisitions, divestitures, plant renames, regional reorganizations — the identity model survives all of them. This is the <strong style="display:inline">Operational Intelligence</strong> capability applied at fleet scale → <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a>.</span></div>
+        <p class="anchor-line">The numbers reconcile because the definitions are platform-level, not plant-level.</p>
+        <div class="lead-p"><strong>Consistent KPIs across the fleet, not despite the fleet.</strong><span>Because every plant's signals arrive in the same canonical shape, EREMOS V2 computes OEE Segments (RUNNING, PLANNED_STOP, UNPLANNED_STOP, IDLE, SETUP) from the same definitions at every site, tracks alarms under the same canonical names at every controller, and renders shift reports from the same templates configured against each site's actual shift schedule. The OEE math is the same across every machine, every shift, and every site — so a cross-site comparison holds up, and a number that lands in a board deck traces back to real signals instead of a hand-reconciled spreadsheet. And the OEE definition stays yours: segment classification, shift schedules, and targets are configured to how your group already defines OEE.</span></div>
+        <div class="lead-p"><strong>Per-site offline resilience is non-negotiable.</strong><span>When a plant's network drops or the central broker is unreachable, that plant's EdgeConnect buffers locally with per-route store-and-forward and replays in source order when connectivity returns — no fleet outage when one site disconnects, no lost production data when the corporate WAN has a bad afternoon. Three-way diagnostics (source / pipeline / sink) tell central ops exactly which site's data flow broke, and on which leg, before the plant feels the symptom.</span></div>
+      </div>
+    </section>
+
+    <!-- §4 WHAT'S INCLUDED -->
+    <section class="section" data-mode="light" aria-labelledby="incl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT'S INCLUDED</span></div>
+        <div class="incl-grid">
+          <div>
+            <h3>From EdgeConnect (at every site — Windows service today)</h3>
+            <ul>
+              <li><strong>Per-site runtime</strong> — a Windows service on a small box in the control cabinet, sized to that plant's controller count. Every plant uses the same installer and the same onboarding flow.</li>
+              <li><strong>Same southbound stack at every plant</strong> — FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and Siemens S7 all ship today, so a brownfield site and a newer plant collect through the same protocol coverage regardless of vendor mix. <strong>On the roadmap:</strong> FANUC MT-LINKi REST. For the full protocol matrix with semantic modes, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>.</li>
+              <li><strong>Per-gateway UUID and customer/site binding</strong> — established at first start. Plant identity is clean from day one and survives reorganizations and acquisitions.</li>
+              <li><strong>Per-route store-and-forward</strong> — local SQLite buffering with per-sink cursors. A plant disconnected from the central broker keeps collecting and replays in source order on reconnect.</li>
+              <li><strong>Three-way diagnostics per site</strong> — source / pipeline / sink. Central ops can see which site's data flow broke, and on which leg.</li>
+              <li><strong>Connectivity Studio per site</strong> — local plant teams manage their own sources, sinks, and tag maps without routing every change through corporate IT.</li>
+              <li><strong>Hash-chained audit log per site</strong> — tamper-evident change history at every plant, available for corporate audit review.</li>
+            </ul>
+            <p class="deploy-note">EdgeConnect ships as a Windows service today; fleets typically run it on a small box in each plant's control cabinet. A Linux runtime is near-term roadmap, arriving on the Edge Gateway appliance for plants that prefer a turnkey DIN-rail box. The appliance is a per-site option, not a requirement, and there is no single appliance that spans plants — each plant runs its own.</p>
+          </div>
+          <div>
+            <h3>From EREMOS V2 (central — aggregating across the per-site runtimes)</h3>
+            <ul>
+              <li><strong>Multi-tenant aggregation</strong> — one deployment, many sites or business units, aggregating across the per-plant runtimes. Plant data is isolated per tenant.</li>
+              <li><strong>Fleet-wide asset model</strong> — PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT, with each plant slotting into the corporate hierarchy.</li>
+              <li><strong>Consistent OEE Segments across sites</strong> — RUNNING, PLANNED_STOP, UNPLANNED_STOP, IDLE, SETUP. Same definitions, same math, every site.</li>
+              <li><strong>Cross-site dashboards</strong> — fleet-level views with drill-down into any plant, any line, any machine.</li>
+              <li><strong>Per-site alerting routes</strong> — corporate alerts go to corporate channels; plant-level alerts go to plant channels.</li>
+              <li><strong>Reporting templates that scale</strong> — the same shift-report template applied to every site against each site's actual schedule.</li>
+              <li><strong>Per-tenant access control</strong> — corporate ops sees the fleet; plant teams see their plant; business-unit leads see their BU.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 COMMON QUESTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What corporate operations ask before scoping a fleet.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">How do we standardize OEE across plants that currently calculate it differently?</p><p class="faq__a">EREMOS V2 computes OEE Segments centrally from edge-collected signals using one consistent definition, configured to how your group defines OEE. Each plant's existing calculation becomes legacy; the platform's calculation becomes the number you defend in a board review or a customer audit. Because every plant's signals arrive in the same canonical shape, the math is the same at every site — so a cross-site comparison is defensible rather than "approximate."</p></div>
+          <div class="faq__item"><p class="faq__q">Does one EdgeConnect serve all our plants?</p><p class="faq__a">No — and that's deliberate. Each plant runs its own EdgeConnect runtime with its own per-gateway UUID established at first start. Multi-site visibility comes from EREMOS V2 aggregating across the per-plant runtimes, not from a single multi-plant EdgeConnect. That's what keeps each plant isolated, identifiable, and able to keep collecting when its network drops — and it's why one plant disconnecting never affects the others.</p></div>
+          <div class="faq__item"><p class="faq__q">What happens when a plant's internet drops?</p><p class="faq__a">That plant's EdgeConnect buffers locally with per-route store-and-forward and replays in source order on reconnect. No fleet outage, no lost production data — the plant keeps collecting, and only the central view for that one site lags until connectivity returns. Three-way diagnostics surface immediately during the outage, so central ops sees exactly which site and which leg were affected. Plants on isolated networks operate the same way; cloud connectivity is opt-in, not required.</p></div>
+          <div class="faq__item"><p class="faq__q">How does this scale when we acquire a new plant?</p><p class="faq__a">Install EdgeConnect at the new site, point it at the central broker, register the gateway in the EREMOS V2 tenant — and the new plant shows up in the fleet view. Same installer, same protocol coverage, same canonical vocabulary, same tag-mapping playbook. There is no per-plant integration project, which is what turns acquisition onboarding from a quarters-long effort into a weeks-long one.</p></div>
+          <div class="faq__item"><p class="faq__q">Who owns the platform at each site versus centrally?</p><p class="faq__a">Plant teams manage their site's EdgeConnect configuration — sources, sinks, tag maps — through the local Connectivity Studio, because the per-gateway runtime model gives each site its own administrable instance. Corporate ops manages the EREMOS V2 tenant, the cross-site dashboards, the reports, and the cross-site policies. Both layers have their own access control. Local autonomy and central visibility coexist by design, rather than one being traded for the other.</p></div>
+          <div class="faq__item"><p class="faq__q">Can different business units keep their data walled off?</p><p class="faq__a">Yes. Each business unit can be its own EREMOS V2 tenant with its own users, dashboards, and reports, with plant data isolated per tenant. Corporate ops can hold an aggregate view across BUs if the org chart calls for it. And none of it replaces your SCADA, MES, or historian — those keep their jobs at each plant and consume canonical signals instead of vendor-specific ones.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 OUTCOMES -->
+    <section class="section" data-mode="dark" aria-labelledby="out-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow eyebrow--teal">OUTCOMES YOU CAN HOLD US TO</span><h2 id="out-heading" class="section-title">What changes when this lands across the fleet.</h2></div>
+        <ul class="out-grid">
+          <li><strong>Fleet visibility that actually views the fleet</strong> — one operational dashboard across every plant, every shift, every machine</li>
+          <li><strong>OEE numbers that reconcile across sites</strong> — consistent definitions, consistent math, no more "approximate" board-deck footnotes</li>
+          <li><strong>Per-site outage resilience</strong> — one plant disconnecting never affects the others; buffered data replays in source order on reconnect</li>
+          <li><strong>Acquisition onboarding in weeks, not quarters</strong> — a new plant onboards with the same architecture, not a custom integration project</li>
+          <li><strong>Local plant autonomy preserved</strong> — plant teams manage their site's configuration without a corporate-IT bottleneck</li>
+          <li><strong>Cut the manual fleet-report reconciliation</strong> — cross-site rollups built from canonical signals, not re-keyed spreadsheets</li>
+          <li><strong>Cross-site benchmarking made defensible</strong> — same OEE definitions, same alarm semantics, same reporting templates across the fleet</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 TYPICAL ENGAGEMENT -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="tl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TYPICAL ENGAGEMENT</span><h2 id="tl-heading" class="section-title">How multi-site fleets typically roll this out.</h2></div>
+        <div class="timeline">
+          <div class="tl-step"><span class="lbl">PHASE 1 — PILOT AT ONE PLANT</span><p>Pick the plant that's most representative of the fleet, or the most painful one. A standard single-site engagement at that plant — proof of value in the first week, cell expansion over the next few weeks, full-plant rollout over the following weeks. The pilot proves the platform against your actual production reality at one site, on its real protocols.</p></div>
+          <div class="tl-step"><span class="lbl">PHASE 2 — SECOND PLANT ONBOARDING</span><p>Once the pilot is operational, the second plant goes faster: same architecture, same protocols, same canonical vocabulary, plant teams trained from the pilot's playbook. The central EREMOS V2 tenant is configured to aggregate both sites, and the cross-site view comes alive.</p></div>
+          <div class="tl-step"><span class="lbl">PHASE 3 — FLEET ROLLOUT</span><p>Remaining plants are brought online in parallel where plant capacity allows. Each plant uses the same EdgeConnect installer, the same gateway-registration flow, the same tag-mapping playbook. Cross-site dashboards activate as each plant comes online. Pace tracks plant capacity for tag-map authoring and acceptance testing, not a vendor-promised number.</p></div>
+          <div class="tl-step"><span class="lbl">ONGOING</span><p>New acquisitions, new lines at existing plants, new business units — all onboard through the same architecture, each new plant getting its own per-gateway runtime. The protocol coverage is already there: FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and Siemens S7 all ship today; FANUC MT-LINKi REST is on the roadmap. Fleet visibility scales with the fleet, not with the integration team.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 ARCHITECTURE FOR THIS SOLUTION -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="arch-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">ARCHITECTURE FOR THIS SOLUTION</span><h2 id="arch-heading" class="section-title">How the pieces fit together across the fleet — every plant works on its own, the fleet works as a whole.</h2></div>
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 170" width="100%" role="img" aria-label="Multi-site fleet: each of N plants runs its own EdgeConnect runtime with its own per-gateway UUID, normalizing to canonical vocabulary; every plant's canonical stream converges on one EREMOS V2 tenant that aggregates across all sites; corporate SCADA/MES/historian and enterprise operations consumers sit beside, fed by the canonical stream, not replaced.">
+            <defs><marker id="ms-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <!-- Col 1: N plants -->
+            <rect x="8" y="20" width="150" height="40" rx="6" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="83" y="38" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">Plant A controllers</text>
+            <text x="83" y="53" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">native protocols</text>
+            <rect x="8" y="65" width="150" height="40" rx="6" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="83" y="83" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">Plant B controllers</text>
+            <text x="83" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">native protocols</text>
+            <rect x="8" y="110" width="150" height="40" rx="6" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="83" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">Plant C … N</text>
+            <text x="83" y="143" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">native protocols</text>
+            <!-- arrows col1 -> col2 -->
+            <line x1="158" y1="40" x2="206" y2="50" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <line x1="158" y1="85" x2="206" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <line x1="158" y1="130" x2="206" y2="120" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <!-- Col 2: per-plant EdgeConnect (xN) -->
+            <rect x="218" y="58" width="190" height="22" rx="5" fill="#EAF7FD" stroke="#00A0E0"/>
+            <text x="313" y="73" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12" fill="#0F1419">EdgeConnect · Plant A</text>
+            <rect x="210" y="84" width="190" height="22" rx="5" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="305" y="99" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="12" fill="#0F1419">EdgeConnect · Plant B</text>
+            <rect x="202" y="110" width="190" height="22" rx="5" fill="#EAF7FD" stroke="#00A0E0"/>
+            <text x="297" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12" fill="#0F1419">EdgeConnect · Plant C…N</text>
+            <text x="305" y="46" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">ONE RUNTIME PER PLANT · per-gateway UUID</text>
+            <!-- convergence arrows col2 -> col3 -->
+            <line x1="408" y1="69" x2="556" y2="80" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <line x1="400" y1="95" x2="556" y2="90" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <line x1="392" y1="121" x2="556" y2="100" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <text x="480" y="64" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">CANONICAL · MANY → ONE</text>
+            <!-- Col 3: EREMOS V2 (x1) -->
+            <rect x="560" y="36" width="210" height="98" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="665" y="66" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2 · one tenant</text>
+            <text x="665" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">aggregates across all sites</text>
+            <text x="665" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">consistent OEE · cross-site dashboards</text>
+            <text x="665" y="118" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">per-tenant access control</text>
+            <!-- arrow col3 -> col4 -->
+            <line x1="770" y1="85" x2="818" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#ms-arr)"/>
+            <!-- Col 4: enterprise -->
+            <rect x="822" y="46" width="150" height="78" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="897" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">Enterprise</text>
+            <text x="897" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">SCADA / MES / historian</text>
+            <text x="897" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">BESIDE, NOT REPLACING</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">EdgeConnect runs locally at each plant — sized to that site's controllers, resilient to local network outages, managed by the local plant team. EREMOS V2 aggregates centrally — fleet-level dashboards, consistent KPIs, per-tenant access control. Per-gateway identity makes the fleet view unambiguous; per-site buffering makes it resilient. For a multi-site fleet, Col 2 is the EdgeConnect peer (one per plant); the Acquisition peer is not required. See the full peer-architecture story → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §9 TRUST CUE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span></div>
+        <div class="trust-cue"><p><strong>Nothing depends on the cloud — per site.</strong> Each plant's EdgeConnect runs offline by default — license validates locally, no phone-home. If a plant's network or the central broker drops, that site's per-route store-and-forward buffers locally and replays in source order on reconnect. Plants on isolated networks install and run the platform the same way as connected ones; cloud connectivity is opt-in, not required.</p></div>
+        <div class="trust-cue"><p><strong>Per-gateway identity + hash-chained configuration audit, at every plant.</strong> Each plant runs its own EdgeConnect runtime with a per-gateway UUID and customer/site binding established at first start — so the fleet view is unambiguous and survives reorganizations and acquisitions. Every change at every site — a new machine added, a tag-map edit, a threshold change — is captured with actor identity and timestamp in a tamper-evident, replay-ready audit chain, available for corporate audit review.</p></div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §10 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities-operational-intelligence"><span class="eyebrow">CAPABILITY · OPERATIONAL INTELLIGENCE</span><span class="cl-desc">The underlying capability — EREMOS V2, OEE, and multi-tenant fleet aggregation.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Back to the full solutions directory.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §11 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your fleet.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Tell us about your plants — how many, where, what controllers, what your current monitoring looks like. We'll scope a pilot at one site and a path to fleet rollout against your actual operational reality. No multi-year platform commitment required to prove the architecture works.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Multi-site%20fleet%20scoping%20call" class="btn btn--primary btn--lg">Book a scoping call for your fleet <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

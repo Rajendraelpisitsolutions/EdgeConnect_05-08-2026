@@ -1,0 +1,290 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "RouteConfig",
+  "type": "object",
+  "description": "JSON DTO for a single route — a named data flow from one source to one\nor more sinks, optionally with transforms and a buffer policy.",
+  "required": [
+    "RouteId",
+    "Name",
+    "SourceInstanceId",
+    "SinkInstanceIds"
+  ],
+  "properties": {
+    "RouteId": {
+      "type": "string",
+      "description": "Stable identifier for this route (e.g., \"jyoti17-to-eremos\").",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "Name": {
+      "type": "string",
+      "description": "Human-readable name for the route, shown in the admin UI.",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "SourceInstanceId": {
+      "type": "string",
+      "description": "InstanceId of the source feeding\nthis route. Validation that this id resolves to a real configured\nsource happens in B2 (cross-record validation).",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "Filter": {
+      "description": "Tag include / exclude filter. Default includes everything per blueprint §4.4.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/TagFilterConfig"
+        }
+      ]
+    },
+    "Transforms": {
+      "description": "Optional transform pipeline configuration. When null, the route is\nidentity (points pass through unchanged after filtering).",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/TransformProfileConfig"
+        }
+      ]
+    },
+    "SinkInstanceIds": {
+      "type": "array",
+      "description": "One or more sink instance ids that receive points from this route.\nPer blueprint §3 design principles, a single source can fan out to\nmany sinks via a single route. The list must be non-empty; B2's\nvalidator enforces the non-empty constraint at apply time.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Buffer": {
+      "description": "Per-route buffer policy. Default supplies sensible production values\n(StoreAndForward, 10k depth, 7 day retention, drop oldest on overflow).",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/BufferPolicyConfig"
+        }
+      ]
+    },
+    "Delivery": {
+      "description": "Per-route delivery policy. Default is AtLeastOnce with 5 retries and\nparallel fanout.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/DeliveryPolicyConfig"
+        }
+      ]
+    },
+    "Enabled": {
+      "type": "boolean",
+      "description": "True if this route is enabled in the running gateway. Default true."
+    }
+  },
+  "definitions": {
+    "TagFilterConfig": {
+      "type": "object",
+      "description": "Include / exclude glob patterns deciding which tags from the source flow\nthrough the route. Per blueprint §4.4, the default Include\nis [\"*\"] — when no filter is specified, every tag from the source\npasses through.",
+      "properties": {
+        "Include": {
+          "type": "array",
+          "description": "Glob patterns of tags to include. Default [\"*\"] per blueprint §4.4\n— every tag from the source is included unless overridden.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Exclude": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Glob patterns of tags to exclude. Applied after Include.\nOptional; null means no exclusions.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TransformProfileConfig": {
+      "type": "object",
+      "description": "Configuration for the transform pipeline applied by a route. All sub-blocks\nare optional; an entirely null transform profile means the route is identity\n(points pass through unchanged).",
+      "properties": {
+        "TagMapping": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Source-tag-name → canonical-tag-name mapping. Applied first in the\npipeline. Tags not in this map pass through with their original name.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "Deadband": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Per-tag absolute deadband threshold. The routing engine suppresses\nsubsequent readings of a tag whose value has not changed by at least\nthe threshold. Interpreted as an absolute change in the numeric value.\nA tag may not appear in both Deadband and\nDeadbandPercent; cross-record validation enforces this.",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "DeadbandPercent": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Per-tag percentage deadband threshold, expressed as a fraction in\n(0, 1] (e.g., 0.05 = 5%). The step passes a new reading\nonly when |current - last| / max(|last|, epsilon) ≥ threshold.\nA tag may not appear in both Deadband and this map.",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "RateLimitMs": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Per-tag minimum interval (in milliseconds) between published values.\nUsed to cap publish frequency on noisy or high-rate tags. Values must\nbe strictly positive; cross-record validation enforces this.",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "EnrichmentTags": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Static metadata to attach to every point flowing through the route\n(e.g., site, line, shift). In C1 this field is intentionally dormant:\nit is accepted, validated, and persisted by the configuration subsystem,\nbut the transform pipeline does not yet include an enrichment step.\nA later milestone (C1.5 or C3) will activate it. Until then, values in\nthis map have no runtime effect.",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "BufferPolicyConfig": {
+      "type": "object",
+      "description": "Per-route buffer policy controlling buffering mode, capacity, retention,\nand overflow behaviour. Per blueprint §4.4 and §6, every route has its own\nbuffer policy; per-route storage is per-blueprint §19.3 with per-sink\ncursors.",
+      "properties": {
+        "Mode": {
+          "description": "Buffering mode for the route. Default StoreAndForward\n— production routes are durable by default per blueprint §6.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/BufferMode"
+            }
+          ]
+        },
+        "MaxDepth": {
+          "type": "integer",
+          "description": "Maximum number of points the buffer holds before OnOverflow\napplies. Default 10,000 per blueprint §8.1 sample. 0 disables the depth cap.",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 0.0
+        },
+        "MaxAgeDays": {
+          "type": "integer",
+          "description": "Maximum age in days for buffered points. Older points are evicted.\nDefault 7 days per blueprint §8.1 sample. 0 disables the age cap.",
+          "format": "int32",
+          "maximum": 3650.0,
+          "minimum": 0.0
+        },
+        "OnOverflow": {
+          "description": "Behaviour when the buffer hits its capacity ceiling. Default\nDropOldest — preserves freshness.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/DropPolicy"
+            }
+          ]
+        }
+      }
+    },
+    "BufferMode": {
+      "type": "string",
+      "description": "Buffering mode for a route. Locked at config-load time per\nblueprint §4.4 and §6.",
+      "x-enumNames": [
+        "None",
+        "InMemory",
+        "StoreAndForward"
+      ],
+      "enum": [
+        "None",
+        "InMemory",
+        "StoreAndForward"
+      ]
+    },
+    "DropPolicy": {
+      "type": "string",
+      "description": "What the routing engine does when a route buffer hits its capacity ceiling.\nPer blueprint §19.8, sources are never blocked by sinks; the buffer absorbs\nthe mismatch and the drop policy decides what happens at the ceiling.",
+      "x-enumNames": [
+        "DropOldest",
+        "DropNewest",
+        "Block"
+      ],
+      "enum": [
+        "DropOldest",
+        "DropNewest",
+        "Block"
+      ]
+    },
+    "DeliveryPolicyConfig": {
+      "type": "object",
+      "description": "Per-route delivery policy. Controls delivery semantics, retry / backoff\nbehavior, and fanout parallelism. Used by the C3 routing engine to drive\nSinkPublisher retry state machines and the\nFanoutDispatcher.",
+      "properties": {
+        "Mode": {
+          "description": "Delivery semantic for the route. Default\nAtLeastOnce per blueprint §19.7.\nAtMostOnce requires\nNone (cross-record rule 7).\nExactlyOnce is intentionally NOT a member of\nDeliveryMode per blueprint §19.7 — not supported in v1.\nThe rejection is enforced at the enum level (a pinned B1 test\nasserts the absence of an ExactlyOnce member); no validator\nrule is required.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/DeliveryMode"
+            }
+          ]
+        },
+        "MaxRetries": {
+          "type": "integer",
+          "description": "Maximum number of retry attempts per failed batch before the sink is\nmarked Degraded per blueprint §19.4. Default 5. Set to 0 to\ndisable retry (the sink degrades on the first failure).",
+          "format": "int32",
+          "maximum": 100.0,
+          "minimum": 0.0
+        },
+        "InitialBackoffMs": {
+          "type": "integer",
+          "description": "Initial retry backoff in milliseconds. The retry state machine\napplies exponential backoff starting from this value, capped at\nMaxBackoffMs and randomized by JitterPercent.\nDefault 100 ms.",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 1.0
+        },
+        "MaxBackoffMs": {
+          "type": "integer",
+          "description": "Cap on the exponential backoff curve in milliseconds. The backoff\nwill not exceed this value regardless of attempt count. Must be\ngreater than or equal to InitialBackoffMs (cross-record\nrule 12). Default 30,000 ms (30 seconds).",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 1.0
+        },
+        "BackoffMultiplier": {
+          "type": "number",
+          "description": "Multiplier applied to the previous backoff to compute the next one.\nStandard exponential backoff uses 2.0. Must be at least 1.0. Default 2.0.",
+          "format": "double",
+          "maximum": 10.0,
+          "minimum": 1.0
+        },
+        "JitterPercent": {
+          "type": "integer",
+          "description": "Randomized jitter applied to each backoff interval, expressed as a\npercentage of the computed backoff. A value of 10 means the actual\ndelay is uniform in [backoff × 0.9, backoff × 1.1]. Default 10.",
+          "format": "int32",
+          "maximum": 100.0,
+          "minimum": 0.0
+        },
+        "FanoutParallel": {
+          "type": "boolean",
+          "description": "True if the routing engine should publish to fanout sinks in parallel\nrather than sequentially. Default true. Per blueprint §19.2,\nfanout is independent per sink regardless of this flag — this controls\nonly whether the dispatch happens concurrently or one-after-another."
+        }
+      }
+    },
+    "DeliveryMode": {
+      "type": "string",
+      "description": "Delivery semantic for a route. Only the two modes supported in v1 per\nblueprint §19.7 are present.",
+      "x-enumNames": [
+        "AtMostOnce",
+        "AtLeastOnce"
+      ],
+      "enum": [
+        "AtMostOnce",
+        "AtLeastOnce"
+      ]
+    }
+  }
+}

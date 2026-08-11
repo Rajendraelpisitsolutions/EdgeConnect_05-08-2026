@@ -1,0 +1,91 @@
+{
+  "_provisioning": {
+    "configFingerprint": "bae6e2ad38005dacbd471130362d8c8727f53cf69760b012c4be9e7adc65b2e5",
+    "csvFingerprint": "5da1eb2d8b37d8506b16dcbe699ad3fb24af95ddf2aa272747bffcb29aa7b9bf",
+    "fleetId": "fleet-acme",
+    "gatewayProvisioningId": "22222222-2222-2222-2222-222222222222",
+    "generatedAt": "2026-01-01T00:00:00Z",
+    "generatedBy": "tools/bulk-provision/generate.ps1",
+    "generatorVersion": "0.1.0",
+    "templateId": "template-brother",
+    "templateSchemaVersion": 1
+  },
+  "Gateway": {
+    "GatewayId": "00000000-0000-0000-0000-000000000002",
+    "GatewayName": "edge-acme-site-b"
+  },
+  "Routes": [
+    {
+      "Buffer": {
+        "MaxAgeDays": 7,
+        "MaxDepth": 100000,
+        "Mode": "StoreAndForward",
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "BackoffMultiplier": 2.0,
+        "InitialBackoffMs": 100,
+        "JitterPercent": 10,
+        "MaxBackoffMs": 30000,
+        "MaxRetries": 100,
+        "Mode": "AtLeastOnce"
+      },
+      "Enabled": true,
+      "Name": "Brother CNCs to MQTT",
+      "RouteId": "route-brother-22222222-2222-2222-2222-222222222222",
+      "SinkInstanceIds": [
+        "edge-acme-b-mqtt"
+      ],
+      "SourceInstanceId": "brother-001-source"
+    }
+  ],
+  "Sinks": [
+    {
+      "Connection": {
+        "brokerHost": "127.0.0.1",
+        "brokerPort": 1883,
+        "clientId": "edge-acme-b-22222222-2222-2222-2222-222222222222",
+        "maxReconnectDelayMs": 30000,
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "publishMode": "PerTag",
+        "qosLevel": 1,
+        "reconnectDelayMs": 1000,
+        "useTls": false
+      },
+      "Enabled": true,
+      "InstanceId": "edge-acme-b-mqtt",
+      "ProtocolName": "mqtt"
+    }
+  ],
+  "Sources": [
+    {
+      "Connection": {
+        "backoffMultiplier": 2.0,
+        "baseUrl": "http://192.168.20.21",
+        "dataPoints": [
+          "MachineInfo/",
+          "Status/",
+          "Program/",
+          "CycleTime/",
+          "Production/",
+          "Alarms/",
+          "Maintenance/",
+          "Tools/"
+        ],
+        "initialBackoffMs": 5000,
+        "maxBackoffMs": 120000,
+        "maxConnectRetries": 5,
+        "timeoutSeconds": 10
+      },
+      "DeviceClass": "cnc",
+      "DeviceId": "brother-001",
+      "DeviceName": "Speedio-1",
+      "Enabled": true,
+      "InstanceId": "brother-001-source",
+      "Polling": {
+        "IntervalMs": 3000
+      },
+      "ProtocolName": "brother-http"
+    }
+  ]
+}

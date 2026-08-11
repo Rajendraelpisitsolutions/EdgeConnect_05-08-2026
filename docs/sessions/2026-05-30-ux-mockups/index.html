@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>UX Mockups — 2026-05-30 debugging session follow-ups</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">UX Mockups · 2026-05-30 follow-up surfaces</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div>
+            <h1>UX review &mdash; 5 surfaces (round 2)</h1>
+            <div class="subtitle">
+                Static HTML mockups for the surfaces filed as tasks #54 + #58 + #59 +
+                #60 + #62. Round 2 incorporates the 5 feedback points from the first
+                pass. Each opens in a new tab; feedback can be filed per-surface or
+                as a single round.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Round-2 revisions — what changed since round 1:</strong>
+        <ol style="margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+            <li><strong>App-bar cosmetics (feedback #1)</strong> — header is now
+            white with the purple "EC" mark as an accent, matching the rest of the
+            Studio. Link colour aligned across all surfaces.</li>
+            <li><strong>Inspect entry flow + picker (feedback #2)</strong> —
+            <code>3-tap-inspect.html</code> now opens with the explanation
+            "Inspect always focuses on one pair at a time" and adds a
+            "Currently inspecting" picker showing the 20 most recently captured
+            pairs so the operator can switch without going back to Compare.</li>
+            <li><strong>"Open in Source detail" tooltip (feedback #3)</strong> —
+            the button on Inspect now has an inline tooltip explaining exactly
+            where it goes (the source's detail page, filtered to the inspected
+            tag) and that it closes the Inspect view.</li>
+            <li><strong>Capability Coverage rewritten for operators (feedback #4)</strong> —
+            page renamed to <em>Health checklist</em>. The engineer-facing
+            "Runtime consumer" column is replaced with a plain-English
+            "What this means for you" column plus a "Used by" column showing
+            which of <em>your</em> adapters advertise each capability. The
+            original runtime-consumer / enum-value / self-check-log table moves
+            into a collapsible <em>Advanced details (for support engineers)</em>
+            section.</li>
+            <li><strong>Source picker on detail pages (feedback #5)</strong> —
+            <code>5-source-detail-metrics.html</code> adds a "Looking at"
+            combobox so the operator can switch sources without navigating
+            back. The Live Tap pages already used this pattern via their Route
+            picker — which is the same idea expressed for the route-centric
+            views.</li>
+        </ol>
+    </div>
+
+    <div class="mockup-note">
+        <strong>How to review.</strong> Open each surface, scan it on your screen at
+        the resolution you typically run the Studio at. The annotations panels in
+        each mockup explain what's new vs. what mirrors existing Studio conventions.
+        Send feedback as a list — visual layout, copy changes, missing affordances,
+        anything that wouldn't survive operator usage. I'll roll all the feedback
+        into a revised round if needed, then start Blazor implementation.
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">📡 Live Data Tap (ADR-0018 / tasks #58 + #59 + #60)</h3>
+        <p style="font-size: 13px; color: #424242; margin: 0 0 16px 0;">
+            Three modes share the same shell. Operator switches via the toggle at
+            the top of the card. Stream lands first (task #58); Compare is the
+            headline addition (task #59); Inspect is the click-to-expand detail
+            view (task #60).
+        </p>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 18%">Surface</th>
+                    <th>What it shows</th>
+                    <th style="width: 24%">Mockup</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Stream</strong></td>
+                    <td>Source-side + sink-side captures side-by-side, latest at top. The
+                    foundational view — used during live debugging to see the data
+                    arrive (or not).</td>
+                    <td><a href="1-tap-stream.html" target="_blank">1-tap-stream.html</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Compare</strong></td>
+                    <td>Pairs source-side and sink-side captures by correlation id, runs
+                    the verdict comparator, surfaces ✓ exact / ⚠ transform-altered /
+                    ⛔ missing-on-sink / ⛔ extra-on-sink per pair. Header shows
+                    rolling counts.</td>
+                    <td><a href="2-tap-compare.html" target="_blank">2-tap-compare.html</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Inspect</strong></td>
+                    <td>Single-pair drill-down. Every canonical field side-by-side,
+                    pipeline trace per stage with microsecond timings, privacy
+                    masking visible where applicable.</td>
+                    <td><a href="3-tap-inspect.html" target="_blank">3-tap-inspect.html</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">✅ Health checklist <span style="font-weight: 400; color: #757575; font-size: 13px;">(was: Capability Coverage)</span> — ADR-0019 / task #62</h3>
+        <p style="font-size: 13px; color: #424242; margin: 0 0 16px 0;">
+            Backed by the startup self-check (task #61) which crashes the host if
+            any advertised capability has no runtime handler. This page is the
+            operator-facing surface — answers <em>"is anything missing?"</em> in
+            plain English. The engineer-facing matrix (runtime consumer + enum
+            value + self-check log) moves into a collapsible
+            <em>Advanced details</em> section so support engineers still have
+            their reference, but operators are not confronted with it by default.
+            In a healthy build the page is reassuring rather than actionable.
+        </p>
+        <a href="4-capability-coverage.html" target="_blank">4-capability-coverage.html</a>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">📊 SourceDetail — adapter-specific metrics (task #54)</h3>
+        <p style="font-size: 13px; color: #424242; margin: 0 0 16px 0;">
+            The smallest of the five surfaces but the most directly useful from
+            today's debugging session. Adds a "Diagnostics — OPC UA Client" card
+            below the existing Activity / Errors cards. Renders the 14 OPC UA Client
+            metrics that already exist (via <code>CheckHealthAsync</code>) but
+            weren't surfaced anywhere. Protocol-aware — Modbus / FOCAS2 / Brother
+            HTTP would each get their own grouped layout. Round 2 adds a
+            "Looking at" source picker at the top so the operator can switch
+            sources in place.
+        </p>
+        <a href="5-source-detail-metrics.html" target="_blank">5-source-detail-metrics.html</a>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Cross-cutting design choices</h3>
+        <ul style="font-size: 13px; color: #424242; line-height: 1.6;">
+            <li><strong>Demand-driven by default.</strong> Every surface signals
+            "Capturing" / "Comparing" / "live · updates every 5 s" so the operator
+            knows the runtime is doing work because they're watching, and will
+            stop 60 s after they leave.</li>
+            <li><strong>Bounded buffers.</strong> Every list surface notes its
+            capacity (1,000 pts/side for Stream; 30 s window for Compare). No
+            unbounded queues; old data silently evicted.</li>
+            <li><strong>Privacy at capture.</strong> Sensitive fields shown as
+            <code>***</code> with explanatory note. There is no "show real values"
+            toggle anywhere by design (per ADR-0017).</li>
+            <li><strong>Operator language, not engineer language.</strong> Where
+            error codes appear they're paired with remediation hints. Capability
+            Coverage explains what the matrix means; doesn't assume the operator
+            has read ADR-0019.</li>
+            <li><strong>Cross-launch between surfaces.</strong> SourceDetail has
+            a "Open Live Data Tap for this source" button. Compare's
+            transform-altered explanation links to the route pipeline. Inspect
+            links to Source detail. The surfaces compose rather than islanding.</li>
+            <li><strong>In-place pickers, not back-and-forth navigation.</strong>
+            Each detail surface has a picker at the top — Route picker on Live
+            Tap, "Currently inspecting" picker on Inspect, "Looking at" source
+            picker on SourceDetail. The operator switches targets in place;
+            they don't need to remember the route name and walk back through
+            three pages.</li>
+        </ul>
+    </div>
+
+    <div class="footer-help">
+        <span><strong>Mockup limitations:</strong> static HTML — no SSE streams, no
+        interactivity. Final Blazor implementations will animate the stream lists,
+        update the verdict counts in real time, etc.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "SinkInstanceConfig",
+  "type": "object",
+  "description": "JSON DTO for a single sink connector instance — one configured use of a\nsink protocol module against one destination. Distinct from the runtime\nSinkConfiguration which adapter implementations\nreceive after Core has loaded and validated the JSON.",
+  "required": [
+    "InstanceId",
+    "ProtocolName"
+  ],
+  "properties": {
+    "InstanceId": {
+      "type": "string",
+      "description": "Stable identifier for this sink connector instance (e.g.,\n\"mqtt-eremos-main\").",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "ProtocolName": {
+      "type": "string",
+      "description": "Protocol module name (e.g., \"mqtt\", \"http\", \"tcp\",\n\"opcua-server\"). Must match the adapter's declared\nProtocolName.",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "Enabled": {
+      "type": "boolean",
+      "description": "True if this instance is enabled in the running gateway. Default true."
+    },
+    "Connection": {
+      "description": "Protocol-specific connection block. Held opaquely as JsonElement\n— the sink adapter parses it during initialisation.",
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Publishing": {
+      "description": "Publishing parameters. Universal fields are typed; protocol-specific\nextras (MQTT topic prefix, HTTP headers, etc.) are preserved in\nExtras via JsonExtensionDataAttribute.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/PublishingSettings"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "PublishingSettings": {
+      "type": "object",
+      "description": "Publishing parameters common to all sink connector instances. Universal\nfields (batch size, batch interval) are typed and validated by Core.\nProtocol-specific publishing knobs (e.g., MQTT QoS, HTTP headers) are\ncaptured in Extras via JsonExtensionDataAttribute\nand parsed by the sink adapter when it initialises.",
+      "additionalProperties": {},
+      "properties": {
+        "BatchSize": {
+          "type": "integer",
+          "description": "Target batch size for published messages. Default 100 per blueprint §8.1 sample.",
+          "format": "int32",
+          "maximum": 100000.0,
+          "minimum": 1.0
+        },
+        "BatchIntervalMs": {
+          "type": "integer",
+          "description": "Maximum time to wait before flushing a partial batch, in milliseconds.\nDefault 250 ms per blueprint §8.1 sample.",
+          "format": "int32",
+          "maximum": 2147483647.0,
+          "minimum": 1.0
+        }
+      }
+    }
+  }
+}

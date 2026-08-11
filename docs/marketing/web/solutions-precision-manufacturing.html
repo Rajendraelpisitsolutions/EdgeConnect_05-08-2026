@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions-precision-manufacturing.html
+  Purpose:     Static mockup of /solutions/precision-manufacturing — the
+               OEE-defensibility / quality-accountability vertical, built on
+               the SolutionPanel (§15) PATTERN-SETTER
+               (solutions-cnc-machining.html). Faithful to
+               page-solutions-precision-manufacturing-spec-v1.md (LOCKED,
+               page content v3). 11 sections (10-section SolutionPanel +
+               optional Typical Engagement, P-A). LEADS Operational
+               Intelligence (P-C mirror-image of CNC).
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       P-G: FOCAS2/MTConnect/Brother HTTP/Modbus TCP/OPC UA Client/S7
+               shipped; MT-LINKi REST roadmap. No outcome metrics. Auditable
+               OEE on canonical signals; OEE definition stays the customer's.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precision Manufacturing — OEE You Can Defend · Elpis</title>
+  <meta name="description" content="One defensible OEE definition across high-mix, mixed-vendor cells. Signals collected at the controller, timestamped at the edge, traceable to the cycle.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions-precision-manufacturing">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Precision Manufacturing">
+  <meta property="og:description" content="One defensible OEE definition across high-mix, mixed-vendor cells. Signals collected at the controller, timestamped at the edge, traceable to the cycle.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions-precision-manufacturing">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Precision Manufacturing">
+  <meta name="twitter:description" content="One defensible OEE definition across high-mix, mixed-vendor cells. Signals collected at the controller, timestamped at the edge, traceable to the cycle.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .lead-p { margin-top: var(--space-5); max-width: 78ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .lead-p--lead { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); }
+    .lead-p--lead strong { color: var(--color-brand-teal-light); }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .incl-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .incl-grid h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .incl-grid ul { list-style:none; padding:0; }
+    .incl-grid li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .incl-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .incl-grid strong { color: var(--color-text-heading-light); }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .out-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-3) var(--space-8); margin-top: var(--space-6); list-style:none; padding:0; }
+    .out-grid li { padding-left: var(--space-6); position:relative; color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); padding-bottom: var(--space-3); }
+    .out-grid li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .out-grid strong { color: #FFFFFF; }
+    .timeline { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .tl-step { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .tl-step .lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+    .tl-step p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin-top: var(--space-2); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">SOLUTION · PRECISION MANUFACTURING</span>
+        <h1 id="hero-heading" class="hero__headline">OEE you can defend, on the cells you actually run.</h1>
+        <p class="hero__subhead">Native FOCAS2, MTConnect, and Brother HTTP — plus Modbus TCP for the PLC-fronted older CNCs — across high-mix, mixed-vendor production cells. Every input — cycle time, parts count, alarm state, tool wear — collected at the controller and timestamped at the edge. Designed for environments operating under strict customer quality and audit requirements.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Book a scoping call for your production cells <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+        <p class="trust-strip">Live integrations on Fanuc 0i / 16i / 18i / 21i / 30i / 31i / 32i (FOCAS2) · Brother S700Xd1 (Brother HTTP) · MTConnect · Modbus TCP — and OPC UA Client and Siemens S7 for the rest of the floor. FANUC MT-LINKi REST on the roadmap. Canonical CNC vocabulary across vendors.</p>
+      </div>
+    </section>
+
+    <!-- §2 THE PRECISION-MANUFACTURING REALITY -->
+    <section class="section" data-mode="light" aria-labelledby="reality-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE PRECISION-MANUFACTURING REALITY</span><h2 id="reality-heading" class="section-title">Stitched OEE numbers don't survive an audit.</h2></div>
+        <p>A precision-manufacturing shop runs more product families in a week than most general CNC shops run in a month. Setup changes are constant. Tooling lifetimes are tracked to fractions of a percent. Tolerances are measured in microns. Every part has a customer attached to it, and every customer expects OEE numbers their auditor will accept.</p>
+        <p>The floor that produces those parts is rarely uniform. A Fanuc 30i from 2022 runs alongside an 18i from 2011. A Brother S700Xd1 handles one product family; a Mazak Integrex handles another. Each machine's vendor-supplied dashboard reports OEE differently. Tool-life tracking lives in one system, parts counts in another, alarm history on a third. The numbers don't reconcile. The customer asks "what's the OEE for the cell that machines our part?" — and the answer takes a week to stitch together.</p>
+        <p>The trap is treating OEE as a reporting problem — a spreadsheet that pulls from each system's quarterly export. That works until the customer audit team asks for the underlying signal data, the timestamp of every cycle, and proof that the math is consistent with the contract. Defensible OEE isn't an analytics layer bolted on after the fact; it requires the signals to be collected at the controller, normalized at the edge, and computed centrally with one consistent definition.</p>
+        <p class="pullquote">"Stitched OEE numbers don't survive that level of scrutiny."</p>
+      </div>
+    </section>
+
+    <!-- §3 HOW ELPIS SOLVES PRECISION-MANUFACTURING OEE -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW ELPIS SOLVES PRECISION-MANUFACTURING OEE</span></div>
+        <div class="callout">
+          <p><strong>How this differs from spreadsheet OEE reporting.</strong> Most precision shops already produce OEE — by exporting each system's quarterly numbers into a spreadsheet and reconciling by hand. It works until an auditor asks for the signal behind the number. A spreadsheet can show you a figure; it can't trace that figure back to the cycle that produced it, prove the math is consistent across cells, or tell you whether a reading was Good, Uncertain, or Stale when it was taken. Elpis computes OEE on canonical signals collected at the controller and timestamped at the edge — one definition, the same math across every cell and shift, traceable end to end. The spreadsheet was reporting; this is provenance.</p>
+        </div>
+        <div class="lead-p lead-p--lead"><strong>EREMOS V2 computes OEE Segments with one definition.</strong><span>This is the spine of the solution. Availability, Performance, and Quality are calculated centrally from edge-collected signals using one consistent set of rules across every cell on your floor — so the number you ship to corporate this week is computed the same way as the number you shipped last quarter, and the number a Tier-1 customer audits traces back to the actual cycle data, not a hand-reconciled spreadsheet. OEE Segments (RUNNING, PLANNED_STOP, UNPLANNED_STOP, IDLE, SETUP) are derived from cycle-time and parts-count signals, each timestamped at the edge and retained. This is the <strong style="display:inline">Operational Intelligence</strong> capability applied to a precision floor — see the underlying capability story → <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a>.</span></div>
+        <div class="lead-p"><strong>One platform reads every controller in the cell.</strong><span>EdgeConnect polls each CNC over its native protocol — FOCAS2 for Fanuc (every generation), MTConnect for the newer multi-vendor machines, Brother HTTP for the Brother fleet, Modbus TCP for older CNCs fronted by a PLC. OPC UA Client and Siemens S7 cover the rest of the floor; FANUC MT-LINKi REST integration is on the roadmap. One service on a small box in your control cabinet, regardless of how many vendors and generations the cell contains. This is the <strong style="display:inline">Connectivity &amp; Edge</strong> capability beneath the OEE story → <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a>. And because every signal normalizes to the same canonical vocabulary, the OEE math doesn't have to translate between vendors: a spindle-RPM reading from a 2022 Fanuc 30i and a 2011 Brother S700Xd1 both arrive as <code>spindle_rpm</code>; cycle time, parts count, tool number, alarm code, and axis positions collapse the same way — the inputs already speak the same language.</span></div>
+        <div class="lead-p"><strong>Tool-life and cycle-time precision matter as much as the OEE rollup.</strong><span>Tool-life telemetry is trended per cell, per tool family, per product, so wear is visible across batches rather than within a single run. Cycle-time variance is visible per machine, per shift, per part run. When a customer asks <em>"why did this batch's cycle time drift 3%?"</em>, the platform has the per-cycle history to answer — root-cause analysis becomes possible, not just retrospective. For a high-mix shop the rollups land at the <strong style="display:inline">cell</strong> level, because cells matter more than individual machines when every cell maps to a product family and, often, a customer.</span></div>
+        <p class="anchor-line">The signals trace back to the iron; the numbers trace back to the signals.</p>
+        <div class="lead-p"><strong>Audit-ready by architecture, and nothing depends on the cloud.</strong><span>Per-tag quality codes (Good / Uncertain / Bad / Stale) propagate end to end, so a downstream consumer can distinguish a real reading from a stale or uncertain one — the data layer is built for the audit before the auditor asks. EdgeConnect runs offline: if your network or broker drops, per-route store-and-forward buffers locally and replays in source order on reconnect — no lost cycles, no missing parts counts. Three-way diagnostics (source / pipeline / sink) tell the OT team exactly which leg broke before the production team feels the symptom.</span></div>
+      </div>
+    </section>
+
+    <!-- §4 WHAT'S INCLUDED -->
+    <section class="section" data-mode="light" aria-labelledby="incl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT'S INCLUDED</span></div>
+        <div class="incl-grid">
+          <div>
+            <h3>From EdgeConnect (edge runtime, Windows service today)</h3>
+            <ul>
+              <li><strong>FOCAS2 collector across every Fanuc generation</strong> — 0i, 16i, 18i, 21i, 30i, 31i, 32i. Axes, spindle, alarms, tool, production counters, programs. The protocol coverage doesn't quietly drop your oldest iron next to your newest.</li>
+              <li><strong>MTConnect collector</strong> — the industry-standard CNC streaming protocol; covers the newer multi-vendor machines in the cell.</li>
+              <li><strong>Brother HTTP collector</strong> — Brother S700Xd1 and similar models via the built-in web-monitoring interface.</li>
+              <li><strong>Modbus TCP collector</strong> — for older CNCs fronted by a PLC gateway, and for inspection equipment that publishes over Modbus.</li>
+              <li><strong>Also today:</strong> OPC UA Client and Siemens S7 for the rest of the floor. <strong>On the roadmap:</strong> FANUC MT-LINKi REST. For the full protocol matrix with semantic modes, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>.</li>
+              <li><strong>Canonical CNC vocabulary</strong> — <code>running</code>, <code>spindle_rpm</code>, <code>feed_rate</code>, <code>parts_count</code>, <code>cycle_time</code>, axis positions, tool numbers and offsets, alarm codes. Same names, every vendor, every generation.</li>
+              <li><strong>Per-tag quality codes</strong> — every signal carries a quality state (Good / Uncertain / Bad / Stale) end to end. Downstream consumers can tell a real value from a stale one — the foundation of an audit-defensible number.</li>
+              <li><strong>Per-route store-and-forward buffering</strong> — never lose a cycle or a parts-count update because the broker was down.</li>
+              <li><strong>Three-way diagnostics</strong> — source / pipeline / sink. When data quality looks off, operators see exactly where it broke.</li>
+              <li><strong>Connectivity Studio</strong> — web admin to add machines, configure tag maps, and run Test Connection probes before anything goes live.</li>
+            </ul>
+            <p class="deploy-note">EdgeConnect ships as a Windows service today; precision shops typically run it on a small box in the control cabinet. A Linux runtime is near-term roadmap, arriving on the Edge Gateway appliance for shops that prefer a turnkey DIN-rail box. The appliance is an option, not a requirement.</p>
+          </div>
+          <div>
+            <h3>From EREMOS V2 (intelligence layer, consuming the canonical stream)</h3>
+            <ul>
+              <li><strong>OEE Segments with one consistent definition</strong> — Availability × Performance × Quality computed centrally from edge-collected signals; auditable; exportable. Configured to <em>your</em> shop's OEE definition, not one of ours.</li>
+              <li><strong>Per-cell aggregation</strong> — OEE rollups at the cell level for high-mix shops where cells matter more than individual machines.</li>
+              <li><strong>Tool-life tracking per tool family</strong> — wear trended across every tool in use, per cell and per product; surfaced ahead of failure.</li>
+              <li><strong>Cycle-time variance per machine, per shift, per part run</strong> — root-cause analysis becomes possible when every cycle is on the record.</li>
+              <li><strong>Persistent alarm tracking with incident grouping</strong> — alarm patterns visible across days and weeks, not just within one shift or one machine's HMI.</li>
+              <li><strong>Route-based customer-data sharing</strong> — publish exactly the signals a Tier-1 customer is contracted to see, for their parts only, without exposing other customers' production data or the shop's full operational picture.</li>
+              <li><strong>Shift reports in PDF and Excel</strong> — the reports customer-quality teams want, in the formats they accept, built from edge-collected signals.</li>
+              <li><strong>Multi-tenant by design</strong> — one platform, multiple sites or business units; per-customer dashboards for shops reporting to multiple Tier-1 customers, no data leakage.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 QUESTIONS PRECISION SHOPS RAISE -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">QUESTIONS PRECISION SHOPS RAISE</span><h2 id="faq-heading" class="section-title">What production and quality managers ask before scoping a cell.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">Can we trace OEE numbers back to specific part runs?</p><p class="faq__a">Yes — that's the point of computing OEE on canonical signals. Every signal is timestamped at the edge and retained, and OEE Segments link back to the cycle-level data that produced them. A customer asking <em>"show me the OEE for this batch"</em> can be answered with the underlying signal history, not a hand-reconciled spreadsheet export. <strong>And the OEE definition stays yours</strong> — segment classification, shift schedule, and targets are configured to how your shop already defines OEE; the platform computes against your definition, not one of ours.</p></div>
+          <div class="faq__item"><p class="faq__q">Which controllers do you collect from today, including our oldest Fanuc next to our newest Mazak?</p><p class="faq__a">Today: Fanuc over FOCAS2 across every generation (0i, 16i, 18i, 21i, 30i, 31i, 32i), the newer multi-vendor machines over MTConnect, Brother over Brother HTTP, and older CNCs fronted by a PLC over Modbus TCP. OPC UA Client and Siemens S7 cover the rest of the floor. FANUC MT-LINKi REST integration is on the roadmap. Your oldest Fanuc and your newest Mazak are handled identically — the canonical vocabulary normalizes both to the same names, so the dashboard doesn't know (or care) which vendor produced which reading. For the full protocol matrix, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>; the exact controller mix is confirmed during the scoping call.</p></div>
+          <div class="faq__item"><p class="faq__q">Do we still have to maintain separate quality records?</p><p class="faq__a">The platform handles production-signal OEE inputs. Inspection-equipment data can flow in via Modbus TCP or MQTT if your quality systems publish that way; otherwise quality data stays in your existing system. Elpis sits <strong>beside</strong> your quality system, SCADA, MES, and historian — it doesn't replace them; they keep their jobs and consume canonical signals instead of vendor-specific ones. Less duplication, fewer fragmented records.</p></div>
+          <div class="faq__item"><p class="faq__q">How do we handle small-batch / high-mix production where every cell is different?</p><p class="faq__a">OEE Segments are configured per cell against that cell's actual shift schedule and product mix. The platform doesn't impose a one-size-fits-all OEE model on a high-mix shop. Per-cell aggregation means each cell reports against the reality it runs, while the math stays consistent across the floor.</p></div>
+          <div class="faq__item"><p class="faq__q">Can we share OEE data with a Tier-1 customer without exposing other production data?</p><p class="faq__a">Yes. Route-based architecture lets you publish exactly the data a customer is contracted to see — alarm state, cycle time, parts count for their parts only — without exposing other customers' production data or your shop's full operational picture. This is the most important commercial moment for a Tier-2 supplier serving several Tier-1 customers under different data-sharing contracts.</p></div>
+          <div class="faq__item"><p class="faq__q">What happens when the network or the broker drops?</p><p class="faq__a">Per-route store-and-forward. Every signal queues at the source with its quality code preserved, and replays in source order when connectivity returns — no lost cycles, no missing parts counts. Three-way diagnostics (source / pipeline / sink) surface immediately during the outage, so the OT team sees exactly which leg was affected. Shops on an isolated network operate the same way; cloud connectivity is opt-in, not required.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 OUTCOMES -->
+    <section class="section" data-mode="dark" aria-labelledby="out-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow eyebrow--teal">OUTCOMES YOU CAN HOLD US TO</span><h2 id="out-heading" class="section-title">What changes when this lands.</h2></div>
+        <ul class="out-grid">
+          <li><strong>OEE you can defend to corporate, customers, and auditors</strong> — one consistent definition, edge-collected signals, traceable back to the controller</li>
+          <li><strong>High-mix cells behave as one production system</strong> — the canonical vocabulary normalizes mixed-vendor, mixed-generation controllers</li>
+          <li><strong>Tool wear trended ahead of failure</strong> — tool-life telemetry across every tool in use surfaces wear before a tool fails mid-cycle, instead of discovering it after a scrapped part</li>
+          <li><strong>Cycle-time variance becomes diagnosable</strong> — per-machine, per-shift, per-part-run history makes root-cause analysis possible</li>
+          <li><strong>Customer-data sharing without exposing the whole shop</strong> — route-based architecture publishes only what each customer is contracted to see</li>
+          <li><strong>Cut the quarterly report-stitching</strong> — OEE numbers come from edge-collected signals, not a spreadsheet reconciled from each system's export</li>
+          <li><strong>Audit-ready data layer from day one</strong> — hash-chained config history, per-tag quality codes, full signal retention; OEE traces back to real signals</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 TYPICAL ENGAGEMENT -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="tl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TYPICAL ENGAGEMENT</span><h2 id="tl-heading" class="section-title">How precision shops typically roll this out.</h2></div>
+        <div class="timeline">
+          <div class="tl-step"><span class="lbl">WEEK 1 — PROOF ON THE MOST-WATCHED CELL</span><p>Pick the cell that produces parts for your most demanding customer — or the one whose OEE numbers you're least sure of defending. EdgeConnect installed on a small Windows box in your control cabinet, polling that cell's controllers over FOCAS2 or Brother HTTP. EREMOS V2 displaying real cycle-time, parts-count, and alarm data, typically within the first few days.</p></div>
+          <div class="tl-step"><span class="lbl">WEEKS 2–4 — EXPANSION ACROSS THE CELL OR PRODUCT FAMILY</span><p>Add the rest of the machines in that cell, or the cells that handle related product families. Tag maps authored together with your team — your operators know the names that matter. OEE Segments configured against your actual shift schedule and product mix.</p></div>
+          <div class="tl-step"><span class="lbl">WEEKS 5–8 — FULL SHOP ROLLOUT</span><p>Remaining cells onboarded. Cell-level and shop-level OEE aggregation in EREMOS V2. Per-customer dashboards if your shop reports to multiple Tier-1 customers separately. Audit-export workflows configured.</p></div>
+          <div class="tl-step"><span class="lbl">ONGOING</span><p>New cells, new product families, new customers — all onboard through the same architecture. FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and Siemens S7 all ship today; FANUC MT-LINKi REST is on the roadmap. <em>The OEE numbers you defend next year are computed the same way as the numbers you defend this week.</em></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 ARCHITECTURE FOR THIS SOLUTION -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="arch-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">ARCHITECTURE FOR THIS SOLUTION</span><h2 id="arch-heading" class="section-title">How it fits together for precision production.</h2></div>
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 170" width="100%" role="img" aria-label="Precision floor: mixed-generation CNCs across high-mix cells feed EdgeConnect over native protocols; canonical CNC vocabulary with per-tag quality codes streams to EREMOS V2 (one OEE definition, per-cell aggregation, route-based customer-data sharing); SCADA/MES/historian/quality systems sit beside, consuming canonical signals.">
+            <defs><marker id="pm-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <rect x="8" y="40" width="180" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13.5" fill="#0F1419">Mixed-gen CNC cells</text>
+            <text x="98" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Fanuc 0i–32i · Brother</text>
+            <text x="98" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Mazak · Okuma · PLC-fronted</text>
+            <text x="98" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">NATIVE PROTOCOLS</text>
+            <line x1="192" y1="85" x2="244" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <rect x="248" y="34" width="214" height="102" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="355" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EdgeConnect</text>
+            <text x="355" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">canonical CNC vocabulary</text>
+            <text x="355" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">per-tag quality codes</text>
+            <text x="355" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">store-and-forward · 3-way diag</text>
+            <line x1="466" y1="85" x2="518" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <text x="492" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#00A0E0">CANONICAL</text>
+            <rect x="522" y="34" width="206" height="102" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2.5"/>
+            <text x="625" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2</text>
+            <text x="625" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="11.5" fill="#0F1419">one OEE definition</text>
+            <text x="625" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">per-cell · tool-life · cycle-time</text>
+            <text x="625" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">route-based customer data</text>
+            <line x1="732" y1="85" x2="784" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <rect x="788" y="40" width="184" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="880" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">SCADA / MES /</text>
+            <text x="880" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="12.5" fill="#0F1419">historian / quality</text>
+            <text x="880" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">BESIDE, NOT REPLACING</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;"><strong style="color:var(--color-text-heading-light);font-style:normal;">The signals trace back to the iron; the numbers trace back to the signals.</strong> For a precision floor, Col 2 is the EdgeConnect peer; the Acquisition peer (mDAQ + mTracker + VAS + E-IDOS) is not required for this solution. See the full peer-architecture story → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §9 TRUST CUE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span></div>
+        <div class="trust-cue"><p><strong>Audit-ready by architecture, and nothing depends on the cloud.</strong> Per-tag quality codes propagate end to end so a downstream consumer can tell a real reading from a stale one, and every signal is timestamped at the edge and retained — the data layer is built for the audit before the auditor asks. EdgeConnect runs offline by default: license validates locally, no phone-home. If your network or broker drops, per-route store-and-forward buffers locally and replays in source order on reconnect. Shops on an isolated network install and run the platform the same way; cloud connectivity is opt-in, not required.</p></div>
+        <div class="trust-cue"><p><strong>Per-gateway identity + hash-chained configuration audit.</strong> Each plant runs its own EdgeConnect runtime with a per-gateway UUID established at first start. Every change — a new machine added, a tag-map edit, an OEE-target change — is captured with actor identity and timestamp in a tamper-evident, replay-ready audit chain. The configuration history is as defensible as the OEE numbers it produces.</p></div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §10 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities-operational-intelligence"><span class="eyebrow">CAPABILITY · OPERATIONAL INTELLIGENCE</span><span class="cl-desc">The underlying capability — EREMOS V2, OEE Segments, audit-ready analytics.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Back to the full solutions directory.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §11 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your most demanding cell.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Pick the cell whose OEE numbers you're least confident in defending. We will scope a proof of value against that cell specifically, including the audit-ready data trail. We run demos on real protocols against your real production cells — no canned data, no polished demo bench, no vague promises.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Precision%20manufacturing%20scoping%20call" class="btn btn--primary btn--lg">Book a scoping call for your production cells <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

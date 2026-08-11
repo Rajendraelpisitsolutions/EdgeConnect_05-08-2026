@@ -1,0 +1,1080 @@
+@*
+    OnboardingFlow — the Connect-a-device meta-wizard.
+
+    Composes the existing protocol pickers + protocol-instance wizards into
+    a single guided flow with one atomic apply at the end. Replaces the
+    current 3-wizards × 3-Applies × 4-page-jumps friction with one ceremony.
+
+    Step skeleton (this file lands Steps 0-2 + chrome; Steps 3-6 land in
+    the next milestone increment per v2.1 §5 Step 6):
+
+        0. Welcome           (conditional — only when GatewayId is auto-provisioned)
+        1. Source protocol   (embedded ChooseSourceProtocol)
+        2. Destination protocol (embedded ChooseDestinationProtocol)
+        3. Configure source  (placeholder — wired in Step 6)
+        4. Configure destination (placeholder — wired in Step 6)
+        5. Configure route   (placeholder — wired in Step 6)
+        6. Review & connect  (placeholder — ReviewAndConnect lands in Step 7)
+
+    Persistence pattern (N1 from v2.1 / ADR-0016 Rule 2):
+       All steps are mounted simultaneously; CSS d-none toggles which is
+       visible. Blazor keeps component instances alive across Back/Next,
+       so probe results + form values survive step transitions.
+
+       Steps 3-5 mount LAZILY (after the protocol picker chooses one)
+       because they need a concrete protocol component reference.
+       Changing the protocol picker invalidates that mount — see the
+       "Going back to Step 1 will discard your source configuration"
+       confirm dialog.
+
+    Reference: docs/decisions/0016-onboarding-meta-wizard.md
+               docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md
+*@
+@page "/onboard"
+@using System.Linq
+@using System.Text.RegularExpressions
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Components.Pages.SourceWizards
+@using ElpisEdgeConnect.Management.Components.Pages.SinkWizards
+@using ElpisEdgeConnect.Management.Components.Pages.RouteWizards
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Connect a device · Connectivity Studio</PageTitle>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="my-4">
+        <strong>Failed to load gateway state.</strong> @_loadError
+    </MudAlert>
+}
+else if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @* page-heading — the Studio-wide sticky heading band. The flow owns the
+       heading for every embedded step (ADR-0016 Rule 3), so it must stay
+       pinned while the operator scrolls a long step body. *@
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3 page-heading">
+        <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Size="Size.Medium" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h5">Connect a device</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                One ceremony: pick a source, pick a destination, wire them, and apply.
+            </MudText>
+        </div>
+    </MudStack>
+
+    <OnboardingProgress CurrentStep="@_currentStep" SkipWelcome="@_skipWelcome" />
+
+    @* ─── Step 0 — Welcome (conditional) ──────────────────────────────────── *@
+    <div class="@StepVisibility(0)">
+        @if (!_skipWelcome)
+        {
+            <WelcomeStep @bind-GatewayId="_gatewayId"
+                         @bind-GatewayName="_gatewayName"
+                         OnChanged="@StateHasChangedAsync" />
+        }
+    </div>
+
+    @* ─── Step 1 — Source protocol picker ─────────────────────────────────── *@
+    <div class="@PickerVisibility(1, overlayStep: 2)">
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Pick a source protocol</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Which protocol does the device you're connecting speak?
+            </MudText>
+            <ChooseSourceProtocol EmbeddedMode="true" OnProtocolChosen="@OnSourceProtocolChosen" />
+        </MudPaper>
+    </div>
+
+    @* ─── Step 3 — Destination protocol picker ───────────────────────────── *@
+    <div class="@PickerVisibility(3, overlayStep: 4)">
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Pick a destination</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Where should EdgeConnect deliver the data?
+            </MudText>
+            <ChooseDestinationProtocol EmbeddedMode="true" OnProtocolChosen="@OnSinkProtocolChosen" />
+        </MudPaper>
+    </div>
+
+    @* ─── Step 2 — Configure source (opens as an overlay over the picker) ─── *@
+    @* Mount the protocol-specific wizard ONCE per protocol selection. Switching
+       protocols in Step 1 unmounts this and mounts a fresh one — operator gets
+       a confirm dialog before that happens (handled in GoBackAsync).
+
+       Rendered inside a scrim rather than a MudDialog ON PURPOSE. ADR-0016
+       Rule 2 / N1 keeps every step mounted and toggles visibility with d-none so
+       probe results and half-typed form values survive Back/Next. Moving this
+       step into a MudDialog would tear the wizard down on close and lose all of
+       it. A CSS overlay leaves the very same component instance mounted — only
+       where it is painted changes. *@
+    <div class="@StepVisibility(2)">
+      <div class="onboarding-overlay" role="dialog" aria-modal="true"
+           aria-label="Configure the source you selected" data-testid="onboarding-source-overlay">
+        <div class="onboarding-overlay__panel">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2"
+                  Class="mb-3 onboarding-overlay__head">
+            <MudIcon Icon="@Icons.Material.Filled.Input" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Configure @SourceProtocolLabel(_sourceProtocol)</MudText>
+            <MudSpacer />
+            <MudTooltip Text="Close and pick a different source">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               aria-label="Close and pick a different source"
+                               OnClick="@GoBackAsync" />
+            </MudTooltip>
+        </MudStack>
+
+        @* Body: the ONLY scrolling region of the panel, so the title above and
+           the actions below stay put while a long wizard scrolls. *@
+        <div class="onboarding-overlay__body">
+        @if (_sourceIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-source-id-collision">
+                A source with id <code>@_sourceIdCollision</code> already exists on this gateway.
+                Choose a different source id before continuing.
+            </MudAlert>
+        }
+        @* Every operator-available source protocol is embedded here. Picker Keys
+           come from SourceProtocolPickerModel. *@
+        @switch (_sourceProtocol)
+        {
+            case "modbus":
+                <AddModbusSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "modbus-rtu":
+                <AddModbusSource EmbeddedMode="true" RtuMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "focas2":
+                <AddFocas2Source EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "brother-http":
+                <AddBrotherHttpSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "ethernet-ip":
+                <AddEthernetIpSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "s7":
+                <AddS7Source EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "opcua-client":
+                <AddOpcUaClientSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "mtconnect":
+                <AddMTConnectSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            case "melsec":
+                <AddMelsecSource EmbeddedMode="true" OnInstanceBuilt="@OnSourceInstanceBuilt" />
+                break;
+            default:
+                @if (_sourceProtocol is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4">
+                        Protocol <code>@_sourceProtocol</code> doesn't have an embeddable wizard yet.
+                        Use the standalone wizard via the Sources page for now.
+                    </MudAlert>
+                }
+                break;
+        }
+
+        @* The overlay covers the page-level navigation bar, so it carries its
+           own. Same handlers — this is a second view of one control, not a
+           second control. *@
+        </div>
+
+        @* Foot: outside the scrolling body, so the actions stay on screen while
+           a long form scrolls behind them. *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center"
+                  Spacing="2" Class="mt-0 pt-3 onboarding-overlay__foot"
+                  Style="border-top:1px solid var(--mud-palette-lines-default);">
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@GoBackAsync" Disabled="@_busy"
+                       data-testid="onboarding-overlay-back">
+                Pick a different source
+            </MudButton>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                @* Says plainly what Save does and does not do. This flow applies
+                   source + destination + route as ONE transaction at the end
+                   (ADR-0016), so nothing here has reached the gateway yet — and
+                   a button labelled Save that quietly wrote nothing would be a
+                   lie the operator only discovers later. *@
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="max-width:22rem;">
+                    Save keeps this on the gateway now, switched off. Connect turns it on and links it up.
+                </MudText>
+                @* ONE ACTION AT A TIME. Continue is ABSENT until this device is on
+                   the gateway, not merely disabled — so the single filled button
+                   on the panel is always the next thing to press. Rendering both
+                   invited the operator to walk past an unsaved device and find out
+                   at the end, and a disabled Continue answers "why not?" with
+                   silence.
+
+                   Gated on SourceIsPersisted, which compares the saved id to the
+                   one on screen — so editing after a Save swaps Continue back for
+                   Save by itself, without a flag to go stale. *@
+                @* Not disabled on an invalid form — see SaveSource. Pressing it
+                   always answers, either with what was saved or with what is
+                   stopping it. *@
+                @* Save is an OPTIONAL checkpoint, not a gate. An operator can
+                   configure the source, Continue to the destination, and leave
+                   every commit to Connect at the end — that is the flow the
+                   ceremony was built around. Save exists for the operator who
+                   wants this device banked before moving on (a long tag table is
+                   worth protecting), so it is outlined: available, not demanded.
+                   Continue stays the filled primary path and is gated only on the
+                   form being valid, exactly as it was before Save existed. *@
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="@SaveSource" Disabled="@_busy"
+                           data-testid="onboarding-overlay-save">
+                    @(SourceIsPersisted ? "Saved" : "Save")
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                           OnClick="@GoNextAsync" Disabled="@(_busy || !CanGoNext())"
+                           data-testid="onboarding-overlay-next">
+                    Continue
+                </MudButton>
+            </MudStack>
+        </MudStack>
+        </div>
+      </div>
+    </div>
+
+    @* ─── Step 4 — Configure destination (overlay, mirrors the source step) ── *@
+    @* Same scrim-not-MudDialog reasoning as the source overlay above: the step
+       stays mounted so a half-filled broker form survives Back/Next. *@
+    <div class="@StepVisibility(4)">
+      <div class="onboarding-overlay" role="dialog" aria-modal="true"
+           aria-label="Configure the destination you selected" data-testid="onboarding-sink-overlay">
+        <div class="onboarding-overlay__panel">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2"
+                  Class="mb-3 onboarding-overlay__head">
+            <MudIcon Icon="@Icons.Material.Filled.Output" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Configure @SinkProtocolLabel(_sinkProtocol)</MudText>
+            <MudSpacer />
+            <MudTooltip Text="Close and pick a different destination">
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               aria-label="Close and pick a different destination"
+                               OnClick="@GoBackAsync" />
+            </MudTooltip>
+        </MudStack>
+
+        @* Body: the ONLY scrolling region of the panel. *@
+        <div class="onboarding-overlay__body">
+        @if (_sinkIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-sink-id-collision">
+                A destination with id <code>@_sinkIdCollision</code> already exists on this gateway.
+                Choose a different destination id before continuing.
+            </MudAlert>
+        }
+        @switch (_sinkProtocol)
+        {
+            case "mqtt":
+                <AddMqttDestination EmbeddedMode="true" OnInstanceBuilt="@OnSinkInstanceBuilt" />
+                break;
+            case "opcua-server":
+                <AddOpcUaServerDestination EmbeddedMode="true" OnInstanceBuilt="@OnSinkInstanceBuilt" />
+                break;
+            default:
+                @if (_sinkProtocol is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4">
+                        Protocol <code>@_sinkProtocol</code> doesn't have an embeddable wizard yet.
+                    </MudAlert>
+                }
+                break;
+        }
+
+        </div>
+
+        @* Foot: outside the scrolling body, so the actions stay on screen while
+           a long form scrolls behind them. *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center"
+                  Spacing="2" Class="mt-0 pt-3 onboarding-overlay__foot"
+                  Style="border-top:1px solid var(--mud-palette-lines-default);">
+            @* TWO different journeys backwards, and they are not the same thing.
+               "Back" steps to the previous part of the ceremony — the source you
+               already configured — and discards nothing. "Pick a different
+               destination" returns to the protocol picker, which unmounts this
+               wizard and loses what is typed here, so it warns first.
+
+               Only the second existed. Walking back from Review you landed here
+               with no way onwards to the source except a button whose own label
+               says it is going to change your destination — so the honest move
+               (go look at the source) was indistinguishable from the destructive
+               one, and the operator had to guess. *@
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@GoBackToSourceStepAsync" Disabled="@_busy"
+                           data-testid="onboarding-sink-overlay-back-step">
+                    Back
+                </MudButton>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.SwapHoriz"
+                           OnClick="@GoBackAsync" Disabled="@_busy"
+                           data-testid="onboarding-sink-overlay-back">
+                    Pick a different destination
+                </MudButton>
+            </MudStack>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="max-width:22rem;">
+                    Save keeps this on the gateway now, switched off. Connect turns it on and links it up.
+                </MudText>
+                @* One action at a time — see the source overlay for why Continue
+                   is absent rather than disabled until this is on the gateway. *@
+                @* Optional checkpoint, same as the source overlay — see there. *@
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="@SaveSink" Disabled="@_busy"
+                           data-testid="onboarding-sink-overlay-save">
+                    @(SinkIsPersisted ? "Saved" : "Save")
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                           OnClick="@GoNextAsync" Disabled="@(_busy || !CanGoNext())"
+                           data-testid="onboarding-sink-overlay-next">
+                    Continue
+                </MudButton>
+            </MudStack>
+        </MudStack>
+        </div>
+      </div>
+    </div>
+
+    @* ─── Step 5 — Configure route ────────────────────────────────────────── *@
+    @* Mount only when both source + sink instances are buildable (N3 — the
+       route wizard's PrePopulated parameters need real config objects).
+       The OnInstanceBuilt callbacks from Steps 3 and 4 populate
+       _sourceInstance and _sinkInstance which this step consumes. *@
+    <div class="@StepVisibility(5)">
+        @if (_routeIdCollision is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3"
+                      data-testid="onboarding-route-id-collision">
+                A route with id <code>@_routeIdCollision</code> already exists on this gateway.
+                Choose a different route id before continuing.
+            </MudAlert>
+        }
+        @* The wiring warning sits ABOVE the wizard, beside the source and
+           destination pickers it is about, so the operator reads it looking at
+           the two lists they have to correct. Naming both ids matters: the
+           disagreement is invisible otherwise, because both the route and the
+           renamed endpoint look perfectly valid on their own.
+
+           An un-ticked destination lands here too, and is left exactly as the
+           operator left it. Re-ticking it for them would undo a deliberate
+           choice silently; blocking the step and saying which destination is
+           missing puts the decision back where it belongs. *@
+        @if (RouteWiringProblem is { } wiringProblem)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3"
+                      data-testid="onboarding-route-wiring-mismatch">
+                <strong>This route does not point at what you configured.</strong>
+                <MudText Typo="Typo.body2" Class="mt-1">@wiringProblem</MudText>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    Connecting is blocked until it does — the source, the destination, and the
+                    route are applied as one transaction, and the gateway rejects a route that
+                    references something the transaction isn't creating.
+                </MudText>
+            </MudAlert>
+        }
+        @if (_sourceInstance is not null && _sinkInstance is not null)
+        {
+            <AddRoute EmbeddedMode="true"
+                      PrePopulatedSource="@_sourceInstance"
+                      PrePopulatedSink="@_sinkInstance"
+                      OnInstanceBuilt="@OnRouteInstanceBuilt" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                Complete Steps 3 and 4 before configuring the route.
+            </MudAlert>
+        }
+    </div>
+
+    @* ─── Step 6 — Review & connect ──────────────────────────────────────── *@
+    <div class="@StepVisibility(6)">
+        @* Route is withheld unless it is wired to the CURRENT source and
+           destination. Step 5's gate already refuses to advance, so this hands
+           the review a route only when it is one the apply will accept — and if
+           some other path ever reaches this step, ReviewAndConnect's CanConnect
+           sees a null Route and the button is dead. Two independent gates, so
+           the POST is unreachable rather than merely guarded. *@
+        <ReviewAndConnect Source="@_sourceInstance"
+                          Sink="@_sinkInstance"
+                          Route="@(RouteIsWired ? _routeInstance : null)"
+                          SourceAlreadyCreated="@SourceIsPersisted"
+                          SinkAlreadyCreated="@SinkIsPersisted"
+                          GatewayIdOverride="@(_skipWelcome ? null : _gatewayId)"
+                          GatewayNameOverride="@(_skipWelcome ? null : _gatewayName)"
+                          CurrentGatewayId="@_currentGatewayId" />
+    </div>
+
+    @* Hidden on the overlay steps: the panel covers this bar and renders its own. *@
+    @if (_currentStep != 2 && _currentStep != 4)
+    {
+    <OnboardingNavigation CanGoBack="@(_currentStep > FirstActiveStep())"
+                          CanGoNext="@CanGoNext()"
+                          IsLastStep="@(_currentStep == 6)"
+                          Busy="@_busy"
+                          OnBack="@GoBackAsync"
+                          OnNext="@GoNextAsync"
+                          OnCancel="@OnCancelAsync" />
+    }
+}
+
+@code {
+    /// <summary>Pattern that auto-provisioned GatewayIds match (per ADR-0016 R5).</summary>
+    private static readonly Regex AutoProvisionedIdPattern = new("^gw-[a-z0-9._-]+$", RegexOptions.Compiled);
+
+    // Load state
+    private bool _loading = true;
+    private string? _loadError;
+
+    // Welcome-step state
+    private bool _skipWelcome;
+    private string _gatewayId = string.Empty;
+    private string _gatewayName = string.Empty;
+    // Snapshot of the GatewayId as loaded — preserved for the Review step
+    // to show "change from X to Y" when the operator edited it.
+    private string _currentGatewayId = string.Empty;
+
+    // Picker state
+    private string? _sourceProtocol;
+    private string? _sinkProtocol;
+
+    // Existing ids in the live config — captured at load so a duplicate id is
+    // caught HERE (at the naming step), not at the final bundled apply where it
+    // 400s with a confusing "Apply failed". Mirrors the merger's uniqueness rules.
+    private HashSet<string> _existingSourceIds = new(StringComparer.Ordinal);
+    private HashSet<string> _existingSinkIds = new(StringComparer.Ordinal);
+    private HashSet<string> _existingRouteIds = new(StringComparer.Ordinal);
+    // The colliding id for the current step, or null when unique. Drives the
+    // inline error + gates Next so the operator can't reach Review with a clash.
+    private string? _sourceIdCollision;
+    private string? _sinkIdCollision;
+    private string? _routeIdCollision;
+
+    // Buildable instance state — populated by the embedded wizards via
+    // OnInstanceBuilt callbacks. null means the wizard's model isn't yet
+    // valid; non-null is what the bundled apply will commit (Step 7).
+    private SourceInstanceConfig? _sourceInstance;
+    private SinkInstanceConfig? _sinkInstance;
+    private RouteConfig? _routeInstance;
+
+    // Ids the operator pre-created by pressing Save on a step. Save writes the
+    // entity to the gateway immediately (disabled) so it appears in the Sources
+    // / Destinations list at once — a button that says "Saved" has to have
+    // saved something. Connect then delivers the final, enabled form, and the
+    // bundled apply REPLACES these ids rather than rejecting them as
+    // duplicates. See ADR-0016 Rule 6 (amended).
+    // The id each entity is CURRENTLY PERSISTED UNDER on the gateway, or null if
+    // Save has not been pressed on that step. This is a record of what is on the
+    // gateway, NOT a "the operator pressed Save" latch — the difference matters.
+    //
+    // A latch went stale the moment the operator edited anything: it stayed true
+    // after an instance-id change, so the disabled entity written under the old
+    // id was stranded on the gateway forever while Connect created a second one
+    // under the new id. Resetting the latch on every edit is no better — editing
+    // a NON-id field (a port, a poll interval) would clear it too, and Connect
+    // would then try to create an entity that already exists and fail the whole
+    // ceremony with a duplicate-id 400.
+    //
+    // Holding the id instead makes both cases fall out of one comparison, see
+    // SourceIsPersisted / SinkIsPersisted: same id → replace in place; changed
+    // id → the old entity is removed as part of the next Save.
+    private string? _savedSourceId;
+    private string? _savedSinkId;
+
+    /// <summary>
+    /// True when what is on screen is the entity currently on the gateway, so
+    /// Connect must REPLACE it rather than create it. False after an id change,
+    /// which is a different entity and must be created fresh.
+    /// </summary>
+    private bool SourceIsPersisted =>
+        _savedSourceId is not null
+        && string.Equals(_savedSourceId, _sourceInstance?.InstanceId, StringComparison.Ordinal);
+
+    /// <summary>Destination twin of <see cref="SourceIsPersisted"/>.</summary>
+    private bool SinkIsPersisted =>
+        _savedSinkId is not null
+        && string.Equals(_savedSinkId, _sinkInstance?.InstanceId, StringComparison.Ordinal);
+
+    /// <summary>
+    /// True when the route the route step built references the source and the
+    /// destination as they stand RIGHT NOW — the same rule the bundled apply
+    /// enforces, asked here instead of at the end.
+    /// </summary>
+    /// <remarks>
+    /// DERIVED, never a cached flag, and that is the whole point. The defect
+    /// this closes was a latch: the route wizard captured the two ids once per
+    /// mount, and every onboarding step stays mounted across Back/Next
+    /// (ADR-0016 Rule 2), so renaming the source at step 2 or the destination at
+    /// step 4 never reached the route built at step 5. The apply refused it at
+    /// the last click. Any flag recording "the route was fine when we looked"
+    /// reintroduces exactly that: it can only be right until the next edit.
+    /// Recomputing on every render costs three string comparisons and cannot go
+    /// stale.
+    /// </remarks>
+    private bool RouteIsWired =>
+        OnboardingRouteWiring.IsWiredTo(_routeInstance, _sourceInstance, _sinkInstance);
+
+    /// <summary>
+    /// The sentence shown beside the route step's pickers when the route
+    /// disagrees with the configured endpoints, or null when there is nothing to
+    /// report. Same single definition of the rule as <see cref="RouteIsWired"/>.
+    /// </summary>
+    private string? RouteWiringProblem =>
+        OnboardingRouteWiring.DescribeMismatch(_routeInstance, _sourceInstance, _sinkInstance);
+
+    // Navigation state
+    private int _currentStep;
+    // _busy is wired to the apply ceremony in v2.1 §5 Step 7; initialised
+    // explicitly to satisfy CS0649 before that lands.
+#pragma warning disable CS0414 // field assigned but never used yet
+    private bool _busy = false;
+#pragma warning restore CS0414
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var config = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (config is null)
+            {
+                _loadError = "Configuration endpoint returned empty response.";
+                return;
+            }
+
+            _gatewayId = config.Gateway.GatewayId;
+            _gatewayName = config.Gateway.GatewayName;
+            _currentGatewayId = config.Gateway.GatewayId;
+
+            // Snapshot existing ids for early duplicate detection in the steps.
+            _existingSourceIds = new HashSet<string>(config.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+            _existingSinkIds = new HashSet<string>(config.Sinks.Select(s => s.InstanceId), StringComparer.Ordinal);
+            _existingRouteIds = new HashSet<string>(config.Routes.Select(r => r.RouteId), StringComparer.Ordinal);
+
+            // Welcome step only fires when GatewayId is still on the auto-provisioned
+            // shape (ADR-0016 R5 — `gw-{hostname-slug}`). If the operator already
+            // set a custom id, skip the Welcome step entirely.
+            _skipWelcome = !AutoProvisionedIdPattern.IsMatch(config.Gateway.GatewayId);
+            _currentStep = _skipWelcome ? 1 : 0;
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private int FirstActiveStep() => _skipWelcome ? 1 : 0;
+
+    private string StepVisibility(int step) => _currentStep == step ? "" : "d-none";
+
+    /// <summary>
+    /// Bank the configured source and STAY on the panel, reporting the outcome
+    /// either way. Writes nothing to the gateway — this flow applies source +
+    /// destination + route as one transaction at Connect (ADR-0016), so "saved"
+    /// here means "kept in this setup", and the message says so.
+    /// </summary>
+    private async Task SaveSource()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        // Save stays ENABLED when the form is incomplete, unlike Continue. A
+        // disabled button answers "can I save?" with silence — it cannot say
+        // WHICH field is missing, and the operator is left clicking a dead
+        // control. Pressing it always produces an answer.
+        if (_sourceIdCollision is not null)
+        {
+            Snackbar.Add(
+                $"Not saved — a source called '{_sourceIdCollision}' already exists on this gateway. "
+                    + "Give this one a different id.",
+                Severity.Warning);
+            return;
+        }
+
+        if (_sourceInstance is null)
+        {
+            Snackbar.Add(
+                "Not saved — some required details are still missing. The fields that need "
+                    + "attention are marked in the form above.",
+                Severity.Warning);
+            return;
+        }
+
+        // Write it to the gateway NOW, disabled. Save used to change nothing at
+        // all and still report success, so the operator went looking for their
+        // source in the Sources list and found nothing — the one outcome the
+        // button's own wording promised against.
+        //
+        // Enabled:false because the route that carries this source's data does
+        // not exist until Connect; an enabled source without a route faults
+        // immediately with CONFIG.SOURCE_WITHOUT_ROUTE. Disabled, it sits in
+        // the list as a saved-but-not-yet-connected device, which is exactly
+        // what it is. Connect flips it on.
+        await ApplySavedEntityAsync(
+            _sourceInstance.InstanceId,
+            draft => draft with
+            {
+                // Drop the entity a PREVIOUS Save wrote under a different id
+                // before adding this one. Both happen inside the one draft, so
+                // the rename is a single atomic apply — there is no window in
+                // which the gateway holds two copies of the same device, and no
+                // way to end up holding the old one forever if the second write
+                // fails. Without this, correcting a typo in the instance id left
+                // the first spelling behind as a permanently disabled orphan.
+                Sources = AppendOrReplaceSource(
+                    RemoveSupersededSource(draft.Sources, _sourceInstance!.InstanceId),
+                    _sourceInstance! with { Enabled = false }),
+            },
+            onSaved: id =>
+            {
+                _savedSourceId = id;
+                // It exists now, so the naming step's duplicate check would
+                // flag the operator's own entity back at them. Their id is
+                // theirs to keep.
+                _existingSourceIds.Remove(id);
+            },
+            entityKind: "Source",
+            listName: "Sources");
+    }
+
+    /// <summary>
+    /// Shared tail for the Save buttons: read the live config, apply the caller's
+    /// mutation through the ordinary draft → apply pipeline, and report in the
+    /// operator's terms. Stays on the panel either way — Save is a checkpoint,
+    /// not an exit: an operator part-way through a long tag table wants to bank
+    /// what they have and carry on. Continue is the button that moves on.
+    /// </summary>
+    private async Task ApplySavedEntityAsync(
+        string instanceId,
+        Func<GatewayConfiguration, GatewayConfiguration> mutate,
+        Action<string> onSaved,
+        string entityKind,
+        string listName)
+    {
+        _busy = true;
+        try
+        {
+            var current = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (current is null)
+            {
+                Snackbar.Add(
+                    "Not saved — the gateway's current configuration could not be read. "
+                        + "Reload the page and try again.",
+                    Severity.Error);
+                return;
+            }
+
+            var draft = mutate(current);
+            var created = await HttpClient.PostAsJsonAsync(
+                "/api/v1/config/drafts",
+                new { configuration = draft, actor = "onboarding-save" });
+            if (!created.IsSuccessStatusCode)
+            {
+                Snackbar.Add(
+                    $"Not saved — {await created.Content.ReadAsStringAsync()}",
+                    Severity.Error);
+                return;
+            }
+
+            var payload = await created.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            var draftId = payload is { } p && p.TryGetValue("draftId", out var id) ? id : null;
+            if (draftId is null)
+            {
+                Snackbar.Add(
+                    "Not saved — the gateway accepted the change but did not return a draft id. "
+                        + "Open Configuration to apply it.",
+                    Severity.Warning);
+                return;
+            }
+
+            var applied = await HttpClient.PostAsJsonAsync(
+                $"/api/v1/config/drafts/{Uri.EscapeDataString(draftId)}/apply",
+                new { actor = "onboarding-save" });
+            if (!applied.IsSuccessStatusCode)
+            {
+                // The draft SURVIVES a failed apply — it is written before the
+                // apply is attempted and is not rolled back. Reporting only the
+                // server's rejection made that invisible, so an operator who had
+                // just spent ten minutes on a tag table reasonably concluded the
+                // work was gone and started again. Say where it is.
+                Snackbar.Configuration.VisibleStateDuration = 10_000;
+                Snackbar.Add(
+                    $"Not applied — {await applied.Content.ReadAsStringAsync()} "
+                        + "Your work was not lost: it is saved as a draft. Open Configuration "
+                        + "to fix and apply it.",
+                    Severity.Error);
+                return;
+            }
+
+            onSaved(instanceId);
+            Snackbar.Add(
+                $"Saved '{instanceId}'. It is in your {listName} list now, switched off until "
+                    + "you press Connect at the end.",
+                Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Not saved — {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Removes the source a previous Save wrote under a DIFFERENT id — the
+    /// orphan a rename would otherwise leave behind. Returns the list untouched
+    /// when nothing was saved yet, or when the id has not changed (that case is
+    /// a replace, handled by <see cref="AppendOrReplaceSource"/>).
+    /// </summary>
+    private IReadOnlyList<SourceInstanceConfig> RemoveSupersededSource(
+        IReadOnlyList<SourceInstanceConfig> existing,
+        string currentId)
+    {
+        if (_savedSourceId is null || string.Equals(_savedSourceId, currentId, StringComparison.Ordinal))
+        {
+            return existing;
+        }
+
+        // The id is the operator's again once its entity is gone, so the naming
+        // step stops reporting a clash against something we removed.
+        _existingSourceIds.Remove(_savedSourceId);
+        return existing
+            .Where(s => !string.Equals(s.InstanceId, _savedSourceId, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    /// <summary>Destination twin of <see cref="RemoveSupersededSource"/>.</summary>
+    private IReadOnlyList<SinkInstanceConfig> RemoveSupersededSink(
+        IReadOnlyList<SinkInstanceConfig> existing,
+        string currentId)
+    {
+        if (_savedSinkId is null || string.Equals(_savedSinkId, currentId, StringComparison.Ordinal))
+        {
+            return existing;
+        }
+
+        _existingSinkIds.Remove(_savedSinkId);
+        return existing
+            .Where(s => !string.Equals(s.InstanceId, _savedSinkId, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    private static IReadOnlyList<SourceInstanceConfig> AppendOrReplaceSource(
+        IReadOnlyList<SourceInstanceConfig> existing,
+        SourceInstanceConfig entity)
+    {
+        var list = new List<SourceInstanceConfig>(existing);
+        var slot = list.FindIndex(s => string.Equals(s.InstanceId, entity.InstanceId, StringComparison.Ordinal));
+        if (slot >= 0) { list[slot] = entity; } else { list.Add(entity); }
+        return list;
+    }
+
+    private static IReadOnlyList<SinkInstanceConfig> AppendOrReplaceSink(
+        IReadOnlyList<SinkInstanceConfig> existing,
+        SinkInstanceConfig entity)
+    {
+        var list = new List<SinkInstanceConfig>(existing);
+        var slot = list.FindIndex(s => string.Equals(s.InstanceId, entity.InstanceId, StringComparison.Ordinal));
+        if (slot >= 0) { list[slot] = entity; } else { list.Add(entity); }
+        return list;
+    }
+
+    /// <summary>
+    /// Destination twin of <see cref="SaveSource"/> — same contract: always
+    /// answers, never closes the panel, and writes the destination to the
+    /// gateway disabled so it shows up in the Destinations list at once.
+    /// </summary>
+    private async Task SaveSink()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        if (_sinkIdCollision is not null)
+        {
+            Snackbar.Add(
+                $"Not saved — a destination called '{_sinkIdCollision}' already exists on this "
+                    + "gateway. Give this one a different id.",
+                Severity.Warning);
+            return;
+        }
+
+        if (_sinkInstance is null)
+        {
+            Snackbar.Add(
+                "Not saved — some required details are still missing. The fields that need "
+                    + "attention are marked in the form above.",
+                Severity.Warning);
+            return;
+        }
+
+        await ApplySavedEntityAsync(
+            _sinkInstance.InstanceId,
+            // Same superseded-id cleanup as the source — see there.
+            draft => draft with
+            {
+                Sinks = AppendOrReplaceSink(
+                    RemoveSupersededSink(draft.Sinks, _sinkInstance!.InstanceId),
+                    _sinkInstance! with { Enabled = false }),
+            },
+            onSaved: id =>
+            {
+                _savedSinkId = id;
+                _existingSinkIds.Remove(id);
+            },
+            entityKind: "Destination",
+            listName: "Destinations");
+    }
+
+    /// <summary>
+    /// Keeps a picker painted while its overlay step is open, so the operator can
+    /// still see which tile they chose behind the panel they are filling in.
+    /// </summary>
+    private string PickerVisibility(int step, int overlayStep) =>
+        _currentStep == step || _currentStep == overlayStep ? "" : "d-none";
+
+    /// <summary>Operator-facing name for a destination protocol key.</summary>
+    private static string SinkProtocolLabel(string? key) => key switch
+    {
+        "mqtt" => "MQTT",
+        "opcua-server" => "OPC UA Server",
+        "http" => "HTTP webhook",
+        "tcp" => "TCP socket",
+        _ => "destination",
+    };
+
+    /// <summary>Operator-facing name for a picker protocol key, for the overlay title.</summary>
+    private static string SourceProtocolLabel(string? key) => key switch
+    {
+        "modbus" => "Modbus TCP",
+        "modbus-rtu" => "Modbus RTU",
+        "focas2" => "FANUC FOCAS2",
+        "brother-http" => "Brother HTTP",
+        "ethernet-ip" => "EtherNet/IP",
+        "s7" => "Siemens S7",
+        "opcua-client" => "OPC UA Client",
+        "mtconnect" => "MTConnect",
+        "melsec" => "Mitsubishi MELSEC",
+        _ => "source",
+    };
+
+    private bool CanGoNext()
+    {
+        return _currentStep switch
+        {
+            0 => !string.IsNullOrWhiteSpace(_gatewayId) && !string.IsNullOrWhiteSpace(_gatewayName),
+            1 => _sourceProtocol is not null,
+            // 2 is now Configure source, 3 the destination picker.
+            2 => _sourceInstance is not null && _sourceIdCollision is null,
+            3 => _sinkProtocol is not null,
+            4 => _sinkInstance is not null && _sinkIdCollision is null,
+            // RouteIsWired subsumes the null check, but both are spelled out:
+            // they answer different questions ("has the wizard produced a route
+            // yet" / "does that route point at these two"), and the operator's
+            // warning only appears for the second.
+            5 => _routeInstance is not null && _routeIdCollision is null && RouteIsWired,
+            6 => false, // review step uses its own Connect button
+            _ => false,
+        };
+    }
+
+    private void OnSourceInstanceBuilt(SourceInstanceConfig? source)
+    {
+        _sourceInstance = source;
+
+        // Early duplicate check: flag a clash with an existing source id so the
+        // operator fixes it HERE, not at the final apply.
+        _sourceIdCollision = source is not null && _existingSourceIds.Contains(source.InstanceId)
+            ? source.InstanceId
+            : null;
+        // OnInstanceBuilt fires from the wizard's OnAfterRenderAsync, which
+        // runs AFTER our render — StateHasChanged here is needed to refresh
+        // the Next button's CanGoNext() gate immediately on validity change.
+        StateHasChanged();
+    }
+
+    private void OnSinkInstanceBuilt(SinkInstanceConfig? sink)
+    {
+        _sinkInstance = sink;
+
+        _sinkIdCollision = sink is not null && _existingSinkIds.Contains(sink.InstanceId)
+            ? sink.InstanceId
+            : null;
+        StateHasChanged();
+    }
+
+    private void OnRouteInstanceBuilt(RouteConfig? route)
+    {
+        _routeInstance = route;
+        _routeIdCollision = route is not null && _existingRouteIds.Contains(route.RouteId)
+            ? route.RouteId
+            : null;
+        StateHasChanged();
+    }
+
+    private async Task OnSourceProtocolChosen(string protocolKey)
+    {
+        // If the operator changed protocol after configuring Step 3,
+        // discard the now-stale source instance + route (route depended on it).
+        if (_sourceProtocol is not null && _sourceProtocol != protocolKey)
+        {
+            _sourceInstance = null;
+            _routeInstance = null;
+            _sourceIdCollision = null;
+            _routeIdCollision = null;
+        }
+        _sourceProtocol = protocolKey;
+        // Auto-advance — picking a tile is the operator's commit gesture.
+        await GoNextAsync();
+    }
+
+    private async Task OnSinkProtocolChosen(string protocolKey)
+    {
+        if (_sinkProtocol is not null && _sinkProtocol != protocolKey)
+        {
+            _sinkInstance = null;
+            _routeInstance = null;
+            _sinkIdCollision = null;
+            _routeIdCollision = null;
+        }
+        _sinkProtocol = protocolKey;
+        await GoNextAsync();
+    }
+
+    private Task GoNextAsync()
+    {
+        if (!CanGoNext()) return Task.CompletedTask;
+        if (_currentStep < 6)
+        {
+            _currentStep++;
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Steps back from the destination overlay to the source the operator
+    /// already configured, without touching either wizard's state.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately NOT <see cref="GoBackAsync"/>, which walks one step to the
+    /// destination PICKER and, because changing protocol unmounts the mounted
+    /// wizard, has to warn that the destination configuration will be lost.
+    /// Reviewing the source is a read-only intention and must not carry that
+    /// warning — an operator who is told they might lose work simply stops
+    /// looking, which is the opposite of what a Back button is for.
+    ///
+    /// No confirmation, and no state is cleared: ADR-0016 Rule 2 keeps every
+    /// step mounted, so the destination wizard is still there, still filled in,
+    /// when they come forward again.
+    /// </remarks>
+    private Task GoBackToSourceStepAsync()
+    {
+        // Step 2 is the configure-source overlay. Guarded rather than assumed:
+        // if a source protocol was never chosen the wizard is not mounted, so
+        // fall back to the picker instead of showing an empty panel.
+        _currentStep = _sourceProtocol is null ? 1 : 2;
+        return Task.CompletedTask;
+    }
+
+    private async Task GoBackAsync()
+    {
+        if (_currentStep <= FirstActiveStep()) return;
+
+        // v2.1 §3.3 — going back from Step 3 to Step 1 (source picker) puts
+        // the operator in a position to change the source protocol, which
+        // unmounts the just-configured Step 3 wizard and loses its state.
+        // Same for Step 4 → Step 2. Confirm before allowing it.
+        if (_currentStep == 2 && _sourceInstance is not null)
+        {
+            var ok = await ConfirmAsync(
+                "Change source protocol?",
+                "Going back will let you pick a different source protocol.",
+                "Your current source configuration will be discarded if you change protocols.");
+            if (!ok) return;
+        }
+        else if (_currentStep == 4 && _sinkInstance is not null)
+        {
+            var ok = await ConfirmAsync(
+                "Change destination protocol?",
+                "Going back will let you pick a different destination.",
+                "Your current destination configuration will be discarded if you change protocols.");
+            if (!ok) return;
+        }
+
+        _currentStep--;
+    }
+
+    /// <summary>
+    /// Shared confirmation for the flow. Uses ConfirmDialog rather than
+    /// DialogService.ShowMessageBox: the message box renders an untitled slab
+    /// of text with two identical-weight links, so "Continue" — the choice that
+    /// throws away typed configuration — looked exactly as safe as "Stay here".
+    /// The consequence is passed separately so it lands in the dialog's own
+    /// highlighted strip instead of trailing off the end of a paragraph.
+    /// </summary>
+    private async Task<bool> ConfirmAsync(string title, string message, string? consequence = null)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = title,
+            ["Message"] = message,
+            ["Consequence"] = consequence,
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(title, parameters, ConfirmDialog.Options);
+        var result = await dialog.Result;
+        // Canceled is null only if the dialog was torn down without a result;
+        // treat anything that is not an explicit "not cancelled" as a decline.
+        return result?.Canceled is false;
+    }
+
+    private async Task OnCancelAsync()
+    {
+        // Leaving the flow discards more than the current step, so this one gets
+        // its own exit emblem and an explicit "Yes, exit" rather than the shared
+        // "Continue" — the operator is answering a different question here.
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Exit setup?",
+            ["Message"] = "You are part-way through connecting a device.",
+            ["Consequence"] = "Nothing is saved yet — all progress will be lost.",
+            ["Icon"] = Icons.Material.Filled.Logout,
+            ["ConfirmLabel"] = "Yes, exit",
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Exit setup?", parameters, ConfirmDialog.Options);
+        var result = await dialog.Result;
+        if (result?.Canceled is false)
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private Task StateHasChangedAsync()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+}

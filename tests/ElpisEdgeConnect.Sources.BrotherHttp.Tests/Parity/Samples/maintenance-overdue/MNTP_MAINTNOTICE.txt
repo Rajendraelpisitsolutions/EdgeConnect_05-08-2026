@@ -1,0 +1,1 @@
+Z-axis travel distance),GREASING XYZ AXIS,Valid,87000,100000,Notified,Warning,#ff8000

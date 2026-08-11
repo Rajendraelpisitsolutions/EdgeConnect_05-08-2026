@@ -1,0 +1,34 @@
+<!--
+  EthernetIpSimulator — a standalone, dependency-free EtherNet/IP (CIP) PLC
+  simulator. Speaks enough of the real Allen-Bradley / Logix wire protocol over
+  TCP 44818 that the production libplctag-backed adapter (LibPlcTagClient) can
+  RegisterSession -> ForwardOpen -> Read Tag against it for genuine end-to-end
+  transport testing — distinct from the in-process EthernetIpDemoClient, which
+  bypasses the network entirely.
+
+  Pure C#, no native/Python/Docker dependency. Tags are configurable on the
+  command line and return live, time-varying values (sine per tag).
+
+  Scope: ControlLogix-style symbolic atomic reads (BOOL/SINT/INT/DINT/LINT/
+  REAL/LREAL). UDT/array/STRING structured reads and writes are out of scope.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.EthernetIpSimulator</RootNamespace>
+    <AssemblyName>EthernetIpSimulator</AssemblyName>
+    <Description>Dependency-free EtherNet/IP (CIP) PLC simulator for end-to-end EtherNet/IP transport testing.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <!-- Console tool: localized exception strings (CA1303), general catch in
+         the per-client loop (CA1031), Random for connection-id assignment
+         (CA5394), and the logging-perf analyzers (CA1822/CA1848) are all
+         deliberate here. Matches the NoWarn posture of the other tools/. -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA1303;CA5394</NoWarn>
+  </PropertyGroup>
+
+</Project>

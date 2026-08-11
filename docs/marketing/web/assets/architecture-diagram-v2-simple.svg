@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  File:        docs/marketing/assets/architecture-diagram-v2-simple.svg
+  Purpose:     3-box executive variant. NOT a simplification of the master —
+               a deliberate redesign for executive cognition. Emphasizes
+               operational transformation (what changes for the business),
+               not protocols, products, or capability columns.
+
+               FIELD OPERATIONS  →  ELPIS INDUSTRIAL INTELLIGENCE STACK  →
+                                                                          ENTERPRISE OPERATIONS & DECISIONS
+
+  Spec:        docs/marketing/architecture-diagram-spec-v3.md §10 (variants)
+               ChatGPT lock note: "Do NOT merely simplify. Redesign for
+               executive cognition. Emphasize operational transformation,
+               not protocols or products."
+  Tokens:      docs/marketing/assets/brand/BRAND_TOKENS.md v1
+  Version:     v2 simple variant (rev3, redesigned per ChatGPT executive frame)
+  Date:        2026-05-25
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 2400 900"
+     width="2400" height="900"
+     font-family="Inter, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+  <defs>
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#2A2F36"/>
+      <stop offset="100%" stop-color="#232830"/>
+    </linearGradient>
+
+    <marker id="arrowTeal"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#00A0E0"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2400" height="900" fill="#1A1F26"/>
+
+  <!-- ============ Title row ============ -->
+  <text x="1200" y="78" text-anchor="middle"
+        font-size="22" font-weight="600" fill="#00A0E0"
+        letter-spacing="6">FIELD SIGNAL · INDUSTRIAL INTELLIGENCE · ENTERPRISE DECISIONS</text>
+  <text x="1200" y="116" text-anchor="middle"
+        font-size="16" font-style="italic" fill="#C8D0D8">
+    One stack between the floor and the boardroom.
+  </text>
+
+  <!-- ============================================================
+       Three-box executive frame — horizontal flow, restraint above all.
+       Layout:
+         Box A (Field Operations)     x= 80 -  740   (660 wide)
+         Arrow gutter                 x=740 -  860   (120)
+         Box B (Industrial            x=860 - 1540   (680 wide, HERO bigger)
+                Intelligence Stack)
+         Arrow gutter                x=1540 - 1660   (120)
+         Box C (Enterprise           x=1660 - 2320   (660 wide)
+                Operations
+                & Decisions)
+         Boxes span y=180 - 720      (540 tall)
+       ============================================================ -->
+
+  <!-- ============ Box A: FIELD OPERATIONS (tertiary, outline-only) ============ -->
+  <g id="field">
+    <rect x="80" y="180" width="660" height="540" rx="10"
+          fill="none" stroke="#4A5560" stroke-width="1.5"/>
+
+    <text x="410" y="230" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="3">WHERE WORK HAPPENS</text>
+
+    <text x="410" y="288" text-anchor="middle"
+          font-size="30" font-weight="600" fill="#E8ECF1">Field operations</text>
+
+    <line x1="130" y1="328" x2="690" y2="328"
+          stroke="#4A5560" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <text x="410" y="392" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Machines, sensors, and processes</text>
+    <text x="410" y="420" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">generate continuous signal —</text>
+    <text x="410" y="448" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">across vendors, protocols,</text>
+    <text x="410" y="476" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">and decades of installed plant.</text>
+
+    <text x="410" y="676" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2.5">MULTI-VENDOR · MULTI-PROTOCOL</text>
+  </g>
+
+  <!-- ============ Box B: ELPIS INDUSTRIAL INTELLIGENCE STACK (HERO) ============ -->
+  <g id="stack">
+    <rect x="860" y="180" width="680" height="540" rx="10"
+          fill="#272C33" stroke="#5E6B78" stroke-width="1.5"/>
+
+    <!-- Accent bar -->
+    <rect x="890" y="200" width="36" height="3" fill="#00A0E0"/>
+
+    <text x="1200" y="232" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#00A0E0"
+          letter-spacing="3">WHERE SIGNAL BECOMES INSIGHT</text>
+
+    <text x="1200" y="292" text-anchor="middle"
+          font-size="28" font-weight="700" fill="#FFFFFF">Elpis Industrial Intelligence Stack</text>
+
+    <line x1="900" y1="328" x2="1500" y2="328"
+          stroke="#4A5560" stroke-width="1"/>
+
+    <text x="1200" y="388" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">One platform — field to enterprise.</text>
+    <text x="1200" y="416" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Connect. Acquire. Analyze.</text>
+    <text x="1200" y="444" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Alert. Report.</text>
+
+    <!-- Subtle divider line + footer pair -->
+    <line x1="1080" y1="510" x2="1320" y2="510"
+          stroke="#4A5560" stroke-width="0.6" stroke-dasharray="3 3"/>
+
+    <text x="1200" y="556" text-anchor="middle"
+          font-size="14" fill="#A8B3BD" font-style="italic">
+      Brownfield-ready. Sensor-direct when needed.
+    </text>
+
+    <text x="1200" y="672" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2.5">BUILT BY ELPIS</text>
+    <text x="1200" y="698" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#00A0E0"
+          letter-spacing="2.5">ONE STACK · EVERY PLANT</text>
+  </g>
+
+  <!-- ============ Box C: ENTERPRISE OPERATIONS & DECISIONS (tertiary, outline-only) ============ -->
+  <g id="enterprise">
+    <rect x="1660" y="180" width="660" height="540" rx="10"
+          fill="none" stroke="#4A5560" stroke-width="1.5"/>
+
+    <text x="1990" y="230" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="3">WHERE DECISIONS GET MADE</text>
+
+    <text x="1990" y="288" text-anchor="middle"
+          font-size="30" font-weight="600" fill="#E8ECF1">Enterprise operations</text>
+
+    <line x1="1710" y1="328" x2="2270" y2="328"
+          stroke="#4A5560" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <text x="1990" y="392" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">OEE you trust.</text>
+    <text x="1990" y="420" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Maintenance you anticipate.</text>
+    <text x="1990" y="448" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Downtime you understand.</text>
+    <text x="1990" y="476" text-anchor="middle"
+          font-size="17" fill="#E8ECF1">Across plants, in one view.</text>
+
+    <text x="1990" y="676" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2.5">FROM SHOP FLOOR TO BOARDROOM</text>
+  </g>
+
+  <!-- ============ Arrows ============ -->
+
+  <!-- Arrow A → B (teal, value path) -->
+  <line x1="752" y1="450" x2="852" y2="450"
+        stroke="#00A0E0" stroke-width="3"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- Arrow B → C (teal, value path) -->
+  <line x1="1552" y1="450" x2="1652" y2="450"
+        stroke="#00A0E0" stroke-width="3"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- ============ Caption ============ -->
+  <text x="1200" y="828" text-anchor="middle"
+        font-size="18" font-style="italic" fill="#E8ECF1">
+    Industrial signal becomes operational intelligence — without rebuilding what you already run.
+  </text>
+
+</svg>

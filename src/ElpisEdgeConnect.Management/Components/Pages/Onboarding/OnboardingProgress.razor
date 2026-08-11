@@ -1,0 +1,83 @@
+@*
+    OnboardingProgress — top-of-page step indicator for the Connect-a-device
+    guided flow. Renders the seven-step ladder with the current step
+    highlighted; skipped steps (e.g. Welcome when GatewayId is custom)
+    render as completed.
+
+    Step ordering (matches OnboardingFlow.razor):
+       0. Welcome           (conditional — skipped when GatewayId is custom)
+       1. Source protocol
+       2. Configure source   (opens as an overlay over the picker)
+       3. Destination protocol
+       4. Configure destination
+       5. Configure route
+       6. Review & connect
+
+    Reference: docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md §3.2
+               docs/decisions/0016-onboarding-meta-wizard.md
+*@
+
+<MudPaper Elevation="0" Class="pa-3 mb-4" Style="background:var(--mud-palette-background-grey); border:1px solid var(--mud-palette-lines-default);">
+    <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        @for (var i = 0; i < StepLabels.Count; i++)
+        {
+            var label = StepLabels[i];
+            var index = i;
+            var isCurrent = CurrentStep == index;
+            var isCompleted = CurrentStep > index || (SkipWelcome && index == 0);
+            var isFuture = CurrentStep < index;
+            var bg = isCurrent
+                ? "var(--mud-palette-primary)"
+                : isCompleted
+                    ? "var(--mud-palette-success)"
+                    : "var(--mud-palette-action-default-hover)";
+            var fg = isCurrent || isCompleted ? "white" : "var(--mud-palette-text-secondary)";
+
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Style="@(isFuture ? "opacity:0.55;" : "")"
+                      data-testid="@($"onboarding-progress-step-{index}")">
+                <MudPaper Elevation="0"
+                          Style="@($"background:{bg}; color:{fg}; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600;")">
+                    @if (isCompleted)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="color:white;" />
+                    }
+                    else
+                    {
+                        @(index + 1)
+                    }
+                </MudPaper>
+                <MudText Typo="Typo.body2" Style="@($"font-weight:{(isCurrent ? "600" : "400")};")">
+                    @label
+                </MudText>
+            </MudStack>
+
+            @if (i < StepLabels.Count - 1)
+            {
+                <div style="flex:1; height:2px; background:var(--mud-palette-lines-default); margin:0 8px;"></div>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    /// <summary>Zero-based index of the step currently active in OnboardingFlow.</summary>
+    [Parameter, EditorRequired] public int CurrentStep { get; set; }
+
+    /// <summary>
+    /// When true, the Welcome step (index 0) is rendered as already-completed
+    /// because the gateway identity isn't auto-provisioned. The flow skips
+    /// step 0 entirely and the progress indicator reflects that.
+    /// </summary>
+    [Parameter] public bool SkipWelcome { get; set; }
+
+    private static readonly IReadOnlyList<string> StepLabels = new[]
+    {
+        "Welcome",
+        "Source",
+        "Configure source",
+        "Destination",
+        "Configure destination",
+        "Route",
+        "Connect",
+    };
+}

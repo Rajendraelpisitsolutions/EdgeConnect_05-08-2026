@@ -1,0 +1,217 @@
+@*
+    Left vertical navigation rail (operator-UI redesign §3). Replaces the old
+    horizontal top-bar + "More" overflow menu.
+
+    Structure:
+       * Brand block at the head of the rail: Elpis mark + "EdgeConnect" and a
+         smaller "by Elpis". Brand text hides when the rail is collapsed (62px,
+         icons only).
+       * A labelled collapse row directly beneath the brand. It carries
+         aria-expanded and both its visible and accessible labels flip with
+         state ("Collapse" / "Expand").
+       * Two groups with small labels — "Operations" (the data and its flow) and
+         "Gateway" (the appliance itself) — rendered from ONE data-driven
+         NavItem list.
+       * The "Connect a device" CTA sits INSIDE the Operations group, directly
+         under Overview, keeping its filled-blue treatment so it still reads as
+         the primary action rather than a twelfth destination.
+
+    "Destinations" is the operator-facing label for the architectural concept
+    "sink"; the route (/sinks), DTOs, and REST URLs are unchanged.
+
+    Active tab is derived from the URL (LocationChanged subscription) with a
+    child route keeping its parent tab lit: the active item is the LONGEST href
+    that matches the current path, so only one tab lights up. Live Stream
+    (/diagnostics/tap) has no rail entry of its own and therefore lights
+    Diagnostics, which is where the operator reached it from. The active tab
+    carries aria-current="page", not just a background colour.
+
+    Reference: operator-UI redesign report §3, §3.1 (corrected icons).
+*@
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<nav class="nav-rail @(_collapsed ? "nav-rail--collapsed" : null)" aria-label="Primary">
+    <div class="nav-rail__head">
+        <a href="/" class="nav-rail__brand" aria-label="EdgeConnect — Overview">
+            <img src="img/elpis-mark.png" alt="Elpis" class="nav-rail__logo"
+                 onerror="this.style.display='none'; this.parentElement.querySelector('.nav-rail__logo-fallback').style.display='inline-flex';" />
+            <span class="nav-rail__logo-fallback" aria-hidden="true">E</span>
+            <span class="nav-rail__brand-text">
+                <span class="nav-rail__product">EdgeConnect</span>
+                <span class="nav-rail__by">by Elpis</span>
+            </span>
+        </a>
+    </div>
+
+    @* Collapse row — its own full-width row beneath the brand, with a visible
+       label so the control reads as a control and not as a stray chevron. The
+       label drops out with every other label when the rail is collapsed. *@
+    <button type="button" class="nav-rail__collapse"
+            @onclick="ToggleCollapse"
+            aria-expanded="@((!_collapsed).ToString().ToLowerInvariant())"
+            aria-label="@(_collapsed ? "Expand navigation" : "Collapse navigation")"
+            title="@(_collapsed ? "Expand navigation" : "Collapse navigation")">
+        @* Double chevron, not single: two arrows read as "push the whole panel
+           aside", where one reads as "step back once" — the same distinction
+           the pattern carries in VS Code and Slack. *@
+        <MudIcon Icon="@(_collapsed ? Icons.Material.Filled.KeyboardDoubleArrowRight : Icons.Material.Filled.KeyboardDoubleArrowLeft)"
+                 Size="Size.Small" Class="nav-rail__item-icon" />
+        <span class="nav-rail__collapse-label">@(_collapsed ? "Expand" : "Collapse")</span>
+    </button>
+
+    <div class="nav-rail__scroll">
+        @foreach (var group in _groups)
+        {
+            <div class="nav-rail__group-label" aria-hidden="true">@group</div>
+            <ul class="nav-rail__list" role="list">
+                @foreach (var item in _navItems.Where(i => i.Group == group))
+                {
+                    <li>
+                        <MudTooltip Text="@item.Tooltip" Placement="Placement.Right">
+                            @* ADR-0016 Q6 — guided setup keeps its filled-blue CTA
+                               treatment even though it now sits inline in the group,
+                               so it still reads as the one thing to press first. *@
+                            <a href="@item.Href"
+                               class="@(item.IsCta ? "nav-rail__connect" : "nav-rail__item") @(IsActive(item) && !item.IsCta ? "nav-rail__item--active" : null)"
+                               aria-current="@(IsActive(item) ? "page" : null)"
+                               data-testid="@($"nav-{item.Label.Replace(' ', '-').ToLowerInvariant()}")">
+                                <MudIcon Icon="@item.Icon" Size="Size.Small" Class="nav-rail__item-icon" />
+                                <span class="nav-rail__item-label">@item.Label</span>
+                            </a>
+                        </MudTooltip>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</nav>
+
+@code {
+    /// <summary>
+    /// One navigation entry. <paramref name="IsCta"/> marks the single primary
+    /// call to action (Connect a device), which renders inline in its group but
+    /// keeps the filled-blue CTA treatment instead of the plain tab style.
+    /// </summary>
+    private sealed record NavItem(
+        string Href,
+        string Label,
+        string Icon,
+        string Tooltip,
+        string? Group,
+        bool IsCta = false);
+
+    // The two labels answer one question: am I looking at the DATA, or at the
+    // BOX it runs on?
+    //
+    //   Operations — Overview, Connect a device, Sources, Destinations, Routes,
+    //                Diagnostics, Checklist. All concern data and its flow.
+    //   Gateway    — Config, Backup, Diagnostic bundle, License. All concern
+    //                this appliance itself: how it is set up, saving its config,
+    //                exporting its logs, what it is licensed for.
+    //
+    // "Menu" classified nothing (every rail item is a menu item) and "System"
+    // was only vaguely better. Constant names are unchanged so call sites and
+    // the group-ordering array are unaffected.
+    private const string MenuGroup = "Operations";
+    private const string SystemGroup = "Gateway";
+
+    private static readonly string[] _groups = { MenuGroup, SystemGroup };
+
+    /// <summary>
+    /// Primary call to action (ADR-0016 Q6) — guided source + destination + route
+    /// setup in one flow. Rendered inline as the second Operations entry, keeping
+    /// its filled-blue CTA treatment.
+    /// </summary>
+    private static readonly NavItem Connect = new(
+        "/onboard",
+        "Connect a device",
+        Icons.Material.Filled.RocketLaunch,
+        "Guided setup — a source, a destination, and the route between them, in one flow.",
+        MenuGroup,
+        IsCta: true);
+
+    // Data-driven tab list — array order IS render order within a group. Icons
+    // corrected per §3.1 (Diagnostics → Troubleshoot, Backup → SettingsBackupRestore,
+    // Diagnostic bundle → Archive). Tooltips state what each screen is FOR (they
+    // double as the sole label when collapsed).
+    //
+    // Live Stream (/diagnostics/tap) is deliberately NOT a rail entry: it nests
+    // under Diagnostics and is reached from the button on that page, so the rail
+    // does not carry two tabs for one area.
+    private static readonly NavItem[] _navItems =
+    {
+        new("/",                "Overview",          Icons.Material.Filled.GridView,               "Gateway health at a glance",                    MenuGroup),
+        Connect,
+        new("/sources",         "Sources",           Icons.Material.Filled.Input,                  "Devices this gateway reads from",               MenuGroup),
+        new("/sinks",           "Destinations",      Icons.Material.Filled.Output,                 "Systems this gateway sends data to",            MenuGroup),
+        new("/routes",          "Routes",            Icons.Material.Filled.Route,                  "Source-to-destination data flows",              MenuGroup),
+        new("/diagnostics",     "Diagnostics",       Icons.Material.Filled.Troubleshoot,           "Investigate source, pipeline, and sink health", MenuGroup),
+        new("/checklist",       "Checklist",         Icons.Material.Filled.Checklist,              "Commissioning readiness checks",                MenuGroup),
+        new("/config",          "Config",            Icons.Material.Filled.Settings,               "Draft, apply, and roll back configuration",     SystemGroup),
+        new("/backup",          "Backup",            Icons.Material.Filled.SettingsBackupRestore,  "Back up and restore configuration",             SystemGroup),
+        new("/bundle",          "Diagnostic bundle", Icons.Material.Filled.Archive,                "Export a support diagnostic bundle",            SystemGroup),
+        new("/license",         "License",           Icons.Material.Filled.Key,                    "Licensed editions and activation",              SystemGroup),
+    };
+
+    private bool _collapsed;
+    private string? _activeHref;
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+        RecomputeActive();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        RecomputeActive();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleCollapse() => _collapsed = !_collapsed;
+
+    private bool IsActive(NavItem item) =>
+        string.Equals(_activeHref, item.Href, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Picks the active tab as the LONGEST href whose path the current URL
+    /// equals or nests under. Overview ("/") matches only the exact root;
+    /// every other tab matches on <c>path == href</c> or
+    /// <c>path.StartsWith(href + "/")</c>. Longest-match resolution keeps a
+    /// single tab lit when routes nest (e.g. /diagnostics/tap under /diagnostics).
+    /// </summary>
+    private void RecomputeActive()
+    {
+        var path = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+
+        var cut = path.IndexOfAny(new[] { '?', '#' });
+        if (cut >= 0)
+        {
+            path = path[..cut];
+        }
+        if (path.Length > 1)
+        {
+            path = path.TrimEnd('/');
+        }
+
+        string? best = null;
+        foreach (var item in _navItems)
+        {
+            var match = item.Href == "/"
+                ? path == "/"
+                : string.Equals(path, item.Href, StringComparison.OrdinalIgnoreCase)
+                  || path.StartsWith(item.Href + "/", StringComparison.OrdinalIgnoreCase);
+
+            if (match && (best is null || item.Href.Length > best.Length))
+            {
+                best = item.Href;
+            }
+        }
+
+        _activeHref = best;
+    }
+
+    public void Dispose() =>
+        NavigationManager.LocationChanged -= OnLocationChanged;
+}

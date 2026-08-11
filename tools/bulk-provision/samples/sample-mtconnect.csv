@@ -1,0 +1,4 @@
+deviceId,deviceName,host,enabled
+okuma-vmc-1,Okuma-VMC-1,http://192.168.10.51:5000/,true
+okuma-vmc-2,Okuma-VMC-2,http://192.168.10.52:5000/,true
+okuma-lb-pro,Okuma-LB-Pro,http://192.168.10.53:5050/,false

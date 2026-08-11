@@ -1,0 +1,95 @@
+{
+  "_provisioning": {
+    "configFingerprint": "9837a52945ea0c869c94205f8b111df8afd256150e5706ed791c9c08b7ffa206",
+    "csvFingerprint": "21fe28290691e7bc42fa0a48cf38f01920ff643277f756092d1c4520f0e41eb3",
+    "fleetId": "fleet-acme",
+    "gatewayProvisioningId": "11111111-1111-1111-1111-111111111111",
+    "generatedAt": "2026-01-01T00:00:00Z",
+    "generatedBy": "tools/bulk-provision/generate.ps1",
+    "generatorVersion": "0.1.0",
+    "templateId": "template-fanuc",
+    "templateSchemaVersion": 1
+  },
+  "Gateway": {
+    "GatewayId": "00000000-0000-0000-0000-000000000001",
+    "GatewayName": "edge-acme-site-a"
+  },
+  "Routes": [
+    {
+      "Buffer": {
+        "MaxAgeDays": 7,
+        "MaxDepth": 100000,
+        "Mode": "StoreAndForward",
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "BackoffMultiplier": 2.0,
+        "InitialBackoffMs": 100,
+        "JitterPercent": 10,
+        "MaxBackoffMs": 30000,
+        "MaxRetries": 100,
+        "Mode": "AtLeastOnce"
+      },
+      "Enabled": true,
+      "Name": "Fanuc CNCs to MQTT",
+      "RouteId": "route-fanuc-11111111-1111-1111-1111-111111111111",
+      "SinkInstanceIds": [
+        "edge-acme-mqtt"
+      ],
+      "SourceInstanceId": "cnc-001-source"
+    }
+  ],
+  "Sinks": [
+    {
+      "Connection": {
+        "brokerHost": "127.0.0.1",
+        "brokerPort": 1883,
+        "clientId": "edge-acme-11111111-1111-1111-1111-111111111111",
+        "maxReconnectDelayMs": 30000,
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "publishMode": "PerTag",
+        "qosLevel": 1,
+        "reconnectDelayMs": 1000,
+        "useTls": false
+      },
+      "Enabled": true,
+      "InstanceId": "edge-acme-mqtt",
+      "ProtocolName": "mqtt"
+    }
+  ],
+  "Sources": [
+    {
+      "Connection": {
+        "backoffMultiplier": 2.0,
+        "dataPoints": [
+          "Program/MainProgram",
+          "Status/RunState",
+          "Axes/Position/Absolute",
+          "Axes/Position/Machine",
+          "Axes/FeedRate",
+          "Spindle/Speed",
+          "Spindle/Load",
+          "Alarms/Active",
+          "CycleTime",
+          "PartsCount"
+        ],
+        "initialBackoffMs": 5000,
+        "ipAddress": "192.168.10.21",
+        "keepAlive": true,
+        "maxBackoffMs": 120000,
+        "maxConnectRetries": 5,
+        "port": 8193,
+        "timeoutSeconds": 10
+      },
+      "DeviceClass": "cnc",
+      "DeviceId": "cnc-001",
+      "DeviceName": "Lathe-A1",
+      "Enabled": true,
+      "InstanceId": "cnc-001-source",
+      "Polling": {
+        "IntervalMs": 3000
+      },
+      "ProtocolName": "focas2"
+    }
+  ]
+}

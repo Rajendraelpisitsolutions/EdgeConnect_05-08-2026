@@ -1,0 +1,572 @@
+@*
+    Route detail page (one route). Closes the operational loop —
+    answers the four commissioning questions in one screen:
+
+       1. Is data flowing? → Pipeline counters card (PointsIn/Out)
+       2. Where is it stuck? → Pipeline steps table (per-step suppression/errors)
+       3. Has anything bounced? → Recent events panel
+       4. Is the buffer healthy? → Buffer card with linear gauge
+
+    URL pattern: /routes/{routeId}
+    Polls:
+       /api/v1/routes/{routeId}        every 2s
+       /api/v1/routes/{routeId}/events every 5s
+
+    Locked rule reminder: buffer is a LINEAR GAUGE, never a chart.
+    Studio = operational diagnostics, not historian analytics.
+*@
+@page "/routes/{RouteId}"
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>@(_data?.RouteId ?? RouteId) · Routes · Connectivity Studio</PageTitle>
+
+<div class="page-heading">
+    <MudTooltip Text="Back to Routes">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/routes"))"
+                       Size="Size.Small"
+                       aria-label="Back to the Routes list"
+                       data-testid="route-detail-back" />
+    </MudTooltip>
+    <span class="page-heading__icon"><MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Medium" /></span>
+    <div class="page-heading__text">
+        <div class="page-heading__title">@(_data?.RouteId ?? RouteId)</div>
+        @if (_data is not null)
+        {
+            <div class="page-heading__desc">@FormatTopology(_data)</div>
+        }
+    </div>
+    @if (_data is not null)
+    {
+        <div class="page-heading__actions">
+            @{
+                var headerTooltip = FaultedTooltip(_data);
+            }
+            <MudIcon Icon="@OperatorFormat.StateIcon(_data.StateName)"
+                     Size="Size.Medium"
+                     Color="@StateColor(_data.StateName)"
+                     aria-hidden="true" />
+            <MudTooltip Text="@headerTooltip" Disabled="@(headerTooltip is null)">
+                <MudChip T="string" Color="@StateColor(_data.StateName)" Variant="Variant.Filled">
+                    @_data.StateName
+                </MudChip>
+            </MudTooltip>
+        </div>
+    }
+</div>
+
+@* ---- Route-level fault banner (M.P2.1 phase 3b) ---- *@
+@if (_data is { StateName: "Faulted", LastErrorCode: { } errorCode })
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+        <MudText Typo="Typo.body2">
+            <strong>@errorCode</strong>
+            @if (_data.LastErrorMessage is { } msg)
+            {
+                <span> — @msg</span>
+            }
+        </MudText>
+        @if (_data.LastErrorAtUtc is { } at)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                first observed <span title="@OperatorFormat.Absolute(at)">@OperatorFormat.Ago(at)</span>
+            </MudText>
+        }
+    </MudAlert>
+}
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not load route.</strong> @_loadError
+    </MudAlert>
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+        Route <code>@RouteId</code> is not in the current configuration.
+        It may have been removed from <code>gateway.json</code> — open Configuration to confirm.
+    </MudAlert>
+}
+else if (_data is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @* ---- Source card ---- *@
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Source</MudText>
+                </MudStack>
+                @if (_data.Source is { } src)
+                {
+                    <MudLink Href="@($"/sources/{src.SourceInstanceId}")"
+                             Underline="Underline.Hover"
+                             Style="font-weight:500;">
+                        @src.SourceInstanceId
+                    </MudLink>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                        @src.ProtocolName · @src.StateName
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        @src.PointsObserved.ToString("N0") points observed
+                    </MudText>
+                    @if (src.LastPointAtUtc is { } last)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            last point <span title="@OperatorFormat.Absolute(last)">@OperatorFormat.Ago(last)</span>
+                        </MudText>
+                    }
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No source attached.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Pipeline summary card ---- *@
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Pipeline</MudText>
+                </MudStack>
+                @if (_data.Pipeline is { } pipe)
+                {
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Batches</MudText>
+                            <MudText Typo="Typo.h6">@pipe.BatchesProcessed.ToString("N0")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Steps</MudText>
+                            <MudText Typo="Typo.h6">@pipe.Steps.Count</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Points in</MudText>
+                            <MudText Typo="Typo.h6">@pipe.PointsIn.ToString("N0")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Points out</MudText>
+                            <MudText Typo="Typo.h6">@pipe.PointsOut.ToString("N0")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No pipeline observation yet.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Sinks card ---- *@
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Output" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Destinations (@_data.Sinks.Count)</MudText>
+                </MudStack>
+                @if (_data.Sinks.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No destinations attached.</MudText>
+                }
+                else
+                {
+                    @foreach (var sink in _data.Sinks)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                            <MudLink Href="@($"/sinks/{sink.SinkInstanceId}")"
+                                     Underline="Underline.Hover"
+                                     Style="font-weight:500; flex-grow:1;">
+                                @sink.SinkInstanceId
+                            </MudLink>
+                            @if (sink.IsDegraded)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">degraded</MudChip>
+                            }
+                            else if (sink.AdapterStateName is { } st)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="@SinkColor(sink)" Variant="Variant.Outlined">@st</MudChip>
+                            }
+                            @if (sink.ActiveSessionCount is { } n)
+                            {
+                                <MudTooltip Text="Active client sessions">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                             Icon="@Icons.Material.Filled.People">
+                                        @n
+                                    </MudChip>
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Buffer card with linear gauge ---- *@
+        @if (_data.Buffer is { } buffer)
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">
+                            Buffer (@buffer.Mode)
+                        </MudText>
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @buffer.CurrentDepth.ToString("N0") in queue
+                        </MudText>
+                    </MudStack>
+                    @{
+                        var pct = DeliveredPercent(buffer);
+                    }
+                    <MudProgressLinear Value="@pct"
+                                       Color="@DeliveredColor(buffer)"
+                                       Size="Size.Large"
+                                       Rounded="true" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                        @pct.ToString("0.#")% delivered
+                        (@OperatorFormat.Count(buffer.TotalDrained) of @OperatorFormat.Count(buffer.TotalEnqueued) enqueued)
+                    </MudText>
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Enqueued</MudText>
+                            <MudText Typo="Typo.body2">@buffer.TotalEnqueued.ToString("N0")</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Drained</MudText>
+                            <MudText Typo="Typo.body2">@buffer.TotalDrained.ToString("N0")</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Dropped</MudText>
+                            <MudText Typo="Typo.body2"
+                                     Style="@(buffer.TotalDropped > 0 ? "color:var(--mud-palette-error);" : null)">
+                                @buffer.TotalDropped.ToString("N0")
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">On-disk</MudText>
+                            <MudText Typo="Typo.body2">@OperatorFormat.Bytes(buffer.SizeBytes)</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        }
+
+        @* ---- Pipeline steps table ---- *@
+        @if (_data.Pipeline is { Steps: { Count: > 0 } } pipelineWithSteps)
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Pipeline steps</MudText>
+                    </MudStack>
+                    <MudTable T="PipelineStepSummaryDto" Items="@pipelineWithSteps.Steps"
+                              Dense="true" Hover="true" Bordered="false">
+                        <HeaderContent>
+                            <MudTh>Step</MudTh>
+                            <MudTh Style="text-align:right;">Invocations</MudTh>
+                            <MudTh Style="text-align:right;">Points in</MudTh>
+                            <MudTh Style="text-align:right;">Points out</MudTh>
+                            <MudTh Style="text-align:right;">Suppressed</MudTh>
+                            <MudTh Style="text-align:right;">Avg duration</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                         Style="text-transform:none; font-family:monospace;">
+                                    @context.Kind
+                                </MudChip>
+                            </MudTd>
+                            <MudTd Style="text-align:right;">@context.Invocations.ToString("N0")</MudTd>
+                            <MudTd Style="text-align:right;">@context.PointsIn.ToString("N0")</MudTd>
+                            <MudTd Style="text-align:right;">@context.PointsOut.ToString("N0")</MudTd>
+                            <MudTd Style="text-align:right;">
+                                @if (context.PointsSuppressed > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                        @context.PointsSuppressed.ToString("N0")
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <span style="opacity:0.4;">0</span>
+                                }
+                            </MudTd>
+                            <MudTd Style="text-align:right;">@FormatDuration(context.AverageDurationMs)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        }
+
+        @* ---- Recent events panel ---- *@
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Recent events</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        updates every 5s · @(_events?.Length ?? 0) shown
+                    </MudText>
+                </MudStack>
+
+                @if (_events is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Loading…</MudText>
+                }
+                else if (_events.Length == 0)
+                {
+                    <MudPaper Class="pa-6" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);">
+                        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                            <MudText Typo="Typo.body1">No events yet</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                                The route hasn't bounced, dropped any data, or transitioned since the gateway started.
+                                Events will appear here as they happen.
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+                }
+                else
+                {
+                    <MudTable T="DiagnosticsEventDto" Items="@_events" Dense="true" Hover="true" Bordered="false">
+                        <HeaderContent>
+                            <MudTh>When</MudTh>
+                            <MudTh>Severity</MudTh>
+                            <MudTh>Code</MudTh>
+                            <MudTh>Detail</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd Style="white-space:nowrap;">
+                                <MudText Typo="Typo.body2" title="@OperatorFormat.Absolute(context.OccurredAtUtc)">@OperatorFormat.Ago(context.OccurredAtUtc)</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Color="@SeverityColor(context.Severity)" Variant="Variant.Filled">
+                                    @context.Severity.ToString()
+                                </MudChip>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                                    @context.EventCode
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2">@context.Summary</MudText>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string RouteId { get; set; } = string.Empty;
+
+    private RouteSummaryDto? _data;
+    private DiagnosticsEventDto[]? _events;
+    private string? _loadError;
+    private bool _notFound;
+    private CancellationTokenSource? _cts;
+    private Task? _snapshotLoop;
+    private Task? _eventsLoop;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _data = null;
+        _events = null;
+        _loadError = null;
+        _notFound = false;
+        await RefreshSnapshotAsync();
+        await RefreshEventsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _snapshotLoop = SnapshotLoopAsync(_cts.Token);
+        _eventsLoop = EventsLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task SnapshotLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshSnapshotAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task EventsLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshEventsAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshSnapshotAsync()
+    {
+        try
+        {
+            using var resp = await HttpClient.GetAsync($"/api/v1/routes/{Uri.EscapeDataString(RouteId)}");
+            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+                _data = null;
+            }
+            else
+            {
+                resp.EnsureSuccessStatusCode();
+                _data = await resp.Content.ReadFromJsonAsync<RouteSummaryDto>();
+                _notFound = false;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private async Task RefreshEventsAsync()
+    {
+        try
+        {
+            using var resp = await HttpClient.GetAsync($"/api/v1/routes/{Uri.EscapeDataString(RouteId)}/events?limit=50");
+            if (resp.IsSuccessStatusCode)
+            {
+                // M.1c.2: endpoint now returns DiagnosticsEventsResponse envelope.
+                // Razor consumes the .Events array; retention metadata is unused
+                // on this page (the system-wide /diagnostics page shows it).
+                var envelope = await resp.Content.ReadFromJsonAsync<DiagnosticsEventsResponse>();
+                var list = envelope?.Events;
+                _events = list is null ? Array.Empty<DiagnosticsEventDto>() : list.ToArray();
+                await InvokeAsync(StateHasChanged);
+            }
+            // 404 / other: leave _events as-is so we don't flicker the panel.
+        }
+        catch (ObjectDisposedException) { }
+        catch { /* events are best-effort; don't surface as a global load error */ }
+    }
+
+    private static string FormatTopology(RouteSummaryDto r)
+    {
+        var source = r.Source?.SourceInstanceId ?? "(no source)";
+        var sinks = r.Sinks.Count == 0
+            ? "(no sinks)"
+            : string.Join(" + ", r.Sinks.Select(s => s.SinkInstanceId));
+        return $"{source} → {sinks}";
+    }
+
+    private static Color StateColor(string? state) => state switch
+    {
+        "Running" => Color.Success,
+        "Degraded" => Color.Warning,
+        "Failed" or "Blocked" or "Faulted" => Color.Error,
+        "Disabled" => Color.Dark,
+        "Configured / Not running" => Color.Warning,
+        // Configured / Starting / Draining / Stopping / Stopped — neutral.
+        _ => Color.Default,
+    };
+
+    private static string? FaultedTooltip(RouteSummaryDto r)
+    {
+        if (r.StateName != "Faulted" && r.StateName != "Failed") return null;
+        if (r.LastErrorCode is null) return null;
+        if (r.LastErrorMessage is null) return r.LastErrorCode;
+        return $"{r.LastErrorCode}: {r.LastErrorMessage}";
+    }
+
+    private static Color SinkColor(RouteSinkSummaryDto s)
+    {
+        if (s.IsDegraded) return Color.Warning;
+        return s.AdapterStateName switch
+        {
+            "Running" => Color.Success,
+            "Degraded" => Color.Warning,
+            "Stopped" or "Failed" or "Faulted" => Color.Error,
+            _ => Color.Default,
+        };
+    }
+
+    private static Color SeverityColor(DiagnosticsSeverity sev) => sev switch
+    {
+        DiagnosticsSeverity.Info => Color.Info,
+        DiagnosticsSeverity.Warning => Color.Warning,
+        DiagnosticsSeverity.Error => Color.Error,
+        _ => Color.Default,
+    };
+
+    // §11 — the wire DTO exposes NO capacity/MaxDepth field, so a "percent full"
+    // gauge is dishonest (the old code assumed a hard-coded 10,000 capacity).
+    // Show a DELIVERED percentage from real totals instead: drained ÷ enqueued.
+    // Razor's parser misreads `< N` in switch expressions as HTML; use if/else.
+    private static double DeliveredPercent(RouteBufferSummaryDto buffer)
+    {
+        if (buffer.TotalEnqueued <= 0) return 100d; // nothing enqueued yet — fully caught up
+        var pct = (double)buffer.TotalDrained / buffer.TotalEnqueued * 100d;
+        if (pct < 0) return 0;
+        if (pct > 100) return 100;
+        return pct;
+    }
+
+    private static Color DeliveredColor(RouteBufferSummaryDto buffer)
+    {
+        if (buffer.TotalEnqueued <= 0) return Color.Success;
+        var pct = (double)buffer.TotalDrained / buffer.TotalEnqueued * 100d;
+        if (pct >= 95) return Color.Success;
+        if (pct >= 80) return Color.Warning;
+        return Color.Error;
+    }
+
+    // Ages and byte sizes come from Components/Shared/OperatorFormat so every page
+    // renders a timestamp or a size identically. FormatDuration below is local: it
+    // formats a latency, not an instant, and has no shared equivalent.
+    private static string FormatDuration(double? ms)
+    {
+        if (ms is null) return "—";
+        var v = ms.Value;
+        if (v < 1) return $"{v * 1000:F0} μs";
+        if (v < 1000) return $"{v:F1} ms";
+        return $"{v / 1000d:F2} s";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_snapshotLoop is not null) await _snapshotLoop;
+            if (_eventsLoop is not null) await _eventsLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

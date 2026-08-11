@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
+  <Header instanceId="1" version="1.7.0" sender="agent.example.com" bufferSize="131072" nextSequence="12345" firstSequence="1" lastSequence="12344"/>
+  <Streams>
+    <DeviceStream name="CNC-1" uuid="urn:example:cnc-1">
+      <ComponentStream component="Controller" componentId="ctrl" name="controller">
+        <Events>
+          <Execution dataItemId="exec" timestamp="2026-04-22T00:00:00Z" sequence="1">INTERRUPTED</Execution>
+          <ControllerMode dataItemId="mode" timestamp="2026-04-22T00:00:00Z" sequence="2">AUTOMATIC</ControllerMode>
+          <EmergencyStop dataItemId="estop" timestamp="2026-04-22T00:00:00Z" sequence="3">TRIGGERED</EmergencyStop>
+        </Events>
+        <Condition>
+          <Fault dataItemId="sys_cond" type="SYSTEM" nativeCode="912" timestamp="2026-04-22T00:00:00Z" sequence="4">Spindle overtemperature</Fault>
+          <Fault dataItemId="ax_cond" type="AXIS" nativeCode="304" timestamp="2026-04-22T00:00:00Z" sequence="5">Servo alarm on X</Fault>
+        </Condition>
+      </ComponentStream>
+    </DeviceStream>
+  </Streams>
+</MTConnectStreams>

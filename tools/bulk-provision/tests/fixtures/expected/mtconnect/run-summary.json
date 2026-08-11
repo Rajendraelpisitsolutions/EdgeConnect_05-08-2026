@@ -1,0 +1,30 @@
+{
+  "csv": "./samples/sample-mtconnect.csv",
+  "csvFingerprint": "08258bca442eea72f28d891f8b94f81b4b45f5d511214bc4946d42ca832d48ae",
+  "gatewayProvisioningId": "44444444-4444-4444-4444-444444444444",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "generatorVersion": "0.1.0",
+  "outputs": [
+    {
+      "configFingerprint": "2888ddd928149ab10156ddf8190f695c295f0ba6c3a350f2f9d4a8c518b19c5a",
+      "deviceId": "okuma-vmc-1",
+      "file": "okuma-vmc-1.gateway.json",
+      "sha256": "45a280e31abb0d8e13c23932a793f17ed1de3c3c76a3894b894040d8aab640cc"
+    },
+    {
+      "configFingerprint": "f97a7370d38501636cf7a8f10aac806cce9bf7e156056ddac87c5e15ea18264b",
+      "deviceId": "okuma-vmc-2",
+      "file": "okuma-vmc-2.gateway.json",
+      "sha256": "380be25ac5597cfb934119b68119af27f51b24400926107ef99d5e5051722463"
+    },
+    {
+      "configFingerprint": "0404baa90d8d4725b5efe14b2857d440576e908cbb3b63566f2bbf059df5fc97",
+      "deviceId": "okuma-lb-pro",
+      "file": "okuma-lb-pro.gateway.json",
+      "sha256": "29f7fec748034a582522c5e5cab1dc12a17bb4d25d99f1b56b9b6782c6cc42ba"
+    }
+  ],
+  "sidecar": "./samples/sample-mtconnect.gateway.yml",
+  "templateId": "template-mtconnect",
+  "templateSchemaVersion": 1
+}

@@ -1,0 +1,57 @@
+@*
+    StaleEditWarningBanner — 409 collision banner for Edit-mode save
+    rejection. Shown when ConfigVersionMismatchDto comes back from the
+    server because another session applied a newer config between
+    Edit hydration and save.
+
+    Single button: Reload. No automatic merge in M.2d.2 v1 (too risky).
+
+    Reference: docs/sessions/2026-05-22-m2d2-source-wizards-plan-v2.md §5.5
+*@
+
+<MudAlert Severity="Severity.Warning"
+          Variant="Variant.Outlined"
+          ShowCloseIcon="false"
+          Class="my-4"
+          data-testid="stale-edit-warning-banner">
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.subtitle1">
+            <strong>Configuration was updated by another session</strong>
+        </MudText>
+        <MudText Typo="Typo.body2">
+            The current configuration is now version
+            <code data-testid="stale-edit-current-version">@CurrentVersionId</code>;
+            this wizard loaded version
+            <code data-testid="stale-edit-base-version">@BaseVersionId</code>
+            at <span data-testid="stale-edit-changed-since">@(ChangedSinceUtc.ToLocalTime().ToString("dd-MM-yyyy HH:mm:ss"))</span>.
+            Saving now would discard the other session's work.
+        </MudText>
+        <MudText Typo="Typo.body2">
+            Reload to see the latest configuration. Your in-progress edits
+            in this wizard will be discarded.
+        </MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="OnReload"
+                       data-testid="stale-edit-reload-button">
+                Reload
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudAlert>
+
+@code {
+    /// <summary>The version this wizard was hydrated against.</summary>
+    [Parameter, EditorRequired] public string BaseVersionId { get; set; } = string.Empty;
+
+    /// <summary>The actual current version id when the save was attempted.</summary>
+    [Parameter, EditorRequired] public string CurrentVersionId { get; set; } = string.Empty;
+
+    /// <summary>UTC timestamp the current version became active.</summary>
+    [Parameter, EditorRequired] public DateTime ChangedSinceUtc { get; set; }
+
+    /// <summary>Fired when the operator clicks Reload.</summary>
+    [Parameter] public EventCallback OnReload { get; set; }
+}

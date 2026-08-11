@@ -1,0 +1,6 @@
+# bulk-provision MANIFEST.txt
+# generator: tools/bulk-provision/generate.ps1 v0.1.0
+
+a819cbd2fdd739d0aae3bca2c8906b6efab18f4b42d5bdd9926377df62613fc4  brother-001.gateway.json
+b4bd3c0cdcebe710704f153a5a75cd26de2303ff00cd03705a72493607eac88c  brother-002.gateway.json
+65821bb0dcde34c1e436f2c66f368387989dfdd9b2344107ae711553c96cd5f1  brother-003.gateway.json

@@ -1,0 +1,3 @@
+# Generator output directory — operator runs land here, not checked in.
+# Tracked sample outputs live under samples/.
+out/

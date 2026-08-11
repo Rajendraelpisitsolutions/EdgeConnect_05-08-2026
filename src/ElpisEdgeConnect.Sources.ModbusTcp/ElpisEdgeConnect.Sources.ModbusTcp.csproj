@@ -1,0 +1,62 @@
+<!--
+  ElpisEdgeConnect.Sources.ModbusTcp: Modbus TCP source adapter implementing
+  ISourceAdapter. Supports polling-mode reads of coils (FC01), discrete inputs
+  (FC02), holding registers (FC03), and input registers (FC04) against Modbus
+  TCP targets — both native Modbus TCP and RTU-over-TCP gateways.
+
+  Phase 3 · Milestone F1: connection lifecycle + transaction executor.
+  Scan-group planner (F2), decoder/byte-order (F3), CSV import (F4), and
+  diagnostics integration (F5) are addressed in later milestones.
+
+  Reference: PHASE3_EXECUTION_PLAN.md §5-§6, ARCHITECTURE_BLUEPRINT.md §4.2
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.ModbusTcp</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.ModbusTcp</AssemblyName>
+    <Description>Modbus TCP source adapter for Elpis EdgeConnect — coils / discrete inputs / holding + input registers over TCP and RTU-over-TCP.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CA1720: enum member names UInt16 / Int32 / Float32 etc. match the
+         industry-standard Modbus datatype vocabulary; renaming would hurt
+         readability. CA1822 / CA1848 suppressed to match FOCAS2 adapter. -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1720</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.ModbusTcp.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- F4 reference templates shipped as embedded resources. Loaded via
+         ModbusTagTemplate.LoadCsv(name). LogicalName flattens the path so
+         GetManifestResourceStream("ElpisEdgeConnect.Sources.ModbusTcp.Templates.<name>.csv")
+         is the stable lookup key. -->
+    <EmbeddedResource Include="Templates\generic-plc.csv">
+      <LogicalName>ElpisEdgeConnect.Sources.ModbusTcp.Templates.generic-plc.csv</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Templates\cnc-via-modbus-gateway.csv">
+      <LogicalName>ElpisEdgeConnect.Sources.ModbusTcp.Templates.cnc-via-modbus-gateway.csv</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="FluentModbus" Version="5.2.0" />
+    <!-- Serial RTU transport. System.IO.Ports is cross-platform (Windows COMx
+         and Linux /dev/tty*); the device-path string is operator-supplied. -->
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

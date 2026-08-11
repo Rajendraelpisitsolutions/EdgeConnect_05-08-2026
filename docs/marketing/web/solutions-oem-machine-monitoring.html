@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions-oem-machine-monitoring.html
+  Purpose:     Static mockup of /solutions/oem-machine-monitoring — the
+               equipment-builder SolutionPanel (§15) depth-example. Faithful to
+               page-solutions-oem-machine-monitoring-spec-v1.md (v1, page
+               content v3, LOCKED 2026-06-04). 10 sections — optional Typical
+               Engagement OMITTED per P-A (this buyer's anxiety is customer-IT
+               acceptance + service economics, not a deployment clock).
+               Inherits the CNC pattern-setter structure verbatim; only
+               per-solution copy replaced.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       P-G: FOCAS2/MTConnect/Brother HTTP/Modbus TCP/OPC UA Client/S7
+               today + OPC UA Server sink; MT-LINKi REST roadmap. No outcome
+               metrics (proof-arch §3/§4). Customer-controlled telemetry is the
+               differentiator. No customer/competitor names.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OEM Machine Monitoring — Connected Equipment · Elpis</title>
+  <meta name="description" content="Ship connected equipment customers accept. Remote diagnostics, fleet visibility, customer-controlled telemetry. Native FOCAS2, MTConnect, Modbus TCP and more.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions-oem-machine-monitoring">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="OEM Machine Monitoring">
+  <meta property="og:description" content="Ship connected equipment customers accept. Remote diagnostics, fleet visibility, customer-controlled telemetry. Native FOCAS2, MTConnect, Modbus TCP and more.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions-oem-machine-monitoring">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="OEM Machine Monitoring">
+  <meta name="twitter:description" content="Ship connected equipment customers accept. Remote diagnostics, fleet visibility, customer-controlled telemetry. Native FOCAS2, MTConnect, Modbus TCP and more.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .lead-p { margin-top: var(--space-5); max-width: 78ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .lead-p--prominent { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .incl-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .incl-grid h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .incl-grid ul { list-style:none; padding:0; }
+    .incl-grid li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .incl-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .incl-grid strong { color: var(--color-text-heading-light); }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .out-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-3) var(--space-8); margin-top: var(--space-6); list-style:none; padding:0; }
+    .out-grid li { padding-left: var(--space-6); position:relative; color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); padding-bottom: var(--space-3); }
+    .out-grid li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .out-grid strong { color: #FFFFFF; }
+    .timeline { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .tl-step { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .tl-step .lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+    .tl-step p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin-top: var(--space-2); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">SOLUTION · OEM MACHINE MONITORING</span>
+        <h1 id="hero-heading" class="hero__headline">Ship connected equipment. Diagnose remotely. Cut truck rolls.</h1>
+        <p class="hero__subhead">EdgeConnect deploys with your machine; EREMOS V2 aggregates your installed base. Native FOCAS2, MTConnect, Brother HTTP, and Modbus TCP — plus OPC UA Client and Siemens S7 for whatever else you spec. Your customer controls their data; you get the service visibility you need.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Request an OEM scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+        <p class="trust-strip">Connected on FOCAS2 · MTConnect · Brother HTTP · Modbus TCP · OPC UA Client · Siemens S7 — with an OPC UA Server sink for customer-side SCADA. FANUC MT-LINKi REST on the roadmap. Customer-controlled. OEM-aware. Field-ready.</p>
+      </div>
+    </section>
+
+    <!-- §2 THE OEM SERVICE REALITY -->
+    <section class="section" data-mode="light" aria-labelledby="reality-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE OEM SERVICE REALITY</span><h2 id="reality-heading" class="section-title">Your service organization is blind until a customer calls.</h2></div>
+        <p>Your service organization is blind until a customer calls. By the time the call comes, the machine has already been down. Your engineer arrives at the customer's site — sometimes hours later, sometimes overnight — to diagnose a fault that, on a connected machine, could have been identified before the customer noticed.</p>
+        <p>Every dispatch costs in engineer time, travel, parts inventory, and customer goodwill. Every dispatch that turns out to be a remote-diagnosable issue is pure margin loss. Meanwhile your product engineering team is starved for field data — they're improving the next-generation machine on six-month-old anecdotes from the service team's whiteboard.</p>
+        <p>The instinct is to build a connected-equipment platform yourself: an embedded gateway, a cloud back-end, a dashboard, a ticketing integration. Then you meet the customer's IT department. Some customers won't allow always-on connectivity. Some require complete data sovereignty. Some don't want your machine on their network at all. The connectivity story that was supposed to differentiate your equipment becomes the friction that kills its sale.</p>
+        <p class="pullquote">"Your monitoring platform becomes the reason the deal stalls."</p>
+      </div>
+    </section>
+
+    <!-- §3 HOW ELPIS SOLVES OEM MACHINE MONITORING -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW ELPIS SOLVES OEM MACHINE MONITORING</span></div>
+        <div class="callout">
+          <p><strong>How this differs from closed connected-equipment platforms.</strong> The usual connected-equipment model is a closed loop: the machine phones home to the OEM's own cloud, the OEM holds the telemetry, and the customer is asked to trust a black box on their network. That model is exactly what stalls at the customer's IT department. Elpis inverts it. EdgeConnect runs locally on the equipment, and the customer configures — by route — which signals flow back to you and which stay on their floor. <strong>Customer-controlled telemetry is the differentiator.</strong> You get the service visibility you need without asking the customer to surrender data sovereignty, and the connectivity story becomes a reason to buy the machine instead of a reason to hesitate. The customer's own systems stay where they are; Elpis layers into the relationship instead of overriding it.</p>
+        </div>
+        <div class="lead-p"><strong>EdgeConnect ships with your machine.</strong><span>One service running on a small box inside your equipment — or on a customer-supplied box adjacent to it — polls your controller over its native protocol: FOCAS2 for any Fanuc generation, MTConnect for the open-standard machines, Brother HTTP, Modbus TCP for PLC-fronted designs, plus OPC UA Client and Siemens S7 for whatever else you spec; FANUC MT-LINKi REST is on the roadmap. The tag map you author once carries across every machine you ship — same software image, same canonical vocabulary, same deployment model, installed-base-wide. This is the <strong style="display:inline">Connectivity &amp; Edge</strong> capability applied to shipped equipment → <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a>.</span></div>
+        <div class="lead-p lead-p--prominent"><strong>The customer controls what flows back to you.</strong><span>EdgeConnect's route-based architecture lets the customer configure which data goes where. Service-relevant signals — alarm state, run hours, fault codes, tool-life telemetry — can route to your installed-base view. Operationally sensitive data — parts programs, production volumes, customer-specific configurations — can stay local. No always-on remote-access tunnel, no data exfiltration, no customer-IT escalation.</span></div>
+        <div class="lead-p"><strong>You see your installed base; the customer sees their machine.</strong><span>EREMOS V2 aggregates the service-relevant telemetry across every machine you've shipped, organized by customer site. Each customer can also run EREMOS V2 themselves if they want their own operational view — same platform, a separate tenant, no data leakage between them. Co-existence by design.</span></div>
+        <div class="lead-p"><strong>Per-customer fleet identity from day one.</strong><span>Each shipped machine carries a stable per-gateway UUID, with customer/site binding established at installation. Acquisitions, name changes, plant transfers — the identity model survives all of them, so warranty, SLA, and service-hours tracking hold up because the identity is permanent. This is the <strong style="display:inline">Asset Intelligence</strong> capability — mTracker turns that permanent fleet identity into service-hours billing, warranty attribution, and installed-base visibility → <a class="pillar-link" href="capabilities-asset-intelligence">/capabilities/asset-intelligence</a>.</span></div>
+        <div class="lead-p"><strong>Diagnose before the customer calls.</strong><span>With service-relevant telemetry flowing back, your service team sees alarm patterns, fault progressions, and degraded operation across the installed base. A tool-life metric trending toward failure on three customer machines becomes one proactive service campaign instead of three separate emergency dispatches — which is how remote diagnostics turns from a defensive cost-control measure into an offensive service differentiator.</span></div>
+      </div>
+    </section>
+
+    <!-- §4 WHAT'S INCLUDED -->
+    <section class="section" data-mode="light" aria-labelledby="incl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT'S INCLUDED</span></div>
+        <div class="incl-grid">
+          <div>
+            <h3>For Your Machine (EdgeConnect, embedded with your equipment)</h3>
+            <ul>
+              <li><strong>Native protocol coverage for whatever controllers you spec</strong> — FOCAS2 (every Fanuc generation), MTConnect, Brother HTTP, Modbus TCP, plus OPC UA Client and Siemens S7. Mix and match across product lines. <strong>On the roadmap:</strong> FANUC MT-LINKi REST. For the full protocol matrix with semantic modes, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>.</li>
+              <li><strong>One tag map, deployed across your installed base</strong> — authored once for your machine, replicated across every unit you ship; tag-map updates flow to existing machines via standard configuration deployment.</li>
+              <li><strong>Route-based data control</strong> — the customer configures which signals route where: service telemetry to the OEM, operational data stays local, nothing leaves the customer's network without an explicit route.</li>
+              <li><strong>OPC UA Server sink (optional)</strong> — exposes machine data natively to the customer's own SCADA / MES if they want it. Beside, not replacing. Co-existence by design.</li>
+              <li><strong>Per-route store-and-forward</strong> — a customer-network outage doesn't lose machine telemetry; signals buffer locally and replay in source order on reconnect.</li>
+              <li><strong>Per-gateway UUID + customer/site binding</strong> — established at first start. Each shipped unit carries permanent identity for warranty, SLA, and service-history attribution.</li>
+              <li><strong>Hash-chained audit log</strong> — a tamper-evident record of every configuration change on the machine; useful for warranty claims and regulated-industry deployments.</li>
+              <li><strong>Offline-capable</strong> — no cloud, internet, or always-on connectivity required for the machine to operate.</li>
+            </ul>
+            <p class="deploy-note">EdgeConnect ships as a Windows service today; embed it on a small box inside your equipment, or run it on a customer-supplied box adjacent to the machine. A Linux runtime is near-term roadmap, arriving on the Edge Gateway appliance for OEMs who prefer a turnkey embedded module. The appliance is an option, not a requirement.</p>
+          </div>
+          <div>
+            <h3>For Your Service Organization (EREMOS V2, aggregating the installed base)</h3>
+            <ul>
+              <li><strong>Installed-base view</strong> — every shipped machine in one operational dashboard, organized by customer site.</li>
+              <li><strong>Per-customer fleet drill-down</strong> — a specific customer's machines, their alarm history, their service patterns.</li>
+              <li><strong>Persistent alarm tracking with incident grouping</strong> — proactive identification of fault patterns across the installed base, not isolated tickets.</li>
+              <li><strong>Tool-life and consumable telemetry</strong> — flag wear ahead of failure to drive proactive service campaigns.</li>
+              <li><strong>Multi-tenant by design</strong> — your installed-base view is your tenant; your customer's own view (if they run EREMOS V2 themselves) is theirs. No data leakage between tenants.</li>
+              <li><strong>Service-history reporting</strong> — exportable per-customer or per-machine for SLA reviews, warranty claims, and contract renewals.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 COMMON QUESTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What OEM service and product teams ask before scoping.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">Can our customers say no to monitoring?</p><p class="faq__a">Yes — and that's the point. The customer controls the route configuration; if they don't want service telemetry flowing to you, none does. The platform is designed to respect customer choice, not coerce it, because trust is the durable commercial position. An OEM that respects data sovereignty becomes the vendor the customer's IT department signs off on, not the one they block.</p></div>
+          <div class="faq__item"><p class="faq__q">Can our customer use the same platform for their own operational view?</p><p class="faq__a">Yes. The customer can run EREMOS V2 themselves in their own tenant, build their own dashboards, and route some of the same machine signals to both their view and yours. One platform, two tenants, separate data control — co-existence by design. It also sits beside their existing SCADA, MES, or historian; the optional OPC UA Server sink exposes machine data to those systems rather than replacing them.</p></div>
+          <div class="faq__item"><p class="faq__q">What about customers with strict no-cloud or air-gap policies?</p><p class="faq__a">Supported. EdgeConnect runs offline. Telemetry exports on the customer's schedule via approved channels — scheduled or manual exports — instead of always-on connections, so strict data-sovereignty customers stay addressable. The machine itself never needs connectivity to operate.</p></div>
+          <div class="faq__item"><p class="faq__q">How do we handle a customer who buys the machine and then refuses connectivity?</p><p class="faq__a">The machine works either way. Connectivity is a layered capability, not a precondition for operation. If the customer changes their mind later, connectivity activates through a configuration change — no service call required.</p></div>
+          <div class="faq__item"><p class="faq__q">Can we white-label the operator-facing parts, and how does an OEM partnership work?</p><p class="faq__a">Co-branding options are available for OEM partnerships at appropriate scale, and OEM licensing is structured differently from per-plant deployments — we scope it against your product economics in a partner conversation rather than publishing it here. Bring your installed-base size, the controllers you spec, and your packaging strategy to an OEM scoping call and we'll scope the licensing and any white-label path together.</p></div>
+          <div class="faq__item"><p class="faq__q">What about feeding service data back to product engineering?</p><p class="faq__a">The installed-base view includes alarm patterns, run hours, and operational telemetry your product-engineering team can analyze for next-generation decisions — so the field-data feedback loop runs on continuous installed-base data instead of six-month-old service anecdotes. The same per-gateway identity that supports warranty and service-hours billing keeps that field data attributable per machine and per customer.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 OUTCOMES -->
+    <section class="section" data-mode="dark" aria-labelledby="out-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow eyebrow--teal">OUTCOMES YOU CAN HOLD US TO</span><h2 id="out-heading" class="section-title">What changes when OEMs deploy.</h2></div>
+        <ul class="out-grid">
+          <li><strong>Cut truck rolls on remote-diagnosable issues</strong> — the service team identifies the problem before the customer calls; some dispatches become phone-resolved</li>
+          <li><strong>Diagnose before the customer notices</strong> — alarm patterns trigger proactive service campaigns instead of reactive emergency dispatches</li>
+          <li><strong>Field data flows continuously to product engineering</strong> — next-generation decisions backed by real installed-base data, not six-month-old service anecdotes</li>
+          <li><strong>Warranty disputes resolve on data, not memory</strong> — service history, run hours, and operational telemetry available per machine</li>
+          <li><strong>Connected equipment becomes a differentiated SKU</strong> — your RFP responses can promise connectivity that doesn't violate the customer's IT policy</li>
+          <li><strong>Customer relationships strengthen, not weaken</strong> — the platform respects customer data sovereignty; you become the OEM that didn't try to force always-on access</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 ARCHITECTURE FOR THIS SOLUTION -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="arch-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">ARCHITECTURE FOR THIS SOLUTION</span><h2 id="arch-heading" class="section-title">How it fits together for connected equipment.</h2></div>
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 170" width="100%" role="img" aria-label="OEM-shipped equipment at customer sites each runs its own EdgeConnect over native protocols; the customer's route configuration controls which signals flow back; customer-controlled telemetry reaches the OEM's EREMOS V2 installed-base view, while the customer's own SCADA/MES sits beside via the optional OPC UA Server sink.">
+            <defs><marker id="oem-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <!-- customer-site boundary -->
+            <rect x="6" y="14" width="470" height="148" rx="10" fill="none" stroke="#A8B3BD" stroke-dasharray="5 4"/>
+            <text x="18" y="30" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">CUSTOMER SITE</text>
+            <!-- OEM-shipped equipment -->
+            <rect x="16" y="46" width="176" height="78" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="104" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">OEM-shipped machine</text>
+            <text x="104" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">per-gateway UUID</text>
+            <text x="104" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">NATIVE PROTOCOLS</text>
+            <line x1="196" y1="85" x2="250" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#oem-arr)"/>
+            <!-- EdgeConnect with customer-controlled route -->
+            <rect x="254" y="36" width="210" height="98" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="359" y="64" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EdgeConnect</text>
+            <text x="359" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">mTracker · store-and-forward</text>
+            <text x="359" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="11.5" fill="#00A0E0">CUSTOMER-CONTROLLED ROUTES</text>
+            <text x="359" y="118" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">stays local · or flows to OEM</text>
+            <!-- route split to OEM -->
+            <line x1="476" y1="85" x2="530" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#oem-arr)"/>
+            <text x="503" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#00A0E0">SERVICE</text>
+            <text x="503" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#00A0E0">TELEMETRY</text>
+            <!-- OEM service environment -->
+            <rect x="534" y="14" width="438" height="148" rx="10" fill="none" stroke="#A8B3BD" stroke-dasharray="5 4"/>
+            <text x="546" y="30" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">OEM SERVICE ENVIRONMENT</text>
+            <rect x="546" y="46" width="210" height="78" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="651" y="76" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2</text>
+            <text x="651" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">installed-base view</text>
+            <text x="651" y="112" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">alarms · service history</text>
+            <!-- customer SCADA via OPC UA Server sink -->
+            <rect x="780" y="46" width="180" height="78" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="870" y="74" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13.5" fill="#0F1419">Customer SCADA / MES</text>
+            <text x="870" y="94" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">OPC UA Server sink</text>
+            <text x="870" y="110" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">BESIDE, NOT REPLACING</text>
+            <line x1="464" y1="120" x2="464" y2="138" stroke="#5E6B78" stroke-width="1.5"/>
+            <line x1="464" y1="138" x2="780" y2="138" stroke="#5E6B78" stroke-width="1.5"/>
+            <line x1="780" y1="138" x2="780" y2="118" stroke="#5E6B78" stroke-width="1.5" marker-end="url(#oem-arr)"/>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">Each machine you ship runs its own EdgeConnect locally; EREMOS V2 in your environment aggregates the installed base across those per-machine runtimes. The customer can run EREMOS V2 themselves in a separate tenant. Trust by design. See the full peer-architecture story → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §8 TRUST CUE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span></div>
+        <div class="trust-cue"><p><strong>Customer-controlled, offline by default.</strong> EdgeConnect runs offline — the license validates locally, with no phone-home — and the customer's route configuration, not the OEM's, gates what telemetry flows back. If the customer network drops, per-route store-and-forward buffers locally and replays in source order on reconnect. Cloud connectivity is opt-in, never required for the machine to run.</p></div>
+        <div class="trust-cue"><p><strong>Per-machine identity + hash-chained configuration audit.</strong> Each shipped machine runs its own EdgeConnect with a per-gateway UUID and customer/site binding established at installation — there is no single OEM-side runtime reaching into customer plants. Every configuration change is captured with actor identity and timestamp in a tamper-evident, replay-ready audit chain, which is what makes warranty claims and regulated-industry deployments defensible on data rather than memory.</p></div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §9 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities-asset-intelligence"><span class="eyebrow">CAPABILITY · ASSET INTELLIGENCE</span><span class="cl-desc">The underlying capability — mTracker fleet visibility, service-hours, warranty.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Back to the full solutions directory.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your installed base.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Tell us about your equipment — how many machines you've shipped, what controllers you spec, what your service organization needs to see. We'll scope an embedded deployment for your next product release and a path to retrofitting existing units as customers opt in. No multi-year platform commitment required to prove the connectivity stack works.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=OEM%20machine%20monitoring%20scoping%20call" class="btn btn--primary btn--lg">Request an OEM scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

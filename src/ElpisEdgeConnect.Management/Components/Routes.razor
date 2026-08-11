@@ -1,0 +1,19 @@
+@*
+    Top-level Blazor Router. Wraps every page in MainLayout.
+*@
+<Router AppAssembly="@typeof(Routes).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found · Connectivity Studio</PageTitle>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+            <MudText Typo="Typo.h4">Page not found</MudText>
+            <MudText Typo="Typo.body1" Class="mt-2">
+                The requested URL doesn't match any Connectivity Studio page.
+                Use the navigation bar to find what you're looking for.
+            </MudText>
+        </MudContainer>
+    </NotFound>
+</Router>

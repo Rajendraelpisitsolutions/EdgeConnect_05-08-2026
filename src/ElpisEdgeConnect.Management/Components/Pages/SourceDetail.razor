@@ -1,0 +1,310 @@
+@*
+    Sources detail page (one source). Header strip with status,
+    cards for Activity / Last error / Route context, plus
+    forward-pointers for surfaces that land in later sub-milestones
+    (Tag editor in M.2c, Try Read in M.2b wizards).
+
+    URL pattern: /sources/{sourceInstanceId}
+*@
+@page "/sources/{SourceInstanceId}"
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>@(_data?.Source.SourceInstanceId ?? SourceInstanceId) · Sources · Connectivity Studio</PageTitle>
+
+<div class="page-heading">
+    <MudTooltip Text="Back to Sources">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/sources"))"
+                       Size="Size.Small"
+                       aria-label="Back to the Sources list"
+                       data-testid="source-detail-back-button" />
+    </MudTooltip>
+    <span class="page-heading__icon"><MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Medium" /></span>
+    <div class="page-heading__text">
+        <div class="page-heading__title">@(_data?.Source.SourceInstanceId ?? SourceInstanceId)</div>
+        @if (_data is not null)
+        {
+            <div class="page-heading__desc">
+                @_data.Source.ProtocolName
+                @if (_data.RouteId is { } rid)
+                {
+                    <text> · on route </text>
+                    <MudLink Href="@($"/routes/{rid}")" Underline="Underline.Hover" Class="ml-1">
+                        @rid
+                    </MudLink>
+                }
+                else
+                {
+                    <text> · not on any route</text>
+                }
+            </div>
+        }
+    </div>
+    @if (_data is not null)
+    {
+        <div class="page-heading__actions">
+            @* M.2d.2 step 11 — primary entry point to Edit mode. Resolves
+               via SourceEditRouter, which dispatches to the protocol-
+               specific wizard (focas2 / brother-http / modbustcp) or one
+               of the three non-happy-path panels. *@
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       Href="@($"/sources/{Uri.EscapeDataString(SourceInstanceId)}/edit")"
+                       Style="text-transform:none;"
+                       data-testid="source-detail-edit-button">
+                Edit
+            </MudButton>
+            @{
+                var rawState = _data.Source.StateName;
+                var stateTip = $"Adapter state: {rawState}";
+            }
+            <MudIcon Icon="@OperatorFormat.StateIcon(rawState)"
+                     Size="Size.Medium"
+                     Color="@StateColor(rawState)"
+                     aria-hidden="true" />
+            <MudTooltip Text="@stateTip">
+                <MudChip T="string" Color="@StateColor(rawState)" Variant="Variant.Filled">
+                    @StateVerdict(rawState)
+                </MudChip>
+            </MudTooltip>
+        </div>
+    }
+</div>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not load source.</strong> @_loadError
+    </MudAlert>
+}
+else if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+        Source <code>@SourceInstanceId</code> is not in the current gateway configuration.
+        It may have been removed via the Configuration page, or never added.
+    </MudAlert>
+}
+else if (_data is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @* ---- Activity ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.QueryStats" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Activity</MudText>
+                </MudStack>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Points observed</MudText>
+                        <MudText Typo="Typo.h6">@_data.Source.PointsObserved.ToString("N0")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Last point</MudText>
+                        <MudText Typo="Typo.h6" title="@OperatorFormat.Absolute(_data.Source.LastPointAtUtc)">@OperatorFormat.Ago(_data.Source.LastPointAtUtc)</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        @* ---- Last error (or "no recent errors") ---- *@
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4" Style="height:100%;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@(_data.Source.LastErrorCode is null
+                                       ? Icons.Material.Filled.CheckCircle
+                                       : Icons.Material.Filled.Error)"
+                             Size="Size.Small"
+                             Color="@(_data.Source.LastErrorCode is null ? Color.Success : Color.Error)" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">
+                        @(_data.Source.LastErrorCode is null ? "No recent errors" : "Last error")
+                    </MudText>
+                </MudStack>
+                @if (_data.Source.LastErrorCode is { } code)
+                {
+                    <MudText Typo="Typo.body2">
+                        <strong>@(code)</strong>
+                    </MudText>
+                    @if (_data.Source.LastErrorMessage is { } msg)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">@msg</MudText>
+                    }
+                    @if (_data.Source.LastErrorAtUtc is { } at)
+                    {
+                        @* Relative, with the exact instant on hover — same pairing
+                           as the Activity tile above. A bare local timestamp made
+                           the operator do the subtraction to answer the only
+                           question that matters: is this happening now? *@
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2"
+                                 title="@OperatorFormat.Absolute(at)">
+                            @OperatorFormat.Ago(at)
+                        </MudText>
+                    }
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        This source has not reported any errors since the gateway started.
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ---- MELSEC diagnostics (observational; only for MELSEC sources) ---- *@
+        @if (string.Equals(_data.Source.ProtocolName, "melsec", StringComparison.Ordinal))
+        {
+            <MudItem xs="12">
+                <MelsecDiagnosticsPanel SourceInstanceId="@SourceInstanceId" />
+            </MudItem>
+        }
+
+        @* ---- Tags + Test (forward-pointers) ---- *@
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">Tags</MudText>
+                </MudStack>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    The tag-table editor (read · write · CSV import/export · per-tag validation)
+                    lands in Milestone M.2c. For now, edit the source's tag list in
+                    <code>gateway.json</code> directly; the runtime hot-reloads on config apply.
+                </MudText>
+                <MudStack Row="true" Spacing="2" Class="mt-3">
+                    <MudTooltip Text="Tag editor coming in M.2c">
+                        <span>
+                            <MudButton Variant="Variant.Outlined" Disabled="true"
+                                       StartIcon="@Icons.Material.Filled.TableChart"
+                                       Style="text-transform:none;">
+                                View tags
+                            </MudButton>
+                        </span>
+                    </MudTooltip>
+                    <MudTooltip Text="Live tag read coming in M.2b wizard">
+                        <span>
+                            <MudButton Variant="Variant.Outlined" Disabled="true"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                                       Style="text-transform:none;">
+                                Try Read
+                            </MudButton>
+                        </span>
+                    </MudTooltip>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string SourceInstanceId { get; set; } = string.Empty;
+
+    private SourceListItemDto? _data;
+    private string? _loadError;
+    private bool _notFound;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _data = null;
+        _loadError = null;
+        _notFound = false;
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            using var resp = await HttpClient.GetAsync($"/api/v1/sources/{Uri.EscapeDataString(SourceInstanceId)}");
+            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+                _data = null;
+            }
+            else
+            {
+                resp.EnsureSuccessStatusCode();
+                _data = await resp.Content.ReadFromJsonAsync<SourceListItemDto>();
+                _notFound = false;
+            }
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    // §11 — plain-language operator verdict for the header chip; the raw
+    // adapter state is preserved in the chip tooltip. Mirrors Sources.razor.
+    private static string StateVerdict(string? state) => state switch
+    {
+        "Running" => "Running",
+        "Degraded" => "Degraded",
+        "Disabled" => "Disabled",
+        "Stopped" => "Stopped",
+        "Failed" or "Faulted" => "Not connected",
+        "Configured" or "Configured / Not running" => "Not started",
+        null or "" => "Unknown",
+        _ => state,
+    };
+
+    // Match the SourceInventoryBuilder.State* constants. Kept in sync with
+    // the Sources.razor list view so a Configured/Disabled badge looks the
+    // same on the detail page as it does on the list.
+    private static Color StateColor(string? state) => state switch
+    {
+        "Running" => Color.Success,
+        "Degraded" => Color.Warning,
+        "Stopped" or "Failed" or "Faulted" => Color.Error,
+        "Disabled" => Color.Dark,
+        "Configured" => Color.Info,
+        "Configured / Not running" => Color.Warning,
+        _ => Color.Default,
+    };
+
+    // Ages come from Components/Shared/OperatorFormat so every page ages a timestamp identically.
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

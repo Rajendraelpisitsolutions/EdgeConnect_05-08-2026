@@ -1,0 +1,450 @@
+@*
+    ReviewAndConnect — final step of the Onboarding meta-wizard.
+
+    Shows a summary card of the three entities about to be created, plus
+    the optional gateway-identity change from the Welcome step. The single
+    [Save and connect] button POSTs to /api/v1/onboarding/apply which
+    atomically creates source + sink + route in one draft + apply ceremony.
+
+    On success → success screen + auto-redirect to the source detail page
+    after a few seconds (so the operator sees live tag counts immediately).
+    On 400 / 409 → inline error banner; operator clicks Back to fix the
+    offending step.
+
+    Reference: docs/decisions/0016-onboarding-meta-wizard.md Rule 6
+               docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md §3.6
+*@
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+
+@if (_applied is not null)
+{
+    @* ─── Success screen ─────────────────────────────────────────────────── *@
+    <MudPaper Elevation="1" Class="pa-6 mb-4" Style="border-left:6px solid var(--mud-palette-success);"
+              data-testid="onboarding-success">
+        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+            <MudText Typo="Typo.h5">Connected.</MudText>
+        </MudStack>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Source <code>@Source!.InstanceId</code>, destination <code>@Sink!.InstanceId</code>,
+            and route <code>@Route!.RouteId</code> are running.
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Applied as configuration version <code>@_applied.NewVersionId</code>.
+            @if (_applied.Reload?.Status is { Length: > 0 } reload)
+            {
+                <span> Reload status: <code>@reload</code>.</span>
+            }
+        </MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Insights"
+                       OnClick="@GoToSourceDetail"
+                       Style="text-transform:none;">
+                See live data
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       OnClick="@(() => Nav.NavigateTo("/onboard", forceLoad: true))"
+                       Style="text-transform:none;">
+                Connect another device
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    @* ─── Review summary ────────────────────────────────────────────────── *@
+    @* Same left accent as the numbered wizard sections and the licence cards —
+       this panel is the last step of the same ceremony, so it wears the same
+       edge rather than being the one unmarked box in the flow. *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section" data-testid="onboarding-review">
+        <MudText Typo="Typo.h6" Class="mb-3">Review &amp; connect</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            One click applies all three entities as a single atomic transaction.
+            If anything fails validation, the running config is untouched —
+            you can go back to the offending step and fix it.
+        </MudText>
+
+        <MudList T="object" Dense="true" Class="mb-2">
+            @if (GatewayIdOverride is not null
+                 && !string.IsNullOrWhiteSpace(GatewayIdOverride)
+                 && !string.Equals(GatewayIdOverride, CurrentGatewayId, StringComparison.Ordinal))
+            {
+                <MudListItem T="object" Icon="@Icons.Material.Filled.Badge">
+                    <strong>Update gateway identity</strong> from
+                    <code>@CurrentGatewayId</code> to <code>@GatewayIdOverride</code>.
+                </MudListItem>
+            }
+            @* An entity the operator already saved is ALREADY on the gateway,
+               switched off. Describing it as something about to be added was the
+               one thing they could check against the Sources list — where it was
+               plainly already there, and disabled, with nothing on this page
+               explaining why. Saying what is true of each entity is also what
+               makes Connect's job legible: some of this is being created, some of
+               it is just being switched on. *@
+            <MudListItem T="object" Icon="@Icons.Material.Filled.SettingsInputComponent">
+                @if (SourceAlreadyCreated)
+                {
+                    <strong>Switch on source</strong>
+                    <code>@Source?.InstanceId</code>
+                    <span style="opacity:0.7;"> · @Source?.ProtocolName · saved, not yet connected</span>
+                }
+                else
+                {
+                    <strong>Add source</strong>
+                    <code>@Source?.InstanceId</code>
+                    <span style="opacity:0.7;"> · @Source?.ProtocolName</span>
+                }
+            </MudListItem>
+            <MudListItem T="object" Icon="@Icons.Material.Filled.Cloud">
+                @if (SinkAlreadyCreated)
+                {
+                    <strong>Switch on destination</strong>
+                    <code>@Sink?.InstanceId</code>
+                    <span style="opacity:0.7;"> · @Sink?.ProtocolName · saved, not yet connected</span>
+                }
+                else
+                {
+                    <strong>Add destination</strong>
+                    <code>@Sink?.InstanceId</code>
+                    <span style="opacity:0.7;"> · @Sink?.ProtocolName</span>
+                }
+            </MudListItem>
+            @* Renders the ROUTE'S OWN references, not the source and destination
+               objects beside it. Those two are what the apply is about to
+               create; the route is what will point at them, and they are not
+               guaranteed to agree. When this line showed Source.InstanceId ->
+               Sink.InstanceId it was describing the intent rather than the
+               configuration, so a route still holding a renamed destination's
+               old id read as perfectly correct here and was then rejected by the
+               apply — the one screen meant to catch that hid it. *@
+            <MudListItem T="object" Icon="@Icons.Material.Filled.AltRoute">
+                <strong>Add route</strong> <code>@Route?.RouteId</code>
+                <span style="opacity:0.7;">
+                    · @(Route?.SourceInstanceId ?? "no source")
+                    → @(Route is { SinkInstanceIds.Count: > 0 }
+                            ? string.Join(", ", Route.SinkInstanceIds)
+                            : "no destination")
+                </span>
+            </MudListItem>
+
+            @* A mismatch is now stated rather than left to the apply. It is
+               reachable whenever the route was wired before an endpoint was
+               renamed, and the apply's message names a parameter, not a step. *@
+            @if (RouteEndpointMismatch() is { } mismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-2"
+                          data-testid="onboarding-route-mismatch">
+                    <strong>The route does not point at what you configured.</strong>
+                    <MudText Typo="Typo.body2" Class="mt-1">@mismatch</MudText>
+                </MudAlert>
+            }
+
+            @* No route at all. The flow withholds one it knows to be mis-wired,
+               so this is where that lands if the operator ever reaches Review
+               with a disagreeing route — an empty "Add route" line above with a
+               dead Connect button beside it would leave them nothing to act on.
+               The route step names WHICH endpoint disagrees; this says where to
+               go and hear it. *@
+            @if (Route is null)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-2"
+                          data-testid="onboarding-route-missing">
+                    <strong>There is no route to apply.</strong>
+                    <MudText Typo="Typo.body2" Class="mt-1">
+                        A source and a destination are only connected by a route, so there is
+                        nothing to switch on until one is wired to both.
+                        Click <strong>Back</strong> to finish the route step.
+                    </MudText>
+                </MudAlert>
+            }
+        </MudList>
+
+        @* Operator-feedback bug 2026-05-28 — surface "no tags configured" one
+           more time before the Connect button so the operator can't miss it.
+           This is in addition to the in-wizard warnings on Modbus / FOCAS2 /
+           Brother HTTP. *@
+        @if (Source is not null && CountSourceTags(Source) == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3"
+                      Icon="@Icons.Material.Filled.WarningAmber"
+                      data-testid="onboarding-no-tags-warning">
+                <strong>Source has no tags configured.</strong>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    The pipeline will land Running but produce zero data points.
+                    Click <strong>Back</strong> to add tags to <code>@Source.InstanceId</code>,
+                    or proceed anyway (e.g. to stage the wiring first).
+                </MudText>
+            </MudAlert>
+        }
+
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3"
+                      data-testid="onboarding-apply-error">
+                <strong>Apply failed.</strong> @_error
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    Click <strong>Back</strong> to fix the offending step, then try again.
+                </MudText>
+            </MudAlert>
+        }
+
+        @* One action, one button. Save changes and Connect ran the SAME atomic
+           apply and differed only in whether they navigated afterwards, so the
+           pair was two names for one thing — and because both read one shared
+           busy flag, pressing either greyed out both and relabelled the one
+           nobody touched. That is what the operator reported as "Save posts
+           back both buttons": nothing extra fired, the page was just narrating
+           a control they had not pressed. Connect was the superset, so it is
+           what survives, named for what it actually does. *@
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       OnClick="@ConnectAsync"
+                       Disabled="@(_busy || !CanConnect())"
+                       Style="text-transform:none;"
+                       data-testid="onboarding-connect">
+                @(_busy ? "Saving & connecting…" : "Save & Connect")
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public SourceInstanceConfig? Source { get; set; }
+    [Parameter] public SinkInstanceConfig? Sink { get; set; }
+    [Parameter] public RouteConfig? Route { get; set; }
+
+    /// <summary>Optional GatewayId override from the Welcome step (may equal current — review skips rendering it then).</summary>
+    [Parameter] public string? GatewayIdOverride { get; set; }
+    [Parameter] public string? GatewayNameOverride { get; set; }
+    [Parameter] public string? CurrentGatewayId { get; set; }
+
+    /// <summary>
+    /// True when the operator pressed Save on the source step, so the source is
+    /// already on the gateway (disabled) and this apply delivers its final,
+    /// enabled form. Tells the server to replace it rather than reject the id.
+    /// </summary>
+    [Parameter] public bool SourceAlreadyCreated { get; set; }
+
+    /// <summary>Destination twin of <see cref="SourceAlreadyCreated"/>.</summary>
+    [Parameter] public bool SinkAlreadyCreated { get; set; }
+
+    /// <summary>Fired on successful apply so the parent flow can flip its busy / completed state.</summary>
+    [Parameter] public EventCallback OnApplied { get; set; }
+
+    private bool _busy;
+    private string? _error;
+    private ApplyResultDto? _applied;
+    // True once the atomic apply has succeeded — guards against a second POST
+    // 409-ing on the entities the first one already created.
+    private bool _saved;
+
+    /// <summary>
+    /// The Connect button's gate — and, because <see cref="ApplyAsync"/> checks
+    /// it too, the last gate before the POST itself.
+    /// </summary>
+    /// <remarks>
+    /// The wiring check is what makes a mismatched route impossible to submit
+    /// rather than merely inadvisable. The flow above already refuses to advance
+    /// past the route step and passes a null Route when the two disagree; this
+    /// repeats the question against the parameters actually received, so no
+    /// caller — present or future — can hand this component a route the bundled
+    /// apply would throw on and still reach the endpoint. It is a derived
+    /// expression, never a flag: a cached answer to this exact question is what
+    /// let the defect through in the first place.
+    /// </remarks>
+    private bool CanConnect() =>
+        Source is not null
+        && Sink is not null
+        && Route is not null
+        && OnboardingRouteWiring.IsWiredTo(Route, Source, Sink);
+
+    /// <summary>
+    /// Names the endpoint the route fails to reference, or null when the three
+    /// agree. The bundled apply enforces this and reports it as
+    /// <c>Parameter 'newRoute'</c> — accurate, and no help at all to an operator
+    /// who has to work out which of six steps to go back to.
+    /// </summary>
+    /// <remarks>
+    /// Delegates to <see cref="OnboardingRouteWiring"/> rather than re-deriving
+    /// the rule. Two copies of a cross-entity invariant is one copy too many:
+    /// this screen and the flow's route-step gate must agree with each other and
+    /// with the merger, and they can only be relied on to do that if there is
+    /// exactly one statement of it to keep in step with the merger.
+    /// </remarks>
+    private string? RouteEndpointMismatch() => OnboardingRouteWiring.DescribeMismatch(Route, Source, Sink);
+
+    /// <summary>
+    /// Save and connect = apply + move on. Applies the transaction (once) and
+    /// then carries the operator forward: a fresh apply shows the success screen
+    /// (with its "See live data" button); an apply that already landed jumps
+    /// straight to the source's live data.
+    /// </summary>
+    private async Task ConnectAsync()
+    {
+        var alreadySaved = _saved;
+        if (!await ApplyAsync())
+        {
+            return;
+        }
+        if (OnApplied.HasDelegate)
+        {
+            await OnApplied.InvokeAsync();
+        }
+        // Fresh apply: _applied is set → the success screen renders below.
+        // Already applied but no success screen to show (the response carried no
+        // body, so _applied stayed null and the review panel is still up) — the
+        // button must still lead somewhere, so go to live data.
+        if (alreadySaved)
+        {
+            GoToSourceDetail();
+        }
+    }
+
+    /// <summary>
+    /// The atomic apply behind the button. POSTs at most once — a second call
+    /// after a successful save returns <c>true</c> without re-POSTing, so a
+    /// double activation cannot 409 on the entities the first one created.
+    /// Returns <c>true</c> on success (or if already saved), <c>false</c> on a
+    /// validation error (with <see cref="_error"/> populated).
+    /// </summary>
+    private async Task<bool> ApplyAsync()
+    {
+        if (_saved)
+        {
+            return true;
+        }
+        // _saved only closes the window AFTER the POST returns. A second click
+        // landing before that — a double-click beats the re-render that disables
+        // the button — would race the first apply into a duplicate transaction,
+        // so in-flight is refused here rather than trusted to the disabled attr.
+        if (_busy)
+        {
+            return false;
+        }
+        if (!CanConnect())
+        {
+            return false;
+        }
+        _busy = true;
+        _error = null;
+        try
+        {
+            var body = new OnboardingApplyRequestDto
+            {
+                Source = Source!,
+                Sink = Sink!,
+                Route = Route!,
+                GatewayIdOverride = GatewayIdOverride,
+                GatewayNameOverride = GatewayNameOverride,
+                SourceAlreadyCreated = SourceAlreadyCreated,
+                SinkAlreadyCreated = SinkAlreadyCreated,
+                Actor = "onboarding-flow",
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/onboarding/apply", body);
+
+            if (resp.StatusCode == HttpStatusCode.OK)
+            {
+                _applied = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _saved = true;
+                return true;
+            }
+
+            // 400 or 409 — surface server message
+            var raw = await resp.Content.ReadAsStringAsync();
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                _error = doc.RootElement.TryGetProperty("error", out var err)
+                    ? err.GetString()
+                    : raw;
+            }
+            catch
+            {
+                _error = raw;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            return false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void GoToSourceDetail()
+    {
+        if (Source is not null)
+        {
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(Source.InstanceId)}");
+        }
+        else
+        {
+            Nav.NavigateTo("/sources");
+        }
+    }
+
+    /// <summary>
+    /// Count the tags / data-points configured on a source, in a protocol-
+    /// aware way. Reads the protocol-specific Connection JSON because each
+    /// adapter stores its tag list under a different key:
+    ///   Modbus       → Connection.tagDefinitions (array)
+    ///   FOCAS2       → Connection.dataPoints (array of strings)
+    ///   BrotherHttp  → Connection.dataPoints (array of strings)
+    /// Unknown protocols return 1 (assume tags are present) so we don't
+    /// false-positive-warn on protocols whose tag count isn't in this shape.
+    /// </summary>
+    /// <summary>
+    /// Protocols whose tags are DISCOVERED from the device rather than declared
+    /// by the operator. For these an empty list is a filter meaning "collect
+    /// everything", so it must never be read as "collect nothing".
+    /// </summary>
+    /// <remarks>
+    /// Focas2SourceAdapter.HasDataPoint: <c>dataPoints.Count == 0 || dataPoints.Contains(name)</c>.
+    /// BrotherHttpSourceAdapter: an empty list normalises to <c>null</c>, and the
+    /// include test short-circuits with <c>if (_normalizedDataPoints is null) return true;</c>.
+    /// Warning an operator that a collect-everything source will "produce zero
+    /// data points" told them the exact opposite of what the runtime does.
+    /// </remarks>
+    private static readonly HashSet<string> DiscoveredTagProtocols =
+        new(StringComparer.OrdinalIgnoreCase) { "focas2", "brother-http" };
+
+    private static int CountSourceTags(SourceInstanceConfig source)
+    {
+        // Discovered-tag protocols are never "empty" in the sense this warning
+        // means; report a non-zero count so the alert stays silent for them.
+        if (DiscoveredTagProtocols.Contains(source.ProtocolName)) return 1;
+
+        if (source.Connection is null) return 0;
+        var conn = source.Connection.Value;
+
+        // Try the known tag-array property names per protocol.
+        foreach (var key in new[] { "tagDefinitions", "TagDefinitions", "dataPoints", "DataPoints" })
+        {
+            if (conn.ValueKind == System.Text.Json.JsonValueKind.Object
+                && conn.TryGetProperty(key, out var arr)
+                && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                return arr.GetArrayLength();
+            }
+        }
+
+        // Unknown protocol shape — don't false-positive-warn.
+        return 1;
+    }
+}

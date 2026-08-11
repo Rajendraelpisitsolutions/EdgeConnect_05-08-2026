@@ -1,0 +1,135 @@
+@*
+    Connectivity Studio main layout (operator-UI redesign §2). The shell is a
+    flex row: a left navigation rail (NavMenu) beside a main column. The main
+    column is itself a flex COLUMN so that:
+       * the demo-mode banner row stays fixed (flex:0 0 auto, never scrolls);
+       * ONLY the page-content row scrolls (flex:1 1 auto; overflow-y:auto;
+         min-height:0; padding-top:0 so a sticky .page-heading reaches the top).
+    The status footer is fixed to the bottom of the viewport (see StatusFooter).
+
+    The old top MudAppBar has been removed (§2.2): the logo + product name now
+    live in the head of the nav rail, and each page renders its own heading in
+    its body via the .page-heading class (added by the Pages agent).
+
+    Visual language: clean white chrome with subtle borders — the
+    Linear / Stripe / Vercel / Notion enterprise-SaaS aesthetic. Blue (#1976D2)
+    is reserved for accents; semantic green/yellow/red preserved for state.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a;
+               operator-UI redesign report §2.
+*@
+@inherits LayoutComponentBase
+@inject ManagementOptions Options
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@{
+    var chrome = new LayoutChromeModel(Options);
+}
+
+@* First focusable element on the page, so Tab-then-Enter reaches the content
+   without traversing the whole rail. The rail is eleven items deep and renders
+   on every screen, so a keyboard operator otherwise pays that cost on each
+   navigation. Off-screen until focused (.op-skip-link in site.css). *@
+<a href="#main-content" class="op-skip-link">Skip to main content</a>
+
+<div class="app-shell">
+    <NavMenu />
+
+    <div class="app-main">
+        @* ───── Fixed banner region (flex:0 0 auto — never scrolls) ─────
+           The demo-mode / post-upgrade notices sit here so they stay pinned
+           above the single scrolling content region below, no longer relying
+           on position:sticky against a fixed app bar (which is now gone). *@
+        <div class="app-banner-row">
+            @if (chrome.Focas2FakeModeBannerVisible)
+            {
+                <MudAlert Severity="Severity.Warning"
+                          Variant="Variant.Filled"
+                          Dense="true"
+                          NoIcon="false"
+                          Square="true"
+                          Class="mb-0">
+                    <MudText Typo="Typo.body2">
+                        <strong>@LayoutChromeModel.Focas2FakeModeBannerTitle</strong>
+                        @LayoutChromeModel.Focas2FakeModeBannerMessage
+                    </MudText>
+                </MudAlert>
+            }
+            @if (chrome.S7FakeModeBannerVisible)
+            {
+                <MudAlert Severity="Severity.Warning"
+                          Variant="Variant.Filled"
+                          Dense="true"
+                          NoIcon="false"
+                          Square="true"
+                          Class="mb-0"
+                          data-testid="s7-demo-banner">
+                    <MudText Typo="Typo.body2">
+                        <strong>@LayoutChromeModel.S7FakeModeBannerTitle</strong>
+                        @LayoutChromeModel.S7FakeModeBannerMessage
+                    </MudText>
+                </MudAlert>
+            }
+
+            @* Unlicensed demo-mode countdown / data-stopped banner (ADR-0035). *@
+            <DemoModeBanner />
+
+            @* One-time popup after a version upgrade — surfaces demo-mode / expired
+               license status so an upgraded, unlicensed gateway is not silent. *@
+            <PostUpgradeNotice />
+        </div>
+
+        @* ───── Single scrolling content region ─────
+           padding-top:0 lets a page's sticky .page-heading pin flush to the top;
+           horizontal padding comes from the shared --page-gutter var.
+
+           tabindex="-1" is what makes the skip link above actually work: without
+           it the browser scrolls to this element but leaves focus stranded in the
+           nav, so the next Tab returns to the rail the operator just skipped. *@
+        <div class="app-content-scroll" id="main-content" tabindex="-1">
+            @Body
+        </div>
+    </div>
+</div>
+
+<StatusFooter />
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            // Blue reserved for accents / interactive elements / status —
+            // never for chrome fills under the new white aesthetic.
+            Primary = "#1976D2",
+            Secondary = "#455A64",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#1F2937",
+            Background = "#F8FAFC",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            Success = "#16A34A",
+            Warning = "#F59E0B",
+            Error = "#DC2626",
+            Info = "#2563EB",
+            // Lines + borders — soft neutral grey for chrome separators.
+            LinesDefault = "#E5E7EB",
+            LinesInputs = "#D1D5DB",
+            TextPrimary = "#1F2937",
+            TextSecondary = "#6B7280",
+            ActionDefault = "#6B7280",
+            ActionDisabled = "#D1D5DB",
+        },
+        Typography = new Typography
+        {
+            Default = new Default
+            {
+                FontFamily = new[] { "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif" },
+            }
+        }
+    };
+}

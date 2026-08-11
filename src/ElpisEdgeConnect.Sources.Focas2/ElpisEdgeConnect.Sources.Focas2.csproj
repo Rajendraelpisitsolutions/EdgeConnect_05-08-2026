@@ -1,0 +1,38 @@
+<!--
+  ElpisEdgeConnect.Sources.Focas2: FOCAS2 source adapter implementing ISourceAdapter.
+  Provides direct Ethernet communication to Fanuc CNC controllers via the
+  FOCAS2 native library (P/Invoke). Supports polling-mode data collection
+  of status, axes, spindle, alarms, tools, production, and MT-LINKi diagnostics.
+
+  Reference: PHASE2_ENTRY.md, ARCHITECTURE_BLUEPRINT.md Section 4.2
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.Focas2</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.Focas2</AssemblyName>
+    <Description>FOCAS2 source adapter for Elpis EdgeConnect — Fanuc CNC data collection via Ethernet</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA2101</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.Focas2.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  File:        docs/marketing/assets/homepage-v1-wireframe.svg
+  Purpose:     Visual wireframe for Homepage v1. Shows section structure,
+               layout, hero composition, capability strip, architecture
+               embed, hardware ecosystem, product depth, proof band,
+               audience cards, CTA, footer. NOT a polished mockup —
+               wireframe-grade.
+  Companion:   homepage-spec-v1.md (the canonical spec)
+               design-system-v1.md (component library)
+  Version:     v1
+  Date:        2026-05-25
+  Status:      DRAFT — pending user + ChatGPT review pass.
+
+  Conventions used in this wireframe:
+    - Dark sections rendered with #1A1F26 / #0F1419 fills
+    - Light sections rendered with #FAFBFC / #F4F6F9 fills
+    - Teal accents (#00A0E0 / #0080BC) mark CTAs and highlighted elements
+    - Right-margin annotations name each section + component refs
+    - Placeholder blocks (light grey) substitute for unbuilt imagery
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1600 5400"
+     width="1600" height="5400"
+     font-family="Inter, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+  <defs>
+    <marker id="annotArrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#5E6B78"/>
+    </marker>
+  </defs>
+
+  <!-- Outer canvas (page background, off-white) -->
+  <rect width="1600" height="5400" fill="#F4F6F9"/>
+
+  <!-- Wireframe device frame (1px border) -->
+  <rect x="0.5" y="0.5" width="1599" height="5399" fill="none" stroke="#A8B3BD" stroke-width="1"/>
+
+  <!-- ============================================================
+       SECTION 1 — HERO (dark)  y=0 to y=820 (incl. nav)
+       ============================================================ -->
+
+  <!-- Nav bar (dark) -->
+  <rect x="0" y="0" width="1600" height="80" fill="#0F1419"/>
+
+  <!-- Logo placeholder -->
+  <rect x="64" y="30" width="120" height="20" fill="none" stroke="#5E6B78" stroke-width="1"/>
+  <text x="124" y="46" text-anchor="middle" font-size="11" font-weight="600" fill="#A8B3BD">ELPIS</text>
+
+  <!-- Nav items -->
+  <g font-size="13" font-weight="500" fill="#E8ECF1">
+    <text x="700" y="46" text-anchor="middle">Platform</text>
+    <text x="800" y="46" text-anchor="middle" opacity="0.5">Capabilities</text>
+    <text x="900" y="46" text-anchor="middle" opacity="0.5">Solutions</text>
+    <text x="1000" y="46" text-anchor="middle" opacity="0.5">Industries</text>
+    <text x="1100" y="46" text-anchor="middle" opacity="0.5">Architecture</text>
+    <text x="1200" y="46" text-anchor="middle" opacity="0.5">Resources</text>
+    <text x="1300" y="46" text-anchor="middle" opacity="0.5">Company</text>
+  </g>
+
+  <!-- Primary nav CTA -->
+  <rect x="1400" y="26" width="140" height="28" rx="4" fill="#00A0E0"/>
+  <text x="1470" y="44" text-anchor="middle" font-size="12" font-weight="600" fill="#FFFFFF">Book a discovery call</text>
+
+  <!-- Hero body (dark deep) -->
+  <rect x="0" y="80" width="1600" height="740" fill="#0F1419"/>
+
+  <!-- Left column: copy -->
+  <text x="160" y="220" font-size="11" font-weight="600" fill="#00A0E0" letter-spacing="3">INDUSTRIAL INTELLIGENCE ECOSYSTEM</text>
+
+  <text x="160" y="290" font-size="36" font-weight="600" fill="#FFFFFF">From shop floor signal</text>
+  <text x="160" y="338" font-size="36" font-weight="600" fill="#FFFFFF">to enterprise decision —</text>
+  <text x="160" y="386" font-size="36" font-weight="600" fill="#FFFFFF">one industrial intelligence stack.</text>
+
+  <text x="160" y="442" font-size="15" fill="#E8ECF1">Elpis combines edge connectivity, sensor-direct acquisition, condition</text>
+  <text x="160" y="466" font-size="15" fill="#E8ECF1">monitoring, and operational intelligence in a single ecosystem.</text>
+  <text x="160" y="490" font-size="15" fill="#E8ECF1">Brownfield-ready. Sensor-agnostic. Built end-to-end by Elpis —</text>
+  <text x="160" y="514" font-size="15" fill="#E8ECF1">or layered into what you already run.</text>
+
+  <!-- CTAs -->
+  <rect x="160" y="560" width="220" height="48" rx="4" fill="#00A0E0"/>
+  <text x="270" y="589" text-anchor="middle" font-size="14" font-weight="600" fill="#FFFFFF">Book a discovery call  →</text>
+
+  <rect x="400" y="560" width="280" height="48" rx="4" fill="none" stroke="#5E6B78" stroke-width="1.5"/>
+  <text x="540" y="589" text-anchor="middle" font-size="14" font-weight="600" fill="#E8ECF1">Download the datasheet (PDF)</text>
+
+  <text x="160" y="650" font-size="13" font-weight="500" fill="#A8B3BD">↓  See the architecture</text>
+
+  <!-- Trust micro-strip -->
+  <text x="160" y="720" font-size="12" fill="#A8B3BD">Trusted by defense and space-agency deployments  ·  Deployed across India and the Middle East  ·  AMC-partner ready</text>
+
+  <!-- Right column: cropped architecture diagram placeholder -->
+  <rect x="900" y="180" width="560" height="500" rx="6" fill="none" stroke="#5E6B78" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="1180" y="240" text-anchor="middle" font-size="13" font-weight="600" fill="#A8B3BD" letter-spacing="2">[ARCHITECTURE DIAGRAM]</text>
+  <text x="1180" y="265" text-anchor="middle" font-size="11" fill="#5E6B78">cropped — Elpis-owned middle</text>
+  <text x="1180" y="285" text-anchor="middle" font-size="11" fill="#5E6B78">(EdgeConnect + Acquisition + EREMOS V2)</text>
+  <!-- Stylized boxes inside the placeholder hint -->
+  <rect x="940" y="320" width="200" height="120" rx="4" fill="#272C33" stroke="#5E6B78" stroke-width="1"/>
+  <text x="1040" y="384" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">EdgeConnect</text>
+  <rect x="940" y="460" width="200" height="120" rx="4" fill="#272C33" stroke="#5E6B78" stroke-width="1"/>
+  <text x="1040" y="524" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">Acquisition</text>
+  <rect x="1220" y="380" width="200" height="200" rx="4" fill="#272C33" stroke="#5E6B78" stroke-width="1"/>
+  <text x="1320" y="486" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">EREMOS V2</text>
+  <line x1="1140" y1="380" x2="1218" y2="450" stroke="#00A0E0" stroke-width="2"/>
+  <line x1="1140" y1="520" x2="1218" y2="510" stroke="#00A0E0" stroke-width="2"/>
+
+  <!-- Annotation: Section 1 -->
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="40" font-weight="700" fill="#0080BC">§1 HERO</text>
+    <text x="20" y="60">SectionShell dark-deep</text>
+    <text x="20" y="74">NavMegaMenu (sticky)</text>
+    <text x="20" y="88">CTAGroup</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 2 — CAPABILITY STRIP (dark)  y=820 to y=1220
+       ============================================================ -->
+  <rect x="0" y="820" width="1600" height="400" fill="#1A1F26"/>
+
+  <text x="800" y="900" text-anchor="middle" font-size="11" font-weight="600" fill="#A8B3BD" letter-spacing="3">FIVE CAPABILITIES  ·  ONE ECOSYSTEM</text>
+  <text x="800" y="942" text-anchor="middle" font-size="22" font-weight="600" fill="#FFFFFF">Every layer of the industrial data path — owned by Elpis.</text>
+
+  <!-- Five capability cards -->
+  <g>
+    <!-- Card 1 — Pillar 1 -->
+    <rect x="160" y="1000" width="252" height="170" rx="4" fill="none" stroke="#4A5560" stroke-width="1"/>
+    <line x1="160" y1="1000" x2="160" y2="1170" stroke="#00A0E0" stroke-width="3"/>
+    <text x="178" y="1028" font-size="10" font-weight="600" fill="#00A0E0" letter-spacing="2">PILLAR 1</text>
+    <text x="178" y="1060" font-size="16" font-weight="600" fill="#FFFFFF">Connectivity</text>
+    <text x="178" y="1080" font-size="16" font-weight="600" fill="#FFFFFF">&amp; Edge</text>
+    <text x="178" y="1116" font-size="11" fill="#A8B3BD">Direct, brownfield-ready</text>
+    <text x="178" y="1132" font-size="11" fill="#A8B3BD">connectivity to existing controllers.</text>
+    <text x="178" y="1158" font-size="10" font-weight="600" fill="#A8B3BD">EdgeConnect · Edge Gateway</text>
+
+    <!-- Card 2 — Pillar 2 -->
+    <rect x="432" y="1000" width="252" height="170" rx="4" fill="none" stroke="#4A5560" stroke-width="1"/>
+    <line x1="432" y1="1000" x2="432" y2="1170" stroke="#4FBBC9" stroke-width="3"/>
+    <text x="450" y="1028" font-size="10" font-weight="600" fill="#4FBBC9" letter-spacing="2">PILLAR 2</text>
+    <text x="450" y="1060" font-size="16" font-weight="600" fill="#FFFFFF">Data</text>
+    <text x="450" y="1080" font-size="16" font-weight="600" fill="#FFFFFF">Acquisition</text>
+    <text x="450" y="1116" font-size="11" fill="#A8B3BD">Sensor-direct acquisition for</text>
+    <text x="450" y="1132" font-size="11" fill="#A8B3BD">assets without controllers.</text>
+    <text x="450" y="1158" font-size="10" font-weight="600" fill="#A8B3BD">mDAQ</text>
+
+    <!-- Card 3 — Pillar 3 -->
+    <rect x="704" y="1000" width="252" height="170" rx="4" fill="none" stroke="#4A5560" stroke-width="1"/>
+    <line x1="704" y1="1000" x2="704" y2="1170" stroke="#7AB5C6" stroke-width="3"/>
+    <text x="722" y="1028" font-size="10" font-weight="600" fill="#7AB5C6" letter-spacing="2">PILLAR 3</text>
+    <text x="722" y="1060" font-size="16" font-weight="600" fill="#FFFFFF">Asset</text>
+    <text x="722" y="1080" font-size="16" font-weight="600" fill="#FFFFFF">Intelligence</text>
+    <text x="722" y="1116" font-size="11" fill="#A8B3BD">Continuous asset utilization</text>
+    <text x="722" y="1132" font-size="11" fill="#A8B3BD">telemetry — even on legacy.</text>
+    <text x="722" y="1158" font-size="10" font-weight="600" fill="#A8B3BD">mTracker</text>
+
+    <!-- Card 4 — Pillar 4 -->
+    <rect x="976" y="1000" width="252" height="170" rx="4" fill="none" stroke="#4A5560" stroke-width="1"/>
+    <line x1="976" y1="1000" x2="976" y2="1170" stroke="#5C9DB5" stroke-width="3"/>
+    <text x="994" y="1028" font-size="10" font-weight="600" fill="#5C9DB5" letter-spacing="2">PILLAR 4</text>
+    <text x="994" y="1060" font-size="16" font-weight="600" fill="#FFFFFF">Condition</text>
+    <text x="994" y="1080" font-size="16" font-weight="600" fill="#FFFFFF">Monitoring</text>
+    <text x="994" y="1116" font-size="11" fill="#A8B3BD">Vibration + hydraulic-oil</text>
+    <text x="994" y="1132" font-size="11" fill="#A8B3BD">contamination intelligence.</text>
+    <text x="994" y="1158" font-size="10" font-weight="600" fill="#A8B3BD">VAS · E-IDOS</text>
+
+    <!-- Card 5 — Pillar 5 -->
+    <rect x="1248" y="1000" width="252" height="170" rx="4" fill="none" stroke="#4A5560" stroke-width="1"/>
+    <line x1="1248" y1="1000" x2="1248" y2="1170" stroke="#1A8FC2" stroke-width="3"/>
+    <text x="1266" y="1028" font-size="10" font-weight="600" fill="#1A8FC2" letter-spacing="2">PILLAR 5</text>
+    <text x="1266" y="1060" font-size="16" font-weight="600" fill="#FFFFFF">Operational</text>
+    <text x="1266" y="1080" font-size="16" font-weight="600" fill="#FFFFFF">Intelligence</text>
+    <text x="1266" y="1116" font-size="11" fill="#A8B3BD">Multi-tenant analytics, OEE,</text>
+    <text x="1266" y="1132" font-size="11" fill="#A8B3BD">alerts, reports — across plants.</text>
+    <text x="1266" y="1158" font-size="10" font-weight="600" fill="#A8B3BD">EREMOS V2</text>
+  </g>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="900" font-weight="700" fill="#0080BC">§2 CAPABILITIES</text>
+    <text x="20" y="920">SectionShell dark</text>
+    <text x="20" y="934">CapabilityCard × 5</text>
+    <text x="20" y="948">restrained pillar tones</text>
+  </g>
+
+  <!-- ============================================================
+       TRANSITION  (dark → light)  y=1220
+       ============================================================ -->
+
+  <!-- ============================================================
+       SECTION 3 — ARCHITECTURE DEEP-DIVE (light)  y=1220 to y=2120
+       ============================================================ -->
+  <rect x="0" y="1220" width="1600" height="900" fill="#FAFBFC"/>
+
+  <text x="800" y="1306" text-anchor="middle" font-size="11" font-weight="600" fill="#0080BC" letter-spacing="3">INDUSTRIAL INTELLIGENCE STACK</text>
+  <text x="800" y="1352" text-anchor="middle" font-size="26" font-weight="600" fill="#0F1419">Field signal to enterprise insight — across five capabilities.</text>
+  <text x="800" y="1390" text-anchor="middle" font-size="14" fill="#1A1F26">EdgeConnect reads existing controllers directly. Acquisition hardware captures sensors</text>
+  <text x="800" y="1412" text-anchor="middle" font-size="14" fill="#1A1F26">that controllers won't expose. Both feed EREMOS V2. Standard MQTT and OPC UA make</text>
+  <text x="800" y="1434" text-anchor="middle" font-size="14" fill="#1A1F26">every layer interoperable with whatever you already run.</text>
+
+  <!-- Architecture diagram embed placeholder -->
+  <rect x="160" y="1480" width="1140" height="500" rx="6" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+  <text x="730" y="1700" text-anchor="middle" font-size="14" font-weight="600" fill="#A8B3BD" letter-spacing="3">[ARCHITECTURE-DIAGRAM-V2-LIGHT.SVG]</text>
+  <text x="730" y="1726" text-anchor="middle" font-size="11" fill="#5E6B78">embedded full-width — locked rev3 peer architecture</text>
+
+  <!-- Caption -->
+  <text x="730" y="2020" text-anchor="middle" font-size="13" font-style="italic" fill="#1A1F26">One Acquisition layer at every plant. One Intelligence layer aggregating many sites.</text>
+  <text x="730" y="2042" text-anchor="middle" font-size="13" font-style="italic" fill="#1A1F26">Standard MQTT and OPC UA make the integration interoperable with whatever else you run.</text>
+
+  <!-- Right-side annotation list -->
+  <g font-size="11">
+    <text x="1340" y="1500" font-weight="700" fill="#0080BC" letter-spacing="1.5">WHAT TO LOOK AT</text>
+    <text x="1340" y="1530" font-weight="600" fill="#0F1419">Direct</text>
+    <text x="1340" y="1546" fill="#5E6B78">FOCAS2 · MT-LINKi ·</text>
+    <text x="1340" y="1560" fill="#5E6B78">MTConnect · Modbus</text>
+    <text x="1340" y="1592" font-weight="600" fill="#0F1419">Sensor</text>
+    <text x="1340" y="1608" fill="#5E6B78">mDAQ · VAS · E-IDOS</text>
+    <text x="1340" y="1640" font-weight="600" fill="#0F1419">Cooperate</text>
+    <text x="1340" y="1656" fill="#5E6B78">bi-directional when</text>
+    <text x="1340" y="1670" fill="#5E6B78">both deployed</text>
+    <text x="1340" y="1702" font-weight="600" fill="#0F1419">Open</text>
+    <text x="1340" y="1718" fill="#5E6B78">MQTT + OPC UA — use</text>
+    <text x="1340" y="1732" fill="#5E6B78">what you already run</text>
+  </g>
+
+  <!-- Secondary CTA -->
+  <rect x="640" y="2070" width="320" height="40" rx="4" fill="none" stroke="#0080BC" stroke-width="1.5"/>
+  <text x="800" y="2095" text-anchor="middle" font-size="13" font-weight="600" fill="#0080BC">See the architecture in detail  →</text>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="1280" font-weight="700" fill="#0080BC">§3 ARCHITECTURE</text>
+    <text x="20" y="1300">SectionShell light</text>
+    <text x="20" y="1314">ArchitecturePanel</text>
+    <text x="20" y="1328">embedded v2-light.svg</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 4 — HARDWARE ECOSYSTEM (light)  y=2120 to y=2620
+       ============================================================ -->
+  <rect x="0" y="2120" width="1600" height="500" fill="#FAFBFC"/>
+  <line x1="0" y1="2120" x2="1600" y2="2120" stroke="#D5DCE3" stroke-width="1"/>
+
+  <text x="800" y="2204" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="3">ACQUISITION HARDWARE — BUILT BY ELPIS</text>
+  <text x="800" y="2244" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">When sensors don't have a controller, we built the device that does.</text>
+
+  <!-- Five hardware cards -->
+  <g>
+    <g>
+      <rect x="160" y="2310" width="252" height="220" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+      <line x1="160" y1="2310" x2="160" y2="2530" stroke="#4FBBC9" stroke-width="3"/>
+      <text x="178" y="2342" font-size="18" font-weight="700" fill="#0F1419">mDAQ</text>
+      <text x="178" y="2368" font-size="11" font-weight="600" fill="#5E6B78">General-purpose acquisition</text>
+      <text x="178" y="2400" font-size="11" fill="#1A1F26">Multi-channel data acquisition</text>
+      <text x="178" y="2416" font-size="11" fill="#1A1F26">for any analog or digital signal</text>
+      <text x="178" y="2432" font-size="11" fill="#1A1F26">— connect what controllers</text>
+      <text x="178" y="2448" font-size="11" fill="#1A1F26">won't expose.</text>
+    </g>
+    <g>
+      <rect x="432" y="2310" width="252" height="220" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+      <line x1="432" y1="2310" x2="432" y2="2530" stroke="#7AB5C6" stroke-width="3"/>
+      <text x="450" y="2342" font-size="18" font-weight="700" fill="#0F1419">mTracker</text>
+      <text x="450" y="2368" font-size="11" font-weight="600" fill="#5E6B78">Asset utilization telemetry</text>
+      <text x="450" y="2400" font-size="11" fill="#1A1F26">Continuous machine-run</text>
+      <text x="450" y="2416" font-size="11" fill="#1A1F26">telemetry — even on legacy</text>
+      <text x="450" y="2432" font-size="11" fill="#1A1F26">assets. Utilization, status,</text>
+      <text x="450" y="2448" font-size="11" fill="#1A1F26">cycle data.</text>
+    </g>
+    <g>
+      <rect x="704" y="2310" width="252" height="220" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+      <line x1="704" y1="2310" x2="704" y2="2530" stroke="#5C9DB5" stroke-width="3"/>
+      <text x="722" y="2342" font-size="18" font-weight="700" fill="#0F1419">VAS</text>
+      <text x="722" y="2368" font-size="11" font-weight="600" fill="#5E6B78">Vibration analysis</text>
+      <text x="722" y="2400" font-size="11" fill="#1A1F26">Real-time vibration capture</text>
+      <text x="722" y="2416" font-size="11" fill="#1A1F26">and analysis for rotating</text>
+      <text x="722" y="2432" font-size="11" fill="#1A1F26">machinery — early warning</text>
+      <text x="722" y="2448" font-size="11" fill="#1A1F26">before failure.</text>
+    </g>
+    <g>
+      <rect x="976" y="2310" width="252" height="220" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+      <line x1="976" y1="2310" x2="976" y2="2530" stroke="#5C9DB5" stroke-width="3"/>
+      <text x="994" y="2342" font-size="18" font-weight="700" fill="#0F1419">E-IDOS</text>
+      <text x="994" y="2368" font-size="11" font-weight="600" fill="#5E6B78">Oil health intelligence</text>
+      <text x="994" y="2400" font-size="11" fill="#1A1F26">In-line hydraulic oil</text>
+      <text x="994" y="2416" font-size="11" fill="#1A1F26">contamination monitoring.</text>
+      <text x="994" y="2432" font-size="11" fill="#1A1F26">Elpis-built Sensor/HMI;</text>
+      <text x="994" y="2448" font-size="11" fill="#1A1F26">sensor-agnostic input.</text>
+    </g>
+    <g>
+      <rect x="1248" y="2310" width="252" height="220" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+      <line x1="1248" y1="2310" x2="1248" y2="2530" stroke="#00A0E0" stroke-width="3"/>
+      <text x="1266" y="2342" font-size="18" font-weight="700" fill="#0F1419">Edge Gateway</text>
+      <text x="1266" y="2368" font-size="11" font-weight="600" fill="#5E6B78">Linux appliance · PLC bridge</text>
+      <text x="1266" y="2400" font-size="11" fill="#1A1F26">Industrial appliance running</text>
+      <text x="1266" y="2416" font-size="11" fill="#1A1F26">EdgeConnect — direct PLC</text>
+      <text x="1266" y="2432" font-size="11" fill="#1A1F26">integration where a Windows</text>
+      <text x="1266" y="2448" font-size="11" fill="#1A1F26">server isn't appropriate.</text>
+    </g>
+  </g>
+
+  <text x="800" y="2588" text-anchor="middle" font-size="10" font-weight="600" fill="#0080BC" letter-spacing="2.5">SENSOR-AGNOSTIC  ·  BUILT BY ELPIS  ·  DEPLOYED ACROSS DEFENSE, AEROSPACE, AND HEAVY MANUFACTURING</text>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="2180" font-weight="700" fill="#0080BC">§4 HARDWARE</text>
+    <text x="20" y="2200">SectionShell light</text>
+    <text x="20" y="2214">CapabilityCard × 5</text>
+    <text x="20" y="2228">(hardware variant)</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 5 — EDGECONNECT depth (light-tinted)  y=2620 to y=3220
+       ============================================================ -->
+  <rect x="0" y="2620" width="1600" height="600" fill="#F4F6F9"/>
+
+  <text x="800" y="2706" text-anchor="middle" font-size="11" font-weight="600" fill="#0080BC" letter-spacing="3">CONNECTIVITY &amp; EDGE — THE RUNTIME BACKBONE</text>
+  <text x="800" y="2752" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">EdgeConnect — the industrial edge runtime that reads</text>
+  <text x="800" y="2782" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">everything, normalizes everything, and ships it anywhere.</text>
+
+  <text x="800" y="2832" text-anchor="middle" font-size="14" fill="#1A1F26">EdgeConnect runs on the factory floor as a Windows service or Linux appliance. It reads controllers directly</text>
+  <text x="800" y="2854" text-anchor="middle" font-size="14" fill="#1A1F26">via native protocols, normalizes every signal to a canonical model, and routes it to MQTT, OPC UA, HTTP, or TCP.</text>
+
+  <!-- MetricStrip -->
+  <g>
+    <text x="380" y="2960" text-anchor="middle" font-size="48" font-weight="700" fill="#0F1419">6+</text>
+    <text x="380" y="3000" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">PROTOCOLS SUPPORTED</text>
+    <text x="380" y="3030" text-anchor="middle" font-size="11" fill="#1A1F26">FOCAS2 · MT-LINKi · MTConnect</text>
+    <text x="380" y="3048" text-anchor="middle" font-size="11" fill="#1A1F26">· Brother HTTP · Modbus · OPC UA</text>
+
+    <text x="800" y="2960" text-anchor="middle" font-size="48" font-weight="700" fill="#0F1419">2</text>
+    <text x="800" y="3000" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">DELIVERY MODES</text>
+    <text x="800" y="3030" text-anchor="middle" font-size="11" fill="#1A1F26">AtMostOnce · AtLeastOnce</text>
+    <text x="800" y="3048" text-anchor="middle" font-size="11" fill="#1A1F26">per route</text>
+
+    <text x="1220" y="2960" text-anchor="middle" font-size="48" font-weight="700" fill="#0F1419">3</text>
+    <text x="1220" y="3000" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">DIAGNOSTICS LAYERS</text>
+    <text x="1220" y="3030" text-anchor="middle" font-size="11" fill="#1A1F26">Source · Pipeline · Sink</text>
+    <text x="1220" y="3048" text-anchor="middle" font-size="11" fill="#1A1F26">always-on visibility</text>
+  </g>
+
+  <rect x="640" y="3120" width="320" height="40" rx="4" fill="none" stroke="#0080BC" stroke-width="1.5"/>
+  <text x="800" y="3145" text-anchor="middle" font-size="13" font-weight="600" fill="#0080BC">Read the EdgeConnect overview  →</text>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="2680" font-weight="700" fill="#0080BC">§5 EDGECONNECT</text>
+    <text x="20" y="2700">SectionShell light-tinted</text>
+    <text x="20" y="2714">MetricStrip × 3</text>
+    <text x="20" y="2728">DiagramFrame embedded</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 6 — EREMOS V2 depth (light)  y=3220 to y=3820
+       ============================================================ -->
+  <rect x="0" y="3220" width="1600" height="600" fill="#FAFBFC"/>
+  <line x1="0" y1="3220" x2="1600" y2="3220" stroke="#D5DCE3" stroke-width="1"/>
+
+  <text x="800" y="3306" text-anchor="middle" font-size="11" font-weight="600" fill="#0080BC" letter-spacing="3">OPERATIONAL INTELLIGENCE</text>
+  <text x="800" y="3352" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">EREMOS V2 — multi-tenant intelligence</text>
+  <text x="800" y="3382" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">across every plant you run.</text>
+
+  <text x="800" y="3432" text-anchor="middle" font-size="14" fill="#1A1F26">Multi-tenant analytics, OEE via Segments, persistent alarms and incidents, configurable alerting,</text>
+  <text x="800" y="3454" text-anchor="middle" font-size="14" fill="#1A1F26">PDF and Excel reports, tool-life tracking, and the full PLANT-to-SUB_EQUIPMENT asset tree.</text>
+  <text x="800" y="3476" text-anchor="middle" font-size="14" fill="#1A1F26">One tenant, many plants, multi-vendor fleets.</text>
+
+  <!-- MetricStrip -->
+  <g>
+    <text x="380" y="3580" text-anchor="middle" font-size="48" font-weight="700" fill="#0F1419">5</text>
+    <text x="380" y="3614" text-anchor="middle" font-size="14" font-weight="600" fill="#1A1F26">levels</text>
+    <text x="380" y="3650" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">ASSET TREE DEPTH</text>
+    <text x="380" y="3680" text-anchor="middle" font-size="11" fill="#1A1F26">PLANT → AREA → LINE →</text>
+    <text x="380" y="3698" text-anchor="middle" font-size="11" fill="#1A1F26">EQUIPMENT → SUB_EQUIPMENT</text>
+
+    <text x="800" y="3580" text-anchor="middle" font-size="48" font-weight="700" fill="#0F1419">Yes</text>
+    <text x="800" y="3650" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">MULTI-TENANCY</text>
+    <text x="800" y="3680" text-anchor="middle" font-size="11" fill="#1A1F26">One tenant aggregates</text>
+    <text x="800" y="3698" text-anchor="middle" font-size="11" fill="#1A1F26">many plants — multi-vendor</text>
+
+    <text x="1220" y="3580" text-anchor="middle" font-size="40" font-weight="700" fill="#0F1419">PDF · Excel</text>
+    <text x="1220" y="3650" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">REPORT FORMATS</text>
+    <text x="1220" y="3680" text-anchor="middle" font-size="11" fill="#1A1F26">Scheduled or on-demand,</text>
+    <text x="1220" y="3698" text-anchor="middle" font-size="11" fill="#1A1F26">per asset / shift / segment</text>
+  </g>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="3280" font-weight="700" fill="#0080BC">§6 EREMOS V2</text>
+    <text x="20" y="3300">SectionShell light</text>
+    <text x="20" y="3314">MetricStrip × 3</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 7 — PROOF BAND (dark)  y=3820 to y=4170
+       ============================================================ -->
+  <rect x="0" y="3820" width="1600" height="350" fill="#0F1419"/>
+
+  <text x="800" y="3892" text-anchor="middle" font-size="11" font-weight="600" fill="#00A0E0" letter-spacing="3">DEPLOYED WHERE FAILURE ISN'T AN OPTION</text>
+  <text x="800" y="3934" text-anchor="middle" font-size="22" font-weight="600" fill="#FFFFFF">Defense.  Aerospace.  Heavy manufacturing.  AMC-partner ready.</text>
+
+  <g>
+    <line x1="180" y1="4000" x2="180" y2="4120" stroke="#5C9DB5" stroke-width="3"/>
+    <text x="200" y="4022" font-size="13" font-weight="600" fill="#FFFFFF">Defense + space-agency deployments</text>
+    <text x="200" y="4054" font-size="11" fill="#A8B3BD">Satellite radar antenna vibration</text>
+    <text x="200" y="4070" font-size="11" fill="#A8B3BD">monitoring — VAS deployed via</text>
+    <text x="200" y="4086" font-size="11" fill="#A8B3BD">3rd-party supplier to a national</text>
+    <text x="200" y="4102" font-size="11" fill="#A8B3BD">defense customer.</text>
+
+    <line x1="700" y1="4000" x2="700" y2="4120" stroke="#5C9DB5" stroke-width="3"/>
+    <text x="720" y="4022" font-size="13" font-weight="600" fill="#FFFFFF">Hydraulic-system condition</text>
+    <text x="720" y="4054" font-size="11" fill="#A8B3BD">E-IDOS deployed in defense and</text>
+    <text x="720" y="4070" font-size="11" fill="#A8B3BD">AMC contexts in India and the</text>
+    <text x="720" y="4086" font-size="11" fill="#A8B3BD">Middle East — prevents unexpected</text>
+    <text x="720" y="4102" font-size="11" fill="#A8B3BD">hydraulic shutdowns.</text>
+
+    <line x1="1220" y1="4000" x2="1220" y2="4120" stroke="#00A0E0" stroke-width="3"/>
+    <text x="1240" y="4022" font-size="13" font-weight="600" fill="#FFFFFF">AMC-partner channel</text>
+    <text x="1240" y="4054" font-size="11" fill="#A8B3BD">Maintenance and AMC providers</text>
+    <text x="1240" y="4070" font-size="11" fill="#A8B3BD">across India and the Middle East</text>
+    <text x="1240" y="4086" font-size="11" fill="#A8B3BD">deploy Elpis hardware in their</text>
+    <text x="1240" y="4102" font-size="11" fill="#A8B3BD">service offerings.</text>
+  </g>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="3880" font-weight="700" fill="#0080BC">§7 PROOF</text>
+    <text x="20" y="3900">SectionShell dark</text>
+    <text x="20" y="3914">ProofBand</text>
+    <text x="20" y="3928">3 anchors, anonymized</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 8 — WHO IT'S FOR (light)  y=4170 to y=4670
+       ============================================================ -->
+  <rect x="0" y="4170" width="1600" height="500" fill="#FAFBFC"/>
+
+  <text x="800" y="4252" text-anchor="middle" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="3">WHO ELPIS IS BUILT FOR</text>
+  <text x="800" y="4294" text-anchor="middle" font-size="22" font-weight="600" fill="#0F1419">Three audiences. One stack between them.</text>
+
+  <!-- Three audience cards -->
+  <g>
+    <rect x="200" y="4360" width="380" height="240" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+    <line x1="200" y1="4360" x2="200" y2="4600" stroke="#0080BC" stroke-width="3"/>
+    <text x="220" y="4400" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">MAINTENANCE MANAGERS</text>
+    <text x="220" y="4438" font-size="18" font-weight="700" fill="#0F1419">When unplanned downtime</text>
+    <text x="220" y="4462" font-size="18" font-weight="700" fill="#0F1419">costs more than the</text>
+    <text x="220" y="4486" font-size="18" font-weight="700" fill="#0F1419">equipment itself.</text>
+    <text x="220" y="4528" font-size="12" fill="#1A1F26">VAS, E-IDOS, mTracker keep your</text>
+    <text x="220" y="4544" font-size="12" fill="#1A1F26">maintenance team ahead of failure</text>
+    <text x="220" y="4560" font-size="12" fill="#1A1F26">— not reacting to it.</text>
+
+    <rect x="610" y="4360" width="380" height="240" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+    <line x1="610" y1="4360" x2="610" y2="4600" stroke="#0080BC" stroke-width="3"/>
+    <text x="630" y="4400" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">OPERATIONS LEADERS</text>
+    <text x="630" y="4438" font-size="18" font-weight="700" fill="#0F1419">When you need OEE</text>
+    <text x="630" y="4462" font-size="18" font-weight="700" fill="#0F1419">you can trust — across</text>
+    <text x="630" y="4486" font-size="18" font-weight="700" fill="#0F1419">every plant and vendor.</text>
+    <text x="630" y="4528" font-size="12" fill="#1A1F26">EREMOS V2 aggregates real signal</text>
+    <text x="630" y="4544" font-size="12" fill="#1A1F26">from real machines. No spreadsheets.</text>
+    <text x="630" y="4560" font-size="12" fill="#1A1F26">No estimation.</text>
+
+    <rect x="1020" y="4360" width="380" height="240" rx="4" fill="#FFFFFF" stroke="#D5DCE3" stroke-width="1"/>
+    <line x1="1020" y1="4360" x2="1020" y2="4600" stroke="#0080BC" stroke-width="3"/>
+    <text x="1040" y="4400" font-size="11" font-weight="600" fill="#5E6B78" letter-spacing="2">AMC PARTNERS</text>
+    <text x="1040" y="4438" font-size="18" font-weight="700" fill="#0F1419">When your service offering</text>
+    <text x="1040" y="4462" font-size="18" font-weight="700" fill="#0F1419">needs a hardware + intelligence</text>
+    <text x="1040" y="4486" font-size="18" font-weight="700" fill="#0F1419">platform behind it.</text>
+    <text x="1040" y="4528" font-size="12" fill="#1A1F26">White-label-ready hardware,</text>
+    <text x="1040" y="4544" font-size="12" fill="#1A1F26">AMC-channel pricing, partner</text>
+    <text x="1040" y="4560" font-size="12" fill="#1A1F26">enablement collateral.</text>
+  </g>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="4230" font-weight="700" fill="#0080BC">§8 AUDIENCES</text>
+    <text x="20" y="4250">SectionShell light</text>
+    <text x="20" y="4264">AudienceCard × 3</text>
+  </g>
+
+  <!-- ============================================================
+       SECTION 9 — CTA + FOOTER (dark)  y=4670 to y=5400
+       ============================================================ -->
+  <rect x="0" y="4670" width="1600" height="730" fill="#0F1419"/>
+
+  <text x="800" y="4760" text-anchor="middle" font-size="11" font-weight="600" fill="#00A0E0" letter-spacing="3">READY TO TALK</text>
+  <text x="800" y="4820" text-anchor="middle" font-size="32" font-weight="700" fill="#FFFFFF">Bring the Industrial Intelligence Ecosystem</text>
+  <text x="800" y="4860" text-anchor="middle" font-size="32" font-weight="700" fill="#FFFFFF">to your floor.</text>
+
+  <text x="800" y="4912" text-anchor="middle" font-size="15" fill="#E8ECF1">30-minute discovery call — we walk your asset list and tell you</text>
+  <text x="800" y="4934" text-anchor="middle" font-size="15" fill="#E8ECF1">which capabilities give you the fastest return.</text>
+
+  <rect x="600" y="4970" width="220" height="48" rx="4" fill="#00A0E0"/>
+  <text x="710" y="4999" text-anchor="middle" font-size="14" font-weight="600" fill="#FFFFFF">Book a discovery call  →</text>
+
+  <rect x="840" y="4970" width="280" height="48" rx="4" fill="none" stroke="#5E6B78" stroke-width="1.5"/>
+  <text x="980" y="4999" text-anchor="middle" font-size="14" font-weight="600" fill="#E8ECF1">Download the datasheet (PDF)</text>
+
+  <!-- Footer divider -->
+  <line x1="0" y1="5080" x2="1600" y2="5080" stroke="#3A4049" stroke-width="1"/>
+
+  <!-- Footer columns -->
+  <g font-size="11">
+    <text x="160" y="5140" font-size="13" font-weight="700" fill="#FFFFFF">ELPIS</text>
+    <text x="160" y="5160" fill="#A8B3BD">Industrial Intelligence</text>
+    <text x="160" y="5176" fill="#A8B3BD">Ecosystem.</text>
+    <text x="160" y="5200" fill="#A8B3BD">www.elpisitsolutions.com</text>
+
+    <text x="380" y="5140" font-size="11" font-weight="600" fill="#FFFFFF" letter-spacing="1.5">PLATFORM</text>
+    <text x="380" y="5168" fill="#A8B3BD">EdgeConnect</text>
+    <text x="380" y="5186" fill="#A8B3BD">Acquisition Hardware</text>
+    <text x="380" y="5204" fill="#A8B3BD">EREMOS V2</text>
+    <text x="380" y="5222" fill="#A8B3BD">Architecture</text>
+
+    <text x="600" y="5140" font-size="11" font-weight="600" fill="#FFFFFF" letter-spacing="1.5">SOLUTIONS</text>
+    <text x="600" y="5168" fill="#A8B3BD">Predictive Maintenance</text>
+    <text x="600" y="5186" fill="#A8B3BD">OEE</text>
+    <text x="600" y="5204" fill="#A8B3BD">Downtime Reduction</text>
+    <text x="600" y="5222" fill="#A8B3BD">Edge &amp; Connectivity</text>
+    <text x="600" y="5240" fill="#A8B3BD">Multi-site Visibility</text>
+
+    <text x="820" y="5140" font-size="11" font-weight="600" fill="#FFFFFF" letter-spacing="1.5">RESOURCES</text>
+    <text x="820" y="5168" fill="#A8B3BD">Datasheet</text>
+    <text x="820" y="5186" fill="#A8B3BD">Brochures</text>
+    <text x="820" y="5204" fill="#A8B3BD">Pitch deck</text>
+    <text x="820" y="5222" fill="#A8B3BD">Whitepapers (Phase 3)</text>
+
+    <text x="1040" y="5140" font-size="11" font-weight="600" fill="#FFFFFF" letter-spacing="1.5">COMPANY</text>
+    <text x="1040" y="5168" fill="#A8B3BD">About</text>
+    <text x="1040" y="5186" fill="#A8B3BD">Customers</text>
+    <text x="1040" y="5204" fill="#A8B3BD">Partners</text>
+    <text x="1040" y="5222" fill="#A8B3BD">Careers</text>
+    <text x="1040" y="5240" fill="#A8B3BD">Contact</text>
+  </g>
+
+  <!-- Legal strip -->
+  <line x1="160" y1="5310" x2="1440" y2="5310" stroke="#3A4049" stroke-width="1"/>
+  <text x="160" y="5340" font-size="10" fill="#5E6B78">© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</text>
+  <text x="1440" y="5340" text-anchor="end" font-size="10" fill="#5E6B78">Privacy  ·  Terms  ·  LinkedIn</text>
+
+  <g font-size="11" fill="#5E6B78">
+    <text x="20" y="4730" font-weight="700" fill="#0080BC">§9 CTA + FOOTER</text>
+    <text x="20" y="4750">CTASection (dark)</text>
+    <text x="20" y="4764">Footer 5-column</text>
+    <text x="20" y="4778">Legal strip</text>
+  </g>
+
+</svg>

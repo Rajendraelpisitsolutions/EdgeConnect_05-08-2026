@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/e-idos.html
+  Purpose:     Static HTML mockup of the /e-idos PRODUCT page — E-IDOS, the Oil
+               Health Intelligence appliance (Pillar 4, Condition Monitoring
+               HARDWARE). FIFTH (final) hardware product page. Inherits the
+               LOCKED §18.B hardware ProductDetail variant; structure lifted
+               verbatim from edge-gateway.html (the §18.B shape-setter).
+  Companion:   ./styles.css (reused — homepage visual system / brand tokens)
+               ../design-system-productdetail-addendum-v1.md §18.B (hardware variant)
+               ../page-product-e-idos-spec-v1.md (LOCKED — verbatim copy)
+  Governance:  KEY HONESTY LOCK — E-IDOS is a STANDALONE on-site instrument TODAY
+               (touch HMI, 58 mm thermal printer, auto-email, BLE Android app);
+               EREMOS V2 streaming (alarms / dashboards / incident workflows) is
+               NEAR-TERM ROADMAP, NEVER implied as available today. §3.6
+               architecture SVG draws the EREMOS V2 leg DASHED + labelled ROADMAP.
+               Sensor-agnostic: the Elpis Sensor/HMI Controller is Elpis IP; the
+               contamination sensor is the customer's choice (HYDAC / Parker /
+               MP Filter / Argo-Hytos named as sensor-agnostic PROOF, NOT
+               competitors). NO formal certification claims; IP65 / IP67-COMPATIBLE
+               only (never "certified" / "rated"); cert / IP / site-compliance
+               case-by-case during BOM scope (§18.B.0). Specs ORIENTATION-ONLY /
+               provisional — confirmed per deployment; no invented numbers.
+               Early-warning framing, NOT a shutdown-prevention guarantee.
+               Maintenance Manager / AMC buyer (§2.4) → "Bring us your hydraulic
+               system" / "Talk to a reliability engineer" (P-H).
+  Version:     v1 (mockup for sign-off)
+  Date:        2026-06-05
+  NOTE: visual shape demonstrator. Copy lifted from the LOCKED page spec. Specs
+        trace to hardware-ecosystem-map v3 §5.2 ("orientation only") — verify
+        before external publish.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-IDOS — Oil Health Intelligence Appliance · Elpis</title>
+  <meta name="description" content="Continuous hydraulic + lubrication oil health to ISO/NAS standards — particle contamination, water, flow. Sensor-agnostic; on-site reporting; AMC-ready.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/e-idos">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="E-IDOS">
+  <meta property="og:description" content="Continuous hydraulic + lubrication oil health to ISO/NAS standards — particle contamination, water, flow. Sensor-agnostic; on-site reporting; AMC-ready.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/e-idos">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="E-IDOS">
+  <meta name="twitter:description" content="Continuous hydraulic + lubrication oil health to ISO/NAS standards — particle contamination, water, flow. Sensor-agnostic; on-site reporting; AMC-ready.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=8">
+
+  <!-- ProductDetail-specific layout (§18 / §18.A / §18.B). Token-only; no new colors. -->
+  <style>
+    .prose { max-width: 68ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display: block; margin-bottom: var(--space-3); }
+    .section-title {
+      font-size: var(--size-xl); font-weight: var(--weight-semibold);
+      line-height: var(--line-snug); letter-spacing: var(--tracking-tight);
+    }
+
+    /* §3 feature grid */
+    .feature-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-5); margin-top: var(--space-8);
+    }
+    .feature-card {
+      border: 1px solid var(--color-border-subtle); border-radius: 10px;
+      padding: var(--space-6); background: var(--color-bg-raised);
+    }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .accent { display:block; width:28px; height:3px; background:var(--color-brand-teal); margin-bottom:var(--space-4); }
+
+    /* BOM-elimination list */
+    .bom-list { margin-top: var(--space-8); max-width: 76ch; }
+    .bom-list__intro { color: var(--color-text-muted-dark); font-size: var(--size-md); margin-bottom: var(--space-4); }
+    .bom-list ul { list-style: none; padding: 0; }
+    .bom-list li { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle); color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .bom-list li::before { content: "✕"; color: var(--color-brand-teal); font-weight: var(--weight-bold); margin-right: var(--space-3); }
+
+    /* §18.A spec-table */
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: var(--space-6); font-size: var(--size-sm); }
+    .spec-table caption { text-align: left; color: var(--color-text-muted-light); font-size: var(--size-sm); margin-bottom: var(--space-3); }
+    .spec-table th, .spec-table td {
+      text-align: left; padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border-light-subtle); vertical-align: top;
+    }
+    .spec-table thead th {
+      border-bottom: 2px solid var(--color-brand-teal); color: var(--color-text-heading-light);
+      font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose);
+      text-transform: uppercase; font-size: var(--size-xs);
+    }
+    .spec-table tbody tr:nth-child(even) td { background: var(--color-surface-light-secondary); }
+    .spec-table .proto { font-weight: var(--weight-semibold); color: var(--color-text-heading-light); white-space: nowrap; }
+
+    /* §7 how-to-buy */
+    .buy-note { margin-top: var(--space-6); color: var(--color-text-muted-dark); line-height: var(--line-body); max-width: 74ch; }
+
+    /* §8 trust cue / field-readiness */
+    .trust-cue { border-left: 2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 74ch; }
+    .trust-cue h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §9 FAQ */
+    .faq { margin-top: var(--space-8); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §10 cross-lens */
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style: italic; max-width: 74ch; }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration: none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner {
+      background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center;
+      font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2);
+    }
+    /* polish: un-cramp the §6 architecture diagram (was capped by .prose ~68ch) + lift sub-text contrast */
+    #architecture .prose { max-width: 100%; }
+    #architecture text[fill="#5E6B78"] { fill: #2C3540; }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <!-- NAV (reused from homepage reference) -->
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero__inner">
+          <div class="hero__copy">
+          <span class="eyebrow eyebrow--teal">PRODUCT · CONDITION MONITORING — HARDWARE</span>
+          <h1 id="hero-heading" class="hero__headline">E-IDOS — Oil Health Intelligence</h1>
+          <p class="hero__subhead">
+            Know your hydraulic and lubrication oil health continuously — particle contamination, water saturation, and flow — logged to ISO/NAS cleanliness standards. The controller is Elpis; the contamination sensor stays your choice. A standalone on-site instrument today, with EREMOS V2 streaming on the roadmap.
+          </p>
+          <div class="cta-group">
+            <a href="#cta" class="btn btn--primary btn--lg">Bring us your hydraulic system <span class="arrow" aria-hidden="true">→</span></a>
+            <a href="#cta" class="btn btn--secondary btn--lg">Talk to a reliability engineer</a>
+          </div>
+          <p class="trust-strip">
+            ISO 4406 / NAS 1638 cleanliness · particle contamination · water saturation · oil flow · sensor-agnostic · on-site HMI + printed report + BLE app · standalone today, EREMOS V2 streaming on the roadmap.
+          </p>
+          </div><!-- /hero__copy -->
+
+          <div class="hero__composite" aria-hidden="true">
+            <div class="hero__composite-dashboard">
+              <svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="E-IDOS: an oil-cleanliness panel showing an ISO 4406 / NAS 1638 code, a contamination-trend line, and a printed report glyph">
+                <defs>
+                  <linearGradient id="eiHeroBg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#1E2937" stop-opacity="0.96"/>
+                    <stop offset="100%" stop-color="#151B23" stop-opacity="0.96"/>
+                  </linearGradient>
+                </defs>
+                <rect x="1" y="1" width="398" height="258" rx="10" fill="url(#eiHeroBg)" stroke="#00A0E0" stroke-width="1"/>
+                <line x1="12" y1="2" x2="388" y2="2" stroke="#00A0E0" stroke-width="0.5" opacity="0.4"/>
+                <rect x="20" y="22" width="32" height="3" fill="#00A0E0"/>
+                <text x="20" y="44" font-size="9" font-weight="600" fill="#00A0E0" letter-spacing="2.5" font-family="Inter, sans-serif">E-IDOS — OIL HEALTH INTELLIGENCE</text>
+
+                <!-- Sensor + instrument line-art -->
+                <text x="20" y="74" font-size="7.5" fill="#8A94A0" font-family="Inter, sans-serif" letter-spacing="1">SENSOR → CONTROLLER</text>
+                <!-- oil sensor -->
+                <circle cx="42" cy="118" r="14" fill="#252D36" stroke="#4FBBC9" stroke-width="1.2"/>
+                <circle cx="42" cy="118" r="5" fill="#00A0E0"/>
+                <text x="42" y="148" text-anchor="middle" font-size="6.5" fill="#8A94A0" font-family="Inter, sans-serif">OIL SENSOR</text>
+                <!-- link line -->
+                <line x1="56" y1="118" x2="80" y2="118" stroke="#3A4049" stroke-width="1.4"/>
+                <!-- E-IDOS instrument -->
+                <rect x="80" y="92" width="118" height="80" rx="6" fill="#252D36" stroke="#00A0E0" stroke-width="1.5"/>
+                <!-- HMI screen -->
+                <rect x="90" y="102" width="98" height="40" rx="3" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                <text x="98" y="118" font-size="7" font-weight="600" fill="#4FBBC9" font-family="Inter, sans-serif">ISO 4406</text>
+                <!-- contamination trend line -->
+                <polyline points="98,134 112,128 126,131 140,122 154,124 168,116 180,118" fill="none" stroke="#00A0E0" stroke-width="1.4"/>
+                <!-- printer slot + report glyph -->
+                <rect x="90" y="150" width="60" height="6" rx="1.5" fill="#1E2937" stroke="#3A4049" stroke-width="0.6"/>
+                <rect x="158" y="148" width="30" height="18" rx="1.5" fill="#FFFFFF" opacity="0.92"/>
+                <line x1="162" y1="153" x2="184" y2="153" stroke="#5E6B78" stroke-width="0.8"/>
+                <line x1="162" y1="157" x2="184" y2="157" stroke="#5E6B78" stroke-width="0.8"/>
+                <line x1="162" y1="161" x2="178" y2="161" stroke="#5E6B78" stroke-width="0.8"/>
+
+                <!-- spec callout panel -->
+                <g font-family="Inter, sans-serif">
+                  <rect x="214" y="86" width="166" height="104" rx="6" fill="#1E2937" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="226" y="104" font-size="7.5" font-weight="600" fill="#00A0E0" letter-spacing="1.5">KEY FACTS (ORIENTATION)</text>
+                  <text x="226" y="124" font-size="9" font-weight="600" fill="#C8D0D8">ISO 4406 / NAS 1638</text>
+                  <text x="226" y="140" font-size="9" font-weight="600" fill="#C8D0D8">Sensor-agnostic input</text>
+                  <text x="226" y="156" font-size="9" font-weight="600" fill="#C8D0D8">On-site HMI + printer</text>
+                  <text x="226" y="172" font-size="9" font-weight="600" fill="#C8D0D8">Standalone today · BLE app</text>
+                </g>
+              </svg>
+            </div>
+            <p class="hero__composite-caption" style="text-align:center; color: var(--color-text-muted-dark); font-size: var(--size-xs); margin-top: var(--space-3);">Oil-cleanliness panel — illustrative; specs orientation-only, confirmed per deployment.</p>
+          </div>
+        </div><!-- /hero__inner -->
+      </div>
+    </section>
+
+    <!-- §2 WHAT IT IS -->
+    <section class="section" data-mode="light" aria-labelledby="what-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHAT IT IS</span>
+          <h2 id="what-heading" class="section-title">Know the oil before damage becomes downtime.</h2>
+        </div>
+        <p style="font-size: var(--size-md); line-height: var(--line-body);">
+          E-IDOS is a rugged appliance for hydraulic and lubrication <strong>oil condition monitoring</strong>. It continuously measures oil health — solid particle contamination, water saturation, and oil flow — in both online and offline states, and logs results to <strong>ISO 4406 / NAS 1638 cleanliness standards</strong>. The result is early warning on the fluid condition that quietly damages pumps, valves, bearings, and seals, instead of a quarterly lab report that arrives too late to act on.
+        </p>
+        <p style="margin-top: var(--space-5); color: var(--color-text-muted-light); line-height: var(--line-body);">
+          It is part of the <strong>Condition Monitoring</strong> pillar — see the capability story → <a class="pillar-link" href="index.html#capabilities-heading">/capabilities/condition-monitoring</a>. <strong>Today E-IDOS is a standalone reliability instrument</strong> — it auto-emails reports, prints an ISO 4406 / NAS 1638-coded report on-site via a built-in thermal printer, and exposes data through a BLE Android app. <strong>Streaming into EREMOS V2 (alarms, dashboards, incident workflows) is on the near-term roadmap</strong> — until it ships, E-IDOS delivers its value as a standalone instrument. (See → <a class="pillar-link" href="eremos-v2">/eremos-v2</a> for the platform it will stream into.)
+        </p>
+      </div>
+    </section>
+
+    <!-- §3 WHAT IT DOES + WHAT IT REPLACES -->
+    <section class="section" data-mode="dark" aria-labelledby="cap-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">WHAT IT DOES</span>
+          <h2 id="cap-heading" class="section-title">What it does — and what it replaces.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><span class="accent"></span><h3>Measures oil health continuously</h3><p>Solid particle contamination, water saturation, and oil flow — online and offline — instead of a periodic grab-sample.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Logs to ISO/NAS cleanliness standards</h3><p>ISO 4406 / NAS 1638 cleanliness codes, trended over time — the language a reliability program already speaks.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Sensor-agnostic by design</h3><p>The Elpis Sensor/HMI Controller is ours; the contamination sensor is your choice — supported vendors include HYDAC, Parker, MP Filter, and Argo-Hytos.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Reports on-site, today</h3><p>Built-in touch HMI, a 58 mm thermal printer for an on-the-spot ISO 4406 / NAS 1638-coded report, and a BLE Android app — no platform dependency to get a diagnostic in hand.</p></div>
+        </div>
+
+        <div class="bom-list">
+          <p class="bom-list__intro">E-IDOS removes from the customer BOM:</p>
+          <ul>
+            <li>a separate <strong>oil-contamination laboratory contract</strong>;</li>
+            <li><strong>manual oil-sample collection and shipping</strong>;</li>
+            <li>a <strong>standalone oil-condition monitor</strong>;</li>
+            <li>a <strong>third-party fluid-analysis vendor relationship</strong>;</li>
+            <li><strong>service-interval guesswork</strong> on hydraulic and lubrication systems.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 WHAT IT MEASURES + THE SENSOR-AGNOSTIC CONTROLLER (§18.A hardware) -->
+    <section class="section" data-mode="light" aria-labelledby="spec-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHAT IT MEASURES</span>
+          <h2 id="spec-heading" class="section-title">The measurement, the controller, and your sensor choice.</h2>
+        </div>
+        <table class="spec-table">
+          <caption>Measurements, cleanliness logging, and form-factor anchors are orientation-level and confirmed per deployment. Sensor selection, plumbing, targets, and reporting are confirmed during BOM scope.</caption>
+          <tbody>
+            <tr><td class="proto">Measurements</td><td>Solid particle contamination, water saturation, oil flow — online and offline</td></tr>
+            <tr><td class="proto">Cleanliness logging</td><td>ISO 4406 / NAS 1638 cleanliness codes, trended</td></tr>
+            <tr><td class="proto">Controller</td><td>Elpis <strong>Sensor/HMI Controller</strong> — Elpis IP: signal conditioning, ISO/NAS analytics, touch HMI, on-board thermal printer, BLE, mobile app, comms stack</td></tr>
+            <tr><td class="proto">Sensor compatibility (sensor-agnostic)</td><td>Contamination sensor is the customer's choice; supported vendors include <strong>HYDAC, Parker, MP Filter, Argo-Hytos</strong> (and similar). The controller is Elpis; the sensor choice is yours.</td></tr>
+            <tr><td class="proto">On-site reporting</td><td>Touch-screen HMI · 58 mm thermal printer (printed ISO 4406 / NAS 1638-coded report) · BLE Android companion app · auto-email reporting</td></tr>
+            <tr><td class="proto">Connectivity</td><td>4G · Wi-Fi · BLE; GPS for service-site / report geotagging where required. Exact connectivity set confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Sensor connectors</td><td>M12</td></tr>
+            <tr><td class="proto">EREMOS V2 streaming</td><td><strong>Roadmap</strong> (near-term) — alarms / dashboards / incident workflows. Standalone today.</td></tr>
+            <tr><td class="proto">Ingress protection</td><td>IP65 / IP67-<strong>compatible</strong> configurations can be scoped where the placement requires it; protection level + enclosure approach + any certification requirements confirmed during BOM scope. <em>(Compatibility, not a certified rating — no formal IP certification currently claimed.)</em></td></tr>
+          </tbody>
+        </table>
+
+        <table class="spec-table">
+          <caption>Confirmed during BOM scope — deployment-specific detail a reliability / fluids buyer expects (no invented numbers).</caption>
+          <thead>
+            <tr><th scope="col">Item</th><th scope="col">Confirmed during BOM scope</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="proto">Sensor selection</td><td>Contamination sensor vendor/model, measurement ranges, oil type / viscosity / temperature compatibility, M12 wiring</td></tr>
+            <tr><td class="proto">Mounting + plumbing</td><td>Online (inline) vs. offline measurement, hydraulic connection / sampling point, flow path, mounting</td></tr>
+            <tr><td class="proto">Cleanliness targets</td><td>ISO 4406 / NAS 1638 target codes + alarm thresholds per system</td></tr>
+            <tr><td class="proto">Reporting + workflow</td><td>Report cadence (printed / email / BLE), and — when EREMOS V2 streaming ships — alarm/incident mapping</td></tr>
+            <tr><td class="proto">Report contents</td><td>ISO 4406 code, NAS 1638 class, water-saturation + flow readings, timestamp, site / system ID, sensor identity, target-code comparison, and service notes — exact report layout confirmed during BOM scope</td></tr>
+            <tr><td class="proto">Calibration + traceability</td><td>Sensor calibration approach, calibration interval, and any traceability / documentation requirements confirmed during BOM scope</td></tr>
+            <tr><td class="proto">Fluid compatibility</td><td>Oil type, viscosity grade, additive chemistry, and operating-temperature range the measurement must tolerate confirmed during BOM scope</td></tr>
+            <tr><td class="proto">Power + environment</td><td>Supply, exposure, enclosure approach, IP65 / IP67-compatible configuration</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- §5 DEPLOYMENT ON HYDRAULIC / LUBRICATION SYSTEMS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="deploy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">IN THE FIELD</span>
+          <h2 id="deploy-heading" class="section-title">How it goes on the system.</h2>
+        </div>
+        <table class="spec-table">
+          <tbody>
+            <tr><td class="proto">Online or offline</td><td>Measures both online — installed inline on the hydraulic / lubrication circuit for continuous monitoring — and offline / visit-based, where an AMC provider brings the instrument to the system, takes a reading, and hands over a report. Which mode (continuous-inline or visit-based) and the hydraulic connection / sampling point are confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">Sensor</td><td>Customer's choice of contamination sensor (HYDAC / Parker / MP Filter / Argo-Hytos / similar) on M12 connectors; selection + oil-compatibility confirmed during BOM scope.</td></tr>
+            <tr><td class="proto">On-site use</td><td>Touch HMI for on-the-spot readings; 58 mm thermal printer for a printed ISO 4406 / NAS 1638-coded report; BLE Android app — usable without any platform connection.</td></tr>
+            <tr><td class="proto">Reporting</td><td>Auto-email + printed + BLE app today. EREMOS V2 streaming (alarms / dashboards / incidents) is near-term roadmap.</td></tr>
+            <tr><td class="proto">Connectivity / power / environment</td><td>4G / Wi-Fi / BLE (GPS for service-site / report geotagging where required); power, exposure, and IP65 / IP67-compatible configuration confirmed during BOM scope (no certified rating claimed).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- §6 ARCHITECTURE -->
+    <section class="section" data-mode="light" id="architecture" aria-labelledby="arch-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="arch-heading" class="section-title">The instrument in the stack — today, and on the roadmap.</h2>
+        </div>
+        <figure class="arch-figure" style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 230" width="100%" role="img"
+               aria-label="E-IDOS in the stack: a customer-chosen contamination sensor connects to the standalone E-IDOS instrument, which today produces an on-site HMI reading, a thermal-printed ISO 4406 / NAS 1638 report, auto-email, and a BLE app. A roadmap path, drawn dashed, streams alarms and dashboards into EREMOS V2 in future.">
+            <defs>
+              <marker id="ei-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/>
+              </marker>
+              <marker id="ei-arrow-road" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#00A0E0"/>
+              </marker>
+            </defs>
+            <!-- Oil sensor (sensor-agnostic) -->
+            <rect x="8" y="60" width="180" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Oil sensor</text>
+            <text x="98" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">HYDAC / Parker / MP</text>
+            <text x="98" y="136" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">Filter / Argo-Hytos · M12</text>
+            <text x="98" y="52" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#00A0E0" font-weight="600">SENSOR-AGNOSTIC</text>
+            <line x1="192" y1="110" x2="246" y2="110" stroke="#5E6B78" stroke-width="2" marker-end="url(#ei-arrow)"/>
+            <!-- E-IDOS core (highlighted, STANDALONE TODAY) -->
+            <rect x="250" y="50" width="210" height="120" rx="12" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="355" y="52" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#00A0E0" font-weight="600">STANDALONE TODAY</text>
+            <text x="355" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="16" fill="#0F1419">E-IDOS</text>
+            <text x="355" y="110" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Elpis Sensor/HMI Controller</text>
+            <text x="355" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">ISO 4406 / NAS 1638 analytics</text>
+            <text x="355" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">HMI · printer · email · BLE app</text>
+            <!-- On-site outputs (today) -->
+            <line x1="464" y1="110" x2="518" y2="110" stroke="#5E6B78" stroke-width="2" marker-end="url(#ei-arrow)"/>
+            <rect x="522" y="60" width="190" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="617" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13.5" fill="#0F1419">On-site diagnostic</text>
+            <text x="617" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">Printed ISO/NAS report</text>
+            <text x="617" y="130" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">Auto-email · BLE app</text>
+            <text x="617" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" font-weight="600">available today</text>
+            <!-- EREMOS V2 (ROADMAP — dashed) -->
+            <line x1="355" y1="170" x2="355" y2="196" stroke="#00A0E0" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ei-arrow-road)"/>
+            <rect x="754" y="55" width="198" height="120" rx="10" fill="#F4FAFE" stroke="#00A0E0" stroke-width="1.6" stroke-dasharray="6 4"/>
+            <text x="853" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">EREMOS V2</text>
+            <text x="853" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">alarms · dashboards</text>
+            <text x="853" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#5E6B78">incident workflows</text>
+            <text x="853" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" font-weight="700">ROADMAP — not available today</text>
+            <!-- dashed roadmap leg from E-IDOS to EREMOS V2 -->
+            <path d="M355 196 L355 210 L853 210 L853 177" fill="none" stroke="#00A0E0" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ei-arrow-road)"/>
+            <text x="604" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#00A0E0" font-weight="600">EREMOS streaming (ROADMAP — dashed)</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">
+            Today E-IDOS stands alone; the EREMOS V2 streaming path is roadmap (shown dashed). For the platform it will stream into, see → <a class="pillar-link" style="color:var(--color-brand-teal-light)" href="eremos-v2">/eremos-v2</a>. The full stack → <a class="pillar-link" style="color:var(--color-brand-teal-light)" href="architecture">/architecture</a>.
+          </figcaption>
+        </figure>
+        <p class="deploy-note">The diagram shows two states honestly: the customer's contamination sensor (sensor-agnostic) feeds the Elpis Sensor/HMI Controller, which produces a complete on-site diagnostic today — touch HMI, thermal-printed ISO 4406 / NAS 1638-coded report, auto-email, and BLE Android app — without any platform connection. Streaming alarms / dashboards / incident workflows into EREMOS V2 is near-term roadmap, drawn dashed. The form factor is designed for an AMC provider to measure on-site and hand over a documented report.</p>
+      </div>
+    </section>
+
+    <!-- §7 HOW TO ENGAGE -->
+    <section class="section" data-mode="dark" aria-labelledby="buy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">HOW TO ENGAGE</span>
+          <h2 id="buy-heading" class="section-title">Start with the hydraulic system you can't afford to lose.</h2>
+        </div>
+        <p style="color: var(--color-text-muted-dark); font-size: var(--size-sm); max-width: 74ch;"><em>Packaging labels are illustrative until commercial packaging is approved; this section describes how to engage + what it pairs with, not pricing.</em></p>
+        <p class="buy-note">
+          E-IDOS engagements start with a specific hydraulic or lubrication system — and the oil that quietly decides its life. It's scoped against the oil type, the contamination sensor, online vs. offline measurement, the ISO/NAS targets, and the reporting workflow. For <strong>AMC providers</strong>, the built-in HMI, thermal printer, and BLE app are the point: go to a customer site, run a measurement, hand over a printed ISO 4406 / NAS 1638-coded report, and walk away with a documented diagnostic — no platform dependency. For <strong>in-house maintenance</strong>, it replaces lab turnaround and service-interval guesswork with on-site oil-health intelligence. Bring the system, the oil, and your cleanliness targets; we'll scope the sensor + reporting. Contact Elpis for availability and scoping; detailed pricing follows the scope. No pricing tables, SKU grids, or per-unit pricing on this page.
+        </p>
+      </div>
+    </section>
+
+    <!-- §8 FIELD-READINESS + WHERE IT'S DEPLOYED -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="field-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">FIELD-READINESS &amp; PROOF</span>
+          <h2 id="field-heading" class="section-title">Built for the field, and for the service visit.</h2>
+        </div>
+        <div class="trust-cue">
+          <h3>Built for the field, and for the service visit.</h3>
+          <p>A rugged appliance with on-site touch HMI, thermal-printed reports, and a BLE app — a complete diagnostic in hand without a platform connection. Sensor-agnostic on the contamination input; the controller is Elpis. IP65 / IP67-compatible configuration confirmed during BOM scope.</p>
+        </div>
+        <div class="trust-cue">
+          <h3>Where it's deployed.</h3>
+          <p>
+            <strong>Deployed in defense and space-agency programs</strong> — ministry-tier fluid-condition deployments (via third-party supplier integration).<br>
+            <strong>Maintenance and AMC providers across India and the Middle East</strong> use E-IDOS to deliver their own oil-health services.<br>
+            <strong>Operating across India and the Middle East.</strong>
+          </p>
+        </div>
+        <p class="deploy-note">Formal third-party certifications are not currently claimed. Certification, ingress-protection, and site-compliance requirements are handled case-by-case during BOM scope; IP65 / IP67-compatible configurations can be scoped where required, but certified/rated claims are published only when formal evidence exists. Specific customer names and case studies arrive with the Phase 3 customer-story program; the category descriptors above are the standing, authorized proof.</p>
+      </div>
+    </section>
+
+    <!-- §9 FAQ -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">COMMON QUESTIONS</span>
+          <h2 id="faq-heading" class="section-title">What maintenance managers ask.</h2>
+        </div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">What does E-IDOS measure?</p><p class="faq__a">Hydraulic and lubrication oil health — solid particle contamination, water saturation, and oil flow — online and offline, logged to ISO 4406 / NAS 1638 cleanliness standards. Measurement ranges and oil compatibility depend on the selected sensor and are confirmed during BOM scope.</p></div>
+          <div class="faq__item"><p class="faq__q">Which contamination sensors does it work with?</p><p class="faq__a">E-IDOS is sensor-agnostic on the contamination input: the Elpis Sensor/HMI Controller does the conditioning and ISO/NAS analytics, and the contamination sensor is your choice — supported vendors include HYDAC, Parker, MP Filter, and Argo-Hytos (and similar). The controller is Elpis; the sensor choice is yours — which matters if you have existing sensor inventory or supplier relationships.</p></div>
+          <div class="faq__item"><p class="faq__q">Does it stream into EREMOS V2?</p><p class="faq__a"><strong>Not today.</strong> E-IDOS is a standalone instrument today — it auto-emails reports, prints an ISO 4406 / NAS 1638-coded report on-site via the built-in thermal printer, and exposes data via a BLE Android app. <strong>Streaming into EREMOS V2 (alarms, dashboards, incident workflows) is on the near-term roadmap.</strong> Until it ships, E-IDOS delivers its value as a standalone instrument; we'll be explicit about what's available at scope time.</p></div>
+          <div class="faq__item"><p class="faq__q">We're an AMC provider — how does E-IDOS fit our service?</p><p class="faq__a">It's built for exactly that. The touch HMI, 58 mm thermal printer, and BLE app let you go to a customer site, run a measurement, and hand over a printed ISO 4406 / NAS 1638-coded cleanliness report — a documented diagnostic, on the spot, with no platform dependency. Maintenance and AMC providers across India and the Middle East use E-IDOS to deliver their own oil-health services.</p></div>
+          <div class="faq__item"><p class="faq__q">Online or offline — how does it measure?</p><p class="faq__a">Both. It measures inline on the hydraulic / lubrication circuit (online) and in offline states. Which mode, and the hydraulic connection / sampling point, are confirmed during BOM scope against your system.</p></div>
+          <div class="faq__item"><p class="faq__q">Does it prevent breakdowns?</p><p class="faq__a">It gives you early warning: catching rising particle contamination or water saturation early enough to investigate, filter, flush, or service the system — before the fluid condition damages pumps, valves, bearings, and seals. It does not guarantee against every failure; it replaces lab-turnaround delay and service-interval guesswork with on-site, trended oil-health evidence.</p></div>
+          <div class="faq__item"><p class="faq__q">Is it certified? What about IP65 / IP67?</p><p class="faq__a">No formal third-party certifications are currently claimed. Certification, ingress-protection, and site-compliance requirements are handled case-by-case during BOM scope. Where the placement requires IP65 / IP67-compatible protection, Elpis can scope a compatible configuration or enclosure approach; formal certification or rating claims are published only when the specific product/configuration has the required certification or test evidence.</p></div>
+          <div class="faq__item"><p class="faq__q">How is E-IDOS different from VAS?</p><p class="faq__a">Both are Condition Monitoring instruments for the maintenance buyer, but they watch different failure evidence. <strong>E-IDOS is oil / fluid health</strong> on hydraulic and lubrication systems (contamination, water, flow; ISO/NAS) — a standalone instrument today, EREMOS V2 streaming on the roadmap. <strong>VAS is vibration</strong> on rotating machinery (bearings, imbalance, misalignment) — and feeds EREMOS V2 today. See <a class="pillar-link" style="color:var(--color-brand-teal-light)" href="vas">VAS</a> for rotating machinery.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 RELATED (cross-lens §18.3) -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">RELATED</span>
+          <h2 id="rel-heading" class="section-title">Looking at this from another angle?</h2>
+        </div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="index.html#capabilities-heading"><span class="eyebrow">CAPABILITY · CONDITION MONITORING</span><span class="cl-desc">The Pillar 4 capability story.</span></a>
+          <a class="crosslens-card" href="index.html#capabilities-heading"><span class="eyebrow">SOLUTION · PREDICTIVE MAINTENANCE</span><span class="cl-desc">How vibration evidence from VAS and oil-health diagnostics from E-IDOS support predictive maintenance. E-IDOS is standalone today; EREMOS V2 streaming is roadmap.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §11 CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size: var(--size-2xl); margin-top: var(--space-3);">Bring us the hydraulic system you can't afford to lose.</h2>
+        <p class="hero__subhead" style="margin-left:auto; margin-right:auto;">
+          The system, the oil it runs on, and your cleanliness targets — that's what we scope an E-IDOS deployment against. We'll match the sensor, set the ISO/NAS targets, and put a documented oil-health diagnostic in your hand on-site.
+        </p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=E-IDOS%20—%20bring%20us%20your%20hydraulic%20system" class="btn btn--primary btn--lg">Bring us your hydraulic system <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=E-IDOS%20—%20talk%20to%20a%20reliability%20engineer" class="btn btn--secondary btn--lg">Talk to a reliability engineer</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER (standardized — links every product page) -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

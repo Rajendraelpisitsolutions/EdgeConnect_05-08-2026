@@ -1,0 +1,105 @@
+@*
+    Apply-draft confirmation dialog. Shows the diff between the draft
+    and the current config (server-computed via /diff), then requires
+    the operator to type "APPLY" verbatim before the OK button
+    activates. Friction-by-design for the destructive write-path.
+*@
+@inject HttpClient HttpClient
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            About to apply draft <code>@DraftId</code> as the new current configuration.
+            This change will be recorded in the SHA-256 audit log.
+        </MudText>
+
+        @if (_diff is null && _diffError is null)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_diffError is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+                Could not compute diff: @_diffError. You can still apply, but you won't see
+                a preview of the changes.
+            </MudAlert>
+        }
+        else if (_diff!.Length == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">
+                This draft is identical to the current configuration. Applying it will create
+                a new audit-trail entry but make no functional change.
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">
+                Changes (@_diff.Length):
+            </MudText>
+            <MudPaper Elevation="0" Class="pa-2 mb-3"
+                      Style="max-height:300px; overflow:auto; border:1px solid var(--mud-palette-lines-default);">
+                @foreach (var change in _diff)
+                {
+                    <MudStack Row="true" Spacing="2" Class="mb-1" AlignItems="AlignItems.Center">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                 Color="@KindColor(change.Kind)">
+                            @change.Kind
+                        </MudChip>
+                        <MudText Typo="Typo.body2" Style="font-family:monospace; font-size:0.85em;">
+                            @change.EntityKind:@change.EntityId@(change.Path is null ? "" : "." + change.Path)
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="flex-grow:1;">
+                            @change.Summary
+                        </MudText>
+                    </MudStack>
+                }
+            </MudPaper>
+        }
+
+        <MudTextField @bind-Value="_typedConfirm" Label="Type APPLY to confirm"
+                      Variant="Variant.Outlined" Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Style="text-transform:none;">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(_typedConfirm != "APPLY")"
+                   Style="text-transform:none;">
+            Apply
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string DraftId { get; set; } = string.Empty;
+
+    private ConfigChangeDto[]? _diff;
+    private string? _diffError;
+    private string _typedConfirm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _diff = await HttpClient.GetFromJsonAsync<ConfigChangeDto[]>(
+                $"/api/v1/config/drafts/{Uri.EscapeDataString(DraftId)}/diff")
+                ?? Array.Empty<ConfigChangeDto>();
+        }
+        catch (Exception ex)
+        {
+            _diffError = ex.Message;
+        }
+    }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    private void Cancel() => MudDialog.Cancel();
+
+    private static Color KindColor(string kind) => kind switch
+    {
+        "Added" => Color.Success,
+        "Removed" => Color.Error,
+        "Modified" => Color.Warning,
+        _ => Color.Default,
+    };
+}

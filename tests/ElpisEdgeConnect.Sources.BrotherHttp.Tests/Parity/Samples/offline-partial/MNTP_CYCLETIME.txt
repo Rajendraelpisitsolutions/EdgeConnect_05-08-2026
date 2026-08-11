@@ -1,0 +1,12 @@
+Program,(,0926,)
+Cycle time,0000:04:56.2
+Cutting time,0000:04:43.5
+Non cutting time,0000:00:12.7
+Others,0.0
+Cutting time / cycle time, 95 %
+(Other times are not included in the cycle time)
+Operation time,3462:45:28
+Power on time,2496:17:52
+Total operation time,3465:37:02
+Date,20260322115936
+Operation end counter,0994

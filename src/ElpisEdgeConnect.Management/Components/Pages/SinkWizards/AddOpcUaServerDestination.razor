@@ -1,0 +1,724 @@
+@*
+    Add / Edit OPC UA Server destination wizard (M.2b.6 / M.2d.3 / M.2d.4).
+
+    Add mode: sections 1-5 + routing wiring + draft summary → POST draft.
+    Edit mode (M.2d.3 v2 §3): rendered by SinkEditRouter.
+       * EditMode + HydratedConfig parameters accepted; model hydrated
+         via OpcUaServerSinkWizardModel.HydrateFromExisting.
+       * Routing section hidden (Edit never mutates routes).
+       * InstanceId field disabled (immutable in Edit).
+       * Save → PUT /api/v1/sinks/{instanceId} (direct-apply).
+       * 409 VersionMismatch → StaleEditWarningBanner.
+
+    M.2d.4 adoption of ADR-0015 wizard contract:
+       * Structural — WizardShell + WizardSection (replaces pre-M.2d.1
+         manual MudStack + MudPaper layout).
+       * WizardValidationBanner wired on _model.Validate() output.
+       * Field-anchor ids per Rule 3 — kebab-case CSS selectors.
+       * ADR-0015 Rule 6 carve-out: OpcUa Server is an acceptor; no
+         Test Connection probe (binding has runtime side effects).
+         The Info alert explaining this is preserved.
+       * UX polish trade-off: Namespace and Capacity sections lose the
+         pre-M.2d.4 collapsible expansion-panel design in favour of
+         the shared numbered-card shape. WizardSection.Description
+         carries the "advanced — clients depend on this" captions.
+
+    Reference: docs/decisions/0015-wizard-contract.md
+               docs/sessions/2026-05-27-m2d4-cross-wizard-sweep-plan-v2.1.md
+*@
+@page "/destinations/new/opcua"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@using ElpisEdgeConnect.Sinks.OpcUaServer
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") OPC UA Server destination · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Hub"
+             Title="@(_isEdit ? $"Edit OPC UA Server destination — {_model.InstanceId}" : "Add OPC UA Server destination")"
+             Subtitle="Publish the data this gateway collects on an OPC UA endpoint that SCADA and HMI clients can subscribe to."
+             BackHref="@(_isEdit ? $"/sinks/{Uri.EscapeDataString(_model.InstanceId)}" : "/destinations/new")"
+             IsLoading="@(_currentConfig is null && !_isEdit)"
+             LoadError="@_loadError"
+             Embedded="@EmbeddedMode">
+    <ChildContent>
+        @* ADR-0015 Rule 5 — cumulative validation surface. *@
+        <WizardValidationBanner Messages="@_model.Validate()" />
+
+        <WizardSection Index="1" Title="Identity">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                                  Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                                  HelperText="@(_isEdit ? "Instance id is immutable once the destination exists." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                                  Variant="Variant.Outlined" Immediate="true"
+                                  Disabled="@_isEdit"
+                                  Error="@(!string.IsNullOrEmpty(_instanceIdError))"
+                                  ErrorText="@_instanceIdError"
+                                  UserAttributes="@AttrsFor("field-instance-id")" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudCheckBox @bind-Value="_model.Enabled" Color="Color.Primary" Dense="true">
+                        <MudText Typo="Typo.body2">
+                            Enabled
+                            <span style="opacity:0.6;"> — uncheck to create the destination stopped.</span>
+                        </MudText>
+                    </MudCheckBox>
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        <WizardSection Index="2" Title="Server">
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.EndpointUrl" @bind-Value:after="OnEndpointUrlChanged"
+                                  Label="Endpoint URL *"
+                                  HelperText="opc.tcp://hostname:port/path. 0.0.0.0 listens on every interface."
+                                  Variant="Variant.Outlined" Immediate="true"
+                                  UserAttributes="@AttrsFor("field-endpoint.url")" />
+                    @* Operator-feedback fix (2026-05-28): give an explicit
+                       "check port" button. Wizard-time bind+release catches
+                       4840 conflicts (Kepware, Matrikon, Prosys, vendor PLC
+                       tooling) before the operator hits Apply. *@
+                    <div class="d-flex align-center mt-1" style="gap:0.75rem; flex-wrap:wrap;">
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.NetworkCheck"
+                                   Disabled="@(_portProbing || string.IsNullOrWhiteSpace(_model.EndpointUrl))"
+                                   OnClick="OnCheckPortAsync"
+                                   id="field-endpoint.port-probe">
+                            @(_portProbing ? "Checking…" : "Check port availability")
+                        </MudButton>
+                        @if (_portProbeResult is { } probe && probe.Status != PortProbeStatus.Invalid)
+                        {
+                            <MudText Typo="Typo.caption" Color="@PortProbeColor(probe.Status)">
+                                @probe.Message
+                            </MudText>
+                        }
+                    </div>
+                    @if (_portProbeResult is { Status: PortProbeStatus.InUse })
+                    {
+                        <MudAlert Severity="Severity.Warning"
+                                  Variant="Variant.Outlined"
+                                  Dense="true"
+                                  Class="mt-2"
+                                  id="field-endpoint.port-warning">
+                            <MudText Typo="Typo.body2">
+                                @_portProbeResult.Message
+                            </MudText>
+                        </MudAlert>
+                    }
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.ApplicationUri"
+                                  Label="Application URI *"
+                                  HelperText="Identifies this server to clients (e.g. urn:elpis:edgeconnect)."
+                                  Variant="Variant.Outlined"
+                                  UserAttributes="@AttrsFor("field-endpoint.application-uri")" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.ApplicationName"
+                                  Label="Application name"
+                                  HelperText="Human-readable name shown during endpoint discovery."
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        <WizardSection Index="3" Title="Namespace"
+                       Description="Address-space shape · clients depend on this for stable NodeIds. Operators rarely change these.">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.NamespaceUri"
+                                  Label="Namespace URI"
+                                  HelperText="Versioned. Customers should NOT change this manually — :v2 ships side-by-side during shape migrations."
+                                  Variant="Variant.Outlined"
+                                  UserAttributes="@AttrsFor("field-namespace.uri")" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.RootFolder"
+                                  Label="Root folder"
+                                  HelperText="Top-level folder under Objects/."
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.BrowsePathTemplate"
+                                  Label="BrowsePath template"
+                                  HelperText="Placeholders: {site}/{area}/{line}/{deviceClass}/{sourceId}/{category}/{tagName}"
+                                  Variant="Variant.Outlined"
+                                  UserAttributes="@AttrsFor("field-namespace.browse-path")" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.NodeIdTemplate"
+                                  Label="NodeId template"
+                                  HelperText="Stable. Programmatic clients pin against this — do NOT change after deployment."
+                                  Variant="Variant.Outlined"
+                                  UserAttributes="@AttrsFor("field-namespace.node-id")" />
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        <WizardSection Index="4" Title="Security">
+            <MudRadioGroup T="OpcUaSecurityMode" @bind-Value="_model.SecurityMode">
+                <MudRadio T="OpcUaSecurityMode" Value="@OpcUaSecurityMode.None" Color="Color.Primary" Dense="true">
+                    None
+                    <span style="opacity:0.6;"> · no signing or encryption — acceptable on a trusted OT VLAN</span>
+                </MudRadio>
+                <MudRadio T="OpcUaSecurityMode" Value="@OpcUaSecurityMode.Sign" Color="Color.Primary" Dense="true">
+                    Sign
+                    <span style="opacity:0.6;"> · messages signed with Basic256Sha256</span>
+                </MudRadio>
+                <MudRadio T="OpcUaSecurityMode" Value="@OpcUaSecurityMode.SignAndEncrypt" Color="Color.Primary" Dense="true">
+                    Sign and Encrypt
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" Class="ml-2">Recommended</MudChip>
+                    <span style="opacity:0.6;"> · signed + encrypted with Basic256Sha256</span>
+                </MudRadio>
+            </MudRadioGroup>
+            @if (_model.SecurityMode != OpcUaSecurityMode.None)
+            {
+                @* Locked O release-prerequisite caption *@
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3" Dense="true">
+                    <MudText Typo="Typo.body2">
+                        <strong>Release prerequisite:</strong> Sign and Sign+Encrypt modes are accepted in
+                        configuration today but enforced at runtime starting in
+                        <strong>Milestone K</strong>. Picking a non-None mode against an MVP build
+                        will produce <code>OPCUA.SECURITY_NOT_YET_IMPLEMENTED</code> at apply time.
+                    </MudText>
+                </MudAlert>
+            }
+            <MudGrid Spacing="2" Class="mt-2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.ApplicationCertificatePath"
+                                  Label="Application certificate path (optional)"
+                                  HelperText="Leave blank to auto-generate a self-signed cert on first start. Custom paths land via the Advanced field below."
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+            <MudExpansionPanels Class="mt-2" Elevation="0">
+                <MudExpansionPanel Text="Advanced cert directories">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.TrustedClientsPath"
+                                          Label="Trusted clients dir"
+                                          HelperText="Honored from Milestone K."
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.RejectedClientsPath"
+                                          Label="Rejected clients dir"
+                                          HelperText="Honored from Milestone K."
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </WizardSection>
+
+        <WizardSection Index="5" Title="Capacity"
+                       Description="Advanced · session limits, monitored items. Defaults work for most deployments.">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_model.MaxSessions"
+                                     Label="Max sessions"
+                                     Min="1" Max="1000"
+                                     HelperText="Concurrent client sessions."
+                                     Variant="Variant.Outlined"
+                                     UserAttributes="@AttrsFor("field-capacity.max-sessions")" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_model.MaxMonitoredItemsPerSession"
+                                     Label="Max items / session"
+                                     Min="1" Max="100_000"
+                                     Variant="Variant.Outlined"
+                                     UserAttributes="@AttrsFor("field-capacity.max-monitored")" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_model.MinPublishingIntervalMs"
+                                     Label="Min publish interval (ms)"
+                                     Min="1" Max="60_000"
+                                     HelperText="Server rounds up client requests below this."
+                                     Variant="Variant.Outlined"
+                                     UserAttributes="@AttrsFor("field-capacity.min-publishing-interval")" />
+                </MudItem>
+            </MudGrid>
+        </WizardSection>
+
+        @* Section 6: Routing — hidden in Edit mode (Edit never mutates routes). *@
+        @if (!_isEdit)
+        {
+            <WizardSection Index="6" Title="Routing">
+                <MudRadioGroup T="string" @bind-Value="_wiringChoice">
+                    <MudRadio T="string" Value="@("none")" Color="Color.Primary" Dense="true">
+                        Do not wire yet
+                        <span style="opacity:0.6;"> · destination is created disabled — wire it later</span>
+                    </MudRadio>
+                    <MudRadio T="string" Value="@("newRoute")" Color="Color.Primary" Dense="true">
+                        Create a new route now
+                    </MudRadio>
+                </MudRadioGroup>
+                @if (_wiringChoice == "newRoute")
+                {
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_routeId" Label="Route id *"
+                                          Variant="Variant.Outlined" Immediate="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_routeName" Label="Route name (optional)"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudSelect T="string" Label="Source *" @bind-Value="_routeSourceInstanceId"
+                                       Variant="Variant.Outlined"
+                                       HelperText="The new route pulls data from this source.">
+                                @foreach (var src in _currentConfig!.Sources)
+                                {
+                                    <MudSelectItem T="string" Value="@src.InstanceId">
+                                        @src.InstanceId · @src.ProtocolName
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        @if (_currentConfig!.Sources.Count == 0)
+                        {
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                                    No sources configured.
+                                    <MudLink Href="/sources/new" Underline="Underline.Always">Add a source →</MudLink>
+                                    before wiring a route.
+                                </MudAlert>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </WizardSection>
+        }
+
+        @* Draft / Edit Summary *@
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">@(_isEdit ? "This will update:" : "When you save, EdgeConnect will:")</MudText>
+            <ul style="margin:0; padding-left:1.2rem;">
+                <li>
+                    <MudText Typo="Typo.body2">
+                        @(_isEdit ? "Update" : "Add") OPC UA Server destination <strong>@(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not set)" : _model.InstanceId)</strong>
+                        @if (!string.IsNullOrWhiteSpace(_model.EndpointUrl))
+                        {
+                            <span> — @_model.EndpointUrl</span>
+                        }
+                    </MudText>
+                </li>
+                <li>
+                    <MudText Typo="Typo.body2">
+                        Security: @_model.SecurityMode
+                    </MudText>
+                </li>
+                @if (!_isEdit)
+                {
+                    @if (_wiringChoice == "newRoute")
+                    {
+                        <li>
+                            <MudText Typo="Typo.body2">
+                                Create route <strong>@(string.IsNullOrWhiteSpace(_routeId) ? "(not set)" : _routeId)</strong>
+                                @if (!string.IsNullOrWhiteSpace(_routeSourceInstanceId))
+                                {
+                                    <span> — @_routeSourceInstanceId → @_model.InstanceId</span>
+                                }
+                            </MudText>
+                        </li>
+                    }
+                    else
+                    {
+                        <li>
+                            <MudText Typo="Typo.body2">
+                                Destination is created <strong>disabled</strong> (no route wired).
+                            </MudText>
+                        </li>
+                    }
+                }
+            </ul>
+        </MudPaper>
+
+        @* ADR-0015 Rule 6 carve-out: OpcUa Server has no Test Connection
+           probe — server is an acceptor (clients connect to IT). The
+           equivalent verification ("can we bind to this port?") has
+           runtime side effects. This Info alert explains the absence. *@
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            <MudText Typo="Typo.caption">
+                OPC UA Server destinations do not support Test Connection — the server is an acceptor (clients connect to it).
+                The equivalent verification is "can we bind to this port?" which has side effects; deferred to a future milestone.
+            </MudText>
+        </MudAlert>
+    </ChildContent>
+    <Footer>
+        @* No OnTestConnection wired — WizardActions omits the Test
+           Connection button entirely when the callback is unset.
+           ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode. *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode from SinkEditRouter.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Sink instance loaded by the router in Edit mode. Ignored in Add mode.</summary>
+    [Parameter] public SinkInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SinkInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    // Non-readonly — OnParametersSet reassigns in Edit mode.
+    private OpcUaServerSinkWizardModel _model = new();
+    private bool _hydrated;
+    private string? _lastNotifiedSignature;
+
+    private GatewayConfiguration? _currentConfig;
+    private string? _loadError;
+
+    private string? _instanceIdError;
+    private HashSet<string> _existingSinkIds = new(StringComparer.Ordinal);
+
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _routeSourceInstanceId = string.Empty;
+
+    private bool _busy;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    // Operator-feedback fix (2026-05-28) — pre-flight port probe state.
+    // Cleared whenever the endpoint URL changes so a stale Available /
+    // InUse label does not survive a port-number edit.
+    private bool _portProbing;
+    private PortProbeResult? _portProbeResult;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    /// <summary>
+    /// Build a MudBlazor UserAttributes dictionary that emits
+    /// <c>id="{idValue}"</c> on the underlying HTML input. ADR-0015 Rule 3
+    /// — field-anchor convention requires every validatable field to
+    /// carry a stable DOM id matching its FieldAnchor selector.
+    /// </summary>
+    private static Dictionary<string, object?> AttrsFor(string idValue) =>
+        new() { ["id"] = idValue };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            // Edit mode: router already loaded config; routing section hidden.
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSinkIds = new HashSet<string>(
+                    _currentConfig.Sinks.Select(s => s.InstanceId), StringComparer.Ordinal);
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = OpcUaServerSinkWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnReloadAfterStale()
+    {
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Cancel.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sinks/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/destinations/new");
+    }
+
+    /// <summary>ADR-0016 Rule 4 — fire OnInstanceBuilt on validity transitions.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        SinkInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSinkInstance(); }
+            catch { instance = null; }
+        }
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    /// <summary>
+    /// Invalidate any previous probe result when the endpoint URL changes.
+    /// We do NOT auto-re-probe — bind+release has a (tiny) side effect, so
+    /// we wait for an explicit operator click on the Check button.
+    /// </summary>
+    private void OnEndpointUrlChanged()
+    {
+        _portProbeResult = null;
+    }
+
+    /// <summary>
+    /// Run the pre-flight port probe and display the result. Errors are
+    /// captured into <see cref="_portProbeResult"/> rather than thrown so
+    /// the wizard never blows up because the probe could not run.
+    /// </summary>
+    private async Task OnCheckPortAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.EndpointUrl)) return;
+        _portProbing = true;
+        _portProbeResult = null;
+        try
+        {
+            _portProbeResult = await PortAvailabilityProbe.ProbeAsync(_model.EndpointUrl);
+        }
+        catch (Exception ex)
+        {
+            _portProbeResult = PortProbeResult.Error(0, $"Port probe failed: {ex.Message}");
+        }
+        finally
+        {
+            _portProbing = false;
+        }
+    }
+
+    /// <summary>Pick a body-text colour for the inline probe-result caption.</summary>
+    private static Color PortProbeColor(PortProbeStatus status) => status switch
+    {
+        PortProbeStatus.Available => Color.Success,
+        PortProbeStatus.InUse => Color.Warning,
+        PortProbeStatus.Error => Color.Error,
+        _ => Color.Default,
+    };
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return; // immutable in edit mode
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSinkIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Destination '{_model.InstanceId}' already exists. Choose a different instance id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (_model.ValidateEndpointUrl() is not null) return false;
+        if (_model.ValidateApplicationUri() is not null) return false;
+        if (_model.ValidateNamespace() is not null) return false;
+        if (_model.ValidateCapacity() is not null) return false;
+        if (_model.ValidateUserTokenPolicies() is not null) return false;
+        if (_isEdit) return true; // Edit: no dup-id or routing check
+        if (_currentConfig is null) return false;
+        if (_instanceIdError is not null) return false;
+        if (_wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (string.IsNullOrWhiteSpace(_routeSourceInstanceId)) return false;
+        }
+        return true;
+    }
+
+    private Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save.
+        if (EmbeddedMode) return Task.CompletedTask;
+        return _isEdit ? SaveEditAsync() : SaveAsDraftAsync();
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSink = _model.BuildSinkInstance();
+            var body = new UpdateSinkRequestDto
+            {
+                SinkConfig = updatedSink,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sinks/{Uri.EscapeDataString(updatedSink.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add($"Destination '{updatedSink.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sinks/{Uri.EscapeDataString(updatedSink.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            SinkInstanceConfig newSink;
+            try
+            {
+                newSink = _model.BuildSinkInstance();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Snackbar.Add($"Cannot build destination: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            if (_wiringChoice == "none")
+            {
+                newSink = newSink with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig(),
+                    SinkInstanceIds: new[] { newSink.InstanceId },
+                    SourceInstanceId: _routeSourceInstanceId),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSinkDraft(_currentConfig, newSink, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            var body = new { configuration = newDraft, actor = "system" };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/config/drafts", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Draft creation rejected: {err}", Severity.Error);
+                return;
+            }
+
+            var created = await resp.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, string>>();
+            var newDraftId = created is { } d && d.TryGetValue("draftId", out var id) ? id : null;
+
+            Snackbar.Configuration.VisibleStateDuration = 10_000;
+            Snackbar.Add("Saved. Review and activate it on the Configuration page.", Severity.Success);
+
+            var target = newDraftId is not null
+                ? $"/config?new={Uri.EscapeDataString(newDraftId)}"
+                : "/config";
+            Nav.NavigateTo(target);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

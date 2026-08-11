@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectStreams xmlns="urn:mtconnect.org:MTConnectStreams:1.7">
+  <Header instanceId="1" version="1.7.0" sender="agent.example.com" bufferSize="131072" nextSequence="12345" firstSequence="1" lastSequence="12344"/>
+  <Streams>
+    <DeviceStream name="CNC-1" uuid="urn:example:cnc-1">
+      <ComponentStream component="Controller" componentId="ctrl" name="controller">
+        <Events>
+          <Execution dataItemId="exec" timestamp="2026-04-22T00:00:00Z" sequence="1">ACTIVE</Execution>
+          <ControllerMode dataItemId="mode" timestamp="2026-04-22T00:00:00Z" sequence="2">AUTOMATIC</ControllerMode>
+          <EmergencyStop dataItemId="estop" timestamp="2026-04-22T00:00:00Z" sequence="3">ARMED</EmergencyStop>
+          <Program dataItemId="prog" timestamp="2026-04-22T00:00:00Z" sequence="4">O1234</Program>
+          <SubProgram dataItemId="sub" timestamp="2026-04-22T00:00:00Z" sequence="5">O1234.1</SubProgram>
+          <PartCount dataItemId="parts" timestamp="2026-04-22T00:00:00Z" sequence="6">42</PartCount>
+        </Events>
+        <Samples>
+          <PathFeedrate dataItemId="feed" timestamp="2026-04-22T00:00:00Z" sequence="7" units="MILLIMETER/MINUTE">500.5</PathFeedrate>
+          <SpindleSpeed dataItemId="spspeed" timestamp="2026-04-22T00:00:00Z" sequence="8" units="REVOLUTION/MINUTE">1200</SpindleSpeed>
+          <SpindleLoad dataItemId="spload" timestamp="2026-04-22T00:00:00Z" sequence="9" units="PERCENT">45.0</SpindleLoad>
+          <CycleTime dataItemId="cycle" timestamp="2026-04-22T00:00:00Z" sequence="10" units="SECOND">125.3</CycleTime>
+        </Samples>
+      </ComponentStream>
+      <ComponentStream component="Axes" componentId="axes" name="axes">
+        <Samples>
+          <Position dataItemId="xact" name="X" subType="ACTUAL" timestamp="2026-04-22T00:00:00Z" sequence="11" units="MILLIMETER">123.456</Position>
+          <Position dataItemId="xmach" name="X" subType="MACHINE" timestamp="2026-04-22T00:00:00Z" sequence="12" units="MILLIMETER">120.000</Position>
+          <Position dataItemId="yact" name="Y" subType="ACTUAL" timestamp="2026-04-22T00:00:00Z" sequence="13" units="MILLIMETER">234.567</Position>
+          <Position dataItemId="zact" name="Z" subType="ACTUAL" timestamp="2026-04-22T00:00:00Z" sequence="14" units="MILLIMETER">345.678</Position>
+        </Samples>
+      </ComponentStream>
+    </DeviceStream>
+  </Streams>
+</MTConnectStreams>

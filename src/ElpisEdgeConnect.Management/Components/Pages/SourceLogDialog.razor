@@ -1,0 +1,133 @@
+@*
+    Per-source diagnostic-log viewer + opt-in toggle. Opened from the Overview
+    route card. When logging is enabled the source adapter records device
+    connect/disconnect and each data read to logs\<source>.txt; this dialog
+    toggles that and tails the file live.
+*@
+@using System.Net.Http.Json
+@using ElpisEdgeConnect.Management.Contracts
+@inject HttpClient HttpClient
+@implements IDisposable
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Article" />
+            <MudText Typo="Typo.h6">Source log — @SourceId</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" Spacing="2">
+            @* Label matches the empty-state text below, which told the operator to
+               tick "Enable logging" — a control named something else is a control
+               they cannot find. *@
+            <MudCheckBox T="bool" Value="_enabled" ValueChanged="OnToggle"
+                         Color="Color.Primary" Label="Enable logging" Dense="true"
+                         data-testid="source-log-enable-toggle" />
+            @* Whether this is recording is the first thing an operator checks when
+               the pane is empty, and a checkbox tick alone is easy to misread at a
+               glance. Icon AND word, so the state never rests on the tick or on
+               colour. aria-live announces a toggle the operator just made. *@
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center"
+                      role="status" aria-live="polite"
+                      data-testid="source-log-state">
+                <MudIcon Icon="@(_enabled ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Block)"
+                         Size="Size.Small"
+                         Color="@(_enabled ? Color.Success : Color.Default)"
+                         aria-hidden="true" />
+                <MudText Typo="Typo.caption">@(_enabled ? "Recording" : "Not recording")</MudText>
+            </MudStack>
+            <MudSpacer />
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Saved to <code>ProgramData\EdgeConnect\logs\@(SourceId).txt</code>
+            </MudText>
+        </MudStack>
+
+        <MudPaper Elevation="0"
+                  Style="max-height:52vh; overflow:auto; background:#0B1021; border:1px solid #1f2937; border-radius:6px;"
+                  Class="pa-3">
+            @if (_lines is null)
+            {
+                <MudText Typo="Typo.caption" Style="color:#9aa4b2;">Loading…</MudText>
+            }
+            else if (_lines.Length == 0)
+            {
+                <MudText Typo="Typo.body2" Style="color:#9aa4b2;">
+                    @(_enabled
+                        ? "Logging is ON — no entries yet. Lines appear on the next poll / device event."
+                        : "Logging is OFF for this source. Turn on “Enable logging” to start recording.")
+                </MudText>
+            }
+            else
+            {
+                <pre style="margin:0; color:#d6deeb; font-family:Consolas,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word;">@string.Join("\n", _lines)</pre>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-auto ml-2">
+            @(_lines?.Length ?? 0) line@(_lines?.Length == 1 ? "" : "s") · auto-refreshing
+        </MudText>
+        <MudButton OnClick="Refresh">Refresh</MudButton>
+        <MudButton Color="Color.Primary" OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string SourceId { get; set; } = string.Empty;
+
+    private string[]? _lines;
+    private bool _enabled;
+    private Timer? _timer;
+    private bool _disposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        _timer = new Timer(async _ => { if (!_disposed) { await InvokeAsync(Refresh); } },
+                           null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            var dto = await HttpClient.GetFromJsonAsync<SourceLogDto>(
+                $"/api/v1/sources/{Uri.EscapeDataString(SourceId)}/log?tail=300");
+            if (dto is not null)
+            {
+                _enabled = dto.Enabled;
+                _lines = dto.Lines is null ? Array.Empty<string>() : System.Linq.Enumerable.ToArray(dto.Lines);
+            }
+            StateHasChanged();
+        }
+        catch
+        {
+            // transient — next tick retries
+        }
+    }
+
+    private async Task OnToggle(bool value)
+    {
+        _enabled = value;
+        var state = value ? "enable" : "disable";
+        try
+        {
+            await HttpClient.PostAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(SourceId)}/logging/{state}", content: null);
+        }
+        catch
+        {
+            // ignore — the next Refresh reflects the true state
+        }
+        await Refresh();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _timer?.Dispose();
+    }
+}

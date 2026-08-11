@@ -1,0 +1,84 @@
+{
+  "_provisioning": {
+    "configFingerprint": "4bfbb00726992bed61acffabe76eb6b718004dd3696ae897bcfd7c0a86e4f375",
+    "csvFingerprint": "87136d3ed922e13ca000d52d6f6ab1a6aaabe8d36f235461db8e8fdb9f31a784",
+    "fleetId": "fleet-acme",
+    "gatewayProvisioningId": "33333333-3333-3333-3333-333333333333",
+    "generatedAt": "2026-01-01T00:00:00Z",
+    "generatedBy": "tools/bulk-provision/generate.ps1",
+    "generatorVersion": "0.1.0",
+    "templateId": "template-modbus",
+    "templateSchemaVersion": 1
+  },
+  "Gateway": {
+    "GatewayId": "00000000-0000-0000-0000-000000000003",
+    "GatewayName": "edge-acme-site-c"
+  },
+  "Routes": [
+    {
+      "Buffer": {
+        "MaxAgeDays": 7,
+        "MaxDepth": 100000,
+        "Mode": "StoreAndForward",
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "BackoffMultiplier": 2.0,
+        "InitialBackoffMs": 100,
+        "JitterPercent": 10,
+        "MaxBackoffMs": 30000,
+        "MaxRetries": 100,
+        "Mode": "AtLeastOnce"
+      },
+      "Enabled": true,
+      "Name": "Modbus PLCs to MQTT",
+      "RouteId": "route-modbus-33333333-3333-3333-3333-333333333333",
+      "SinkInstanceIds": [
+        "edge-acme-c-mqtt"
+      ],
+      "SourceInstanceId": "plc-002-source"
+    }
+  ],
+  "Sinks": [
+    {
+      "Connection": {
+        "brokerHost": "127.0.0.1",
+        "brokerPort": 1883,
+        "clientId": "edge-acme-c-33333333-3333-3333-3333-333333333333",
+        "maxReconnectDelayMs": 30000,
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "publishMode": "PerTag",
+        "qosLevel": 1,
+        "reconnectDelayMs": 1000,
+        "useTls": false
+      },
+      "Enabled": true,
+      "InstanceId": "edge-acme-c-mqtt",
+      "ProtocolName": "mqtt"
+    }
+  ],
+  "Sources": [
+    {
+      "Connection": {
+        "backoffMultiplier": 2.0,
+        "host": "192.168.30.22",
+        "initialBackoffMs": 5000,
+        "maxBackoffMs": 120000,
+        "maxConnectRetries": 5,
+        "port": 502,
+        "tags": [],
+        "timeoutMs": 5000,
+        "unitId": 1
+      },
+      "DeviceClass": "plc",
+      "DeviceId": "plc-002",
+      "DeviceName": "Press-B",
+      "Enabled": true,
+      "InstanceId": "plc-002-source",
+      "Polling": {
+        "IntervalMs": 1000
+      },
+      "ProtocolName": "modbus-tcp"
+    }
+  ]
+}

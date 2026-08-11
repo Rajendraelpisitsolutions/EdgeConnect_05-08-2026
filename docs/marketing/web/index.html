@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/index.html
+  Purpose:     Static HTML/CSS reference implementation of Homepage v2.
+               Phase 1.5 deliverable per web-platform-roadmap-v2 §1.1
+               and digital-experience-platform-strategy-v2 §6 ownership
+               table.
+
+               This file is the visual ground truth for the Angular team's
+               Phase 1 implementation. Lift the copy verbatim. Use the
+               structure as the component composition reference. Match
+               the visual treatment pixel-for-pixel.
+
+  Companion:   ./styles.css
+               ../homepage-spec-v2.md (spec)
+               ../design-system-v2.md (components)
+               ../design-governance-v1.md (discipline)
+               assets/architecture-diagram-v2-light.svg (embedded)
+  Version:     v1 (Phase 1.5 reference)
+  Date:        2026-05-26
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elpis Industrial Intelligence Ecosystem — Field signal to enterprise decision</title>
+  <meta name="description" content="Elpis combines edge connectivity, sensor-direct acquisition, condition monitoring, and operational intelligence in a single industrial intelligence stack. Brownfield-ready. Sensor-agnostic.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Elpis Industrial Intelligence Ecosystem">
+  <meta property="og:description" content="Elpis combines edge connectivity, sensor-direct acquisition, condition monitoring, and operational intelligence in a single industrial intelligence stack. Brownfield-ready. Sensor-agnostic.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Elpis Industrial Intelligence Ecosystem">
+  <meta name="twitter:description" content="Elpis combines edge connectivity, sensor-direct acquisition, condition monitoring, and operational intelligence in a single industrial intelligence stack. Brownfield-ready. Sensor-agnostic.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=8">
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <!-- ============================================================
+       NAV (NavMegaMenu component — design-system §10)
+       Sticky, dark-deep mode, 7-nav with Phase 2+ items dimmed.
+       ============================================================ -->
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png"
+               alt="Elpis IT Solutions"
+               class="nav__brand-logo"
+               width="1068" height="165">
+        </a>
+
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============================================================
+         SECTION 1 — Hero
+         ============================================================ -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero__inner">
+
+          <div class="hero__copy">
+            <span class="eyebrow eyebrow--teal">INDUSTRIAL INTELLIGENCE ECOSYSTEM</span>
+
+            <h1 id="hero-heading" class="hero__headline">
+              From shop floor signal<br class="break-md">
+              to enterprise decision —<br class="break-md">
+              one industrial intelligence stack.
+            </h1>
+
+            <p class="hero__subhead">
+              Elpis combines edge connectivity, sensor-direct acquisition, condition
+              monitoring, and operational intelligence in a single ecosystem.
+              Brownfield-ready. Sensor-agnostic. Built end-to-end by Elpis —
+              or layered into what you already run.
+            </p>
+
+            <div class="cta-group">
+              <a href="#cta" class="btn btn--primary btn--lg">
+                Book a discovery call <span class="arrow" aria-hidden="true">→</span>
+              </a>
+              <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">
+                Download the platform datasheet (PDF)
+              </a>
+            </div>
+
+            <a href="#architecture" class="cta-tertiary">
+              <span aria-hidden="true">↓</span> See the architecture
+            </a>
+
+            <p class="trust-strip">
+              Trusted across automotive, heavy manufacturing, energy, and defense · Deployed across India and the Middle East · AMC-partner ready
+            </p>
+          </div>
+
+          <!-- HERO COMPOSITE — Direction D-2 (hardware + intelligence).
+               Addresses the "hardware company" perception risk of pure D.
+               Vertical composition:
+                 Top    — stylized EREMOS V2 dashboard panel (intelligence)
+                 Middle — teal data-flow beam (hardware → intelligence)
+                 Bottom — mDAQ hardware product render (real)
+               Caption reinforces platform identity, not hardware identity.
+               -->
+          <div class="hero__composite" aria-hidden="true">
+
+            <!-- TOP: stylized EREMOS V2 intelligence panel -->
+            <div class="hero__composite-dashboard">
+              <svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"
+                   role="img" aria-label="EREMOS V2 intelligence dashboard">
+                <defs>
+                  <linearGradient id="dashBg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   stop-color="#1E2937" stop-opacity="0.96"/>
+                    <stop offset="100%" stop-color="#151B23" stop-opacity="0.96"/>
+                  </linearGradient>
+                  <linearGradient id="dashSpark" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   stop-color="#00A0E0" stop-opacity="0.45"/>
+                    <stop offset="100%" stop-color="#00A0E0" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+
+                <!-- Glassy panel -->
+                <rect x="1" y="1" width="398" height="258" rx="10"
+                      fill="url(#dashBg)" stroke="#00A0E0" stroke-width="1"/>
+                <!-- Subtle inner highlight on top edge (glass effect) -->
+                <line x1="12" y1="2" x2="388" y2="2" stroke="#00A0E0" stroke-width="0.5" opacity="0.4"/>
+
+                <!-- Teal accent bar -->
+                <rect x="20" y="22" width="32" height="3" fill="#00A0E0"/>
+
+                <!-- Eyebrow -->
+                <text x="20" y="44" font-size="9" font-weight="600"
+                      fill="#00A0E0" letter-spacing="2.5"
+                      font-family="Inter, sans-serif">EREMOS V2 — INTELLIGENCE</text>
+
+                <!-- KPI Tile 1: OEE -->
+                <g transform="translate(20 60)">
+                  <rect x="0" y="0" width="115" height="74" rx="4"
+                        fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600"
+                        fill="#A8B3BD" letter-spacing="1.5"
+                        font-family="Inter, sans-serif">OEE — PLANT 03</text>
+                  <text x="10" y="48" font-size="26" font-weight="700"
+                        fill="#FFFFFF" font-family="Inter, sans-serif">87.2%</text>
+                  <text x="10" y="65" font-size="8" font-weight="600"
+                        fill="#4FBBC9" font-family="Inter, sans-serif">▲ 2.3 vs last shift</text>
+                </g>
+
+                <!-- KPI Tile 2: Alarms -->
+                <g transform="translate(145 60)">
+                  <rect x="0" y="0" width="115" height="74" rx="4"
+                        fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600"
+                        fill="#A8B3BD" letter-spacing="1.5"
+                        font-family="Inter, sans-serif">ACTIVE ALARMS</text>
+                  <text x="10" y="48" font-size="26" font-weight="700"
+                        fill="#FFFFFF" font-family="Inter, sans-serif">4</text>
+                  <text x="10" y="65" font-size="8" font-weight="600"
+                        fill="#A8B3BD" font-family="Inter, sans-serif">2 acknowledged</text>
+                </g>
+
+                <!-- KPI Tile 3: Plants -->
+                <g transform="translate(270 60)">
+                  <rect x="0" y="0" width="110" height="74" rx="4"
+                        fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600"
+                        fill="#A8B3BD" letter-spacing="1.5"
+                        font-family="Inter, sans-serif">PLANTS ONLINE</text>
+                  <text x="10" y="48" font-size="26" font-weight="700"
+                        fill="#FFFFFF" font-family="Inter, sans-serif">12<tspan font-size="14" fill="#A8B3BD"> / 12</tspan></text>
+                  <text x="10" y="65" font-size="8" font-weight="600"
+                        fill="#4FBBC9" font-family="Inter, sans-serif">all healthy</text>
+                </g>
+
+                <!-- Sparkline section -->
+                <text x="20" y="160" font-size="8" font-weight="600"
+                      fill="#A8B3BD" letter-spacing="1.5"
+                      font-family="Inter, sans-serif">PRODUCTION SIGNAL — LAST 24 HOURS</text>
+
+                <!-- Chart frame -->
+                <rect x="20" y="170" width="360" height="68"
+                      fill="none" stroke="#3A4049" stroke-width="0.5" stroke-dasharray="2 2"/>
+
+                <!-- Sparkline area fill -->
+                <polygon points="20,238 50,232 80,220 110,225 140,210 170,205 200,195 230,200 260,182 290,175 320,165 350,155 380,148 380,238"
+                         fill="url(#dashSpark)"/>
+                <!-- Sparkline stroke -->
+                <polyline points="20,238 50,232 80,220 110,225 140,210 170,205 200,195 230,200 260,182 290,175 320,165 350,155 380,148"
+                          fill="none" stroke="#00A0E0" stroke-width="1.8" stroke-linejoin="round"/>
+                <!-- End marker dot -->
+                <circle cx="380" cy="148" r="3" fill="#00A0E0"/>
+              </svg>
+            </div>
+
+            <!-- MIDDLE: teal data-flow beam (hardware → intelligence) -->
+            <div class="hero__composite-beam" aria-hidden="true">
+              <svg viewBox="0 0 60 110" xmlns="http://www.w3.org/2000/svg"
+                   width="60" height="110" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <linearGradient id="beamGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%"   stop-color="#00A0E0" stop-opacity="0.2"/>
+                    <stop offset="50%"  stop-color="#00A0E0" stop-opacity="0.9"/>
+                    <stop offset="100%" stop-color="#00A0E0" stop-opacity="1"/>
+                  </linearGradient>
+                  <marker id="beamArrowUp" viewBox="0 0 12 12" refX="6" refY="2"
+                          markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+                    <path d="M 0 10 L 6 2 L 12 10 Z" fill="#00A0E0"/>
+                  </marker>
+                </defs>
+                <!-- Beam line going UP -->
+                <line x1="30" y1="100" x2="30" y2="14"
+                      stroke="url(#beamGrad)" stroke-width="2.5"
+                      marker-end="url(#beamArrowUp)"/>
+                <!-- Three "data packet" dots fading from bottom to top -->
+                <circle cx="30" cy="80" r="2" fill="#00A0E0" opacity="0.4"/>
+                <circle cx="30" cy="56" r="2.5" fill="#00A0E0" opacity="0.65"/>
+                <circle cx="30" cy="34" r="3" fill="#00A0E0" opacity="0.85"/>
+                <!-- Label beside the beam -->
+                <text x="44" y="58" font-size="8" font-weight="600"
+                      fill="#A8B3BD" letter-spacing="1.5"
+                      font-family="Inter, sans-serif">DATA</text>
+              </svg>
+            </div>
+
+            <!-- BOTTOM: mDAQ hardware product render -->
+            <div class="hero__composite-hardware">
+              <img class="hero__composite-hardware-img"
+                   src="assets/hardware/mdaq.png"
+                   alt=""
+                   loading="eager"
+                   decoding="async">
+              <p class="hero__composite-hardware-label">mDAQ · industrial acquisition hardware</p>
+            </div>
+
+            <!-- Caption: explicitly platform-identity, not hardware-identity -->
+            <p class="hero__composite-caption">
+              <span class="hero__composite-caption-eyebrow">ONE PLATFORM</span>
+              <span class="hero__composite-caption-line">Hardware that captures signal. Intelligence that turns it into decisions.</span>
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 1.5 — Trust band (customer logos)
+         New section added with Direction D. Customer logos unlock
+         per user direction (positioning amendment pending). Logos
+         are rendered as white silhouettes via CSS filter for
+         premium-industrial restraint; hover restores natural color.
+         ============================================================ -->
+    <section class="trust-band" data-mode="dark-deep" aria-label="Customers and partners">
+      <div class="container">
+        <p class="trust-band__caption">
+          Trusted by industrial leaders across automotive, energy, heavy manufacturing, and defense
+        </p>
+        <ul class="trust-band__logos">
+          <li><img src="assets/customers/ge.png" alt="GE" loading="lazy"></li>
+          <li><img src="assets/customers/hitachi.png" alt="Hitachi" loading="lazy"></li>
+          <li><img src="assets/customers/toyota.png" alt="Toyota" loading="lazy"></li>
+          <li><img src="assets/customers/schneider.png" alt="Schneider Electric" loading="lazy"></li>
+          <li><img src="assets/customers/bhel.png" alt="BHEL" loading="lazy"></li>
+          <li><img src="assets/customers/tvs.png" alt="TVS" loading="lazy"></li>
+          <li><img src="assets/customers/hydac.png" alt="HYDAC" loading="lazy"></li>
+          <li><img src="assets/customers/filtrec.png" alt="Filtrec" loading="lazy"></li>
+        </ul>
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 2 — Five-pillar capability strip
+         ============================================================ -->
+    <section class="section section--tight" data-mode="dark" aria-labelledby="capabilities-heading">
+      <div class="container">
+
+        <div class="section-head">
+          <span class="eyebrow">FIVE CAPABILITIES · ONE ECOSYSTEM</span>
+          <h2 id="capabilities-heading" class="heading-xl">
+            Every layer of the industrial data path — owned by Elpis.
+          </h2>
+        </div>
+
+        <ul class="capability-grid">
+          <li>
+            <a href="capabilities-connectivity-edge" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Connectivity & Edge capability">
+            <article class="capability-card capability-card--p1">
+              <span class="capability-card__eyebrow">PILLAR 1</span>
+              <h3 class="capability-card__title">Connectivity &amp; Edge</h3>
+              <p class="capability-card__body">
+                Direct, brownfield-ready connectivity to existing controllers via native protocols.
+              </p>
+              <p class="capability-card__footer">EDGECONNECT · EDGE GATEWAY</p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="capabilities-data-acquisition" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Data Acquisition capability">
+            <article class="capability-card capability-card--p2">
+              <span class="capability-card__eyebrow">PILLAR 2</span>
+              <h3 class="capability-card__title">Data Acquisition</h3>
+              <p class="capability-card__body">
+                Sensor-direct acquisition for assets without controllers or with controllers that won't share data.
+              </p>
+              <p class="capability-card__footer">MDAQ</p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="capabilities-asset-intelligence" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Asset Intelligence capability">
+            <article class="capability-card capability-card--p3">
+              <span class="capability-card__eyebrow">PILLAR 3</span>
+              <h3 class="capability-card__title">Asset Intelligence</h3>
+              <p class="capability-card__body">
+                Continuous asset utilization telemetry — even on legacy or unconnected machines.
+              </p>
+              <p class="capability-card__footer">MTRACKER</p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="capabilities-condition-monitoring" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Condition Monitoring capability">
+            <article class="capability-card capability-card--p4">
+              <span class="capability-card__eyebrow">PILLAR 4</span>
+              <h3 class="capability-card__title">Condition Monitoring</h3>
+              <p class="capability-card__body">
+                Vibration analysis and hydraulic-oil contamination intelligence — sensor-agnostic, multi-vendor.
+              </p>
+              <p class="capability-card__footer">VAS · E-IDOS</p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="capabilities-operational-intelligence" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Operational Intelligence capability">
+            <article class="capability-card capability-card--p5">
+              <span class="capability-card__eyebrow">PILLAR 5</span>
+              <h3 class="capability-card__title">Operational Intelligence</h3>
+              <p class="capability-card__body">
+                Multi-tenant analytics, OEE, alerts, reports — across plants, in one view.
+              </p>
+              <p class="capability-card__footer">EREMOS V2</p>
+            </article>
+            </a>
+          </li>
+        </ul>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 3 — Architecture deep-dive
+         ============================================================ -->
+    <section id="architecture" class="section" data-mode="light" aria-labelledby="architecture-heading">
+      <div class="container">
+
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal-light">INDUSTRIAL INTELLIGENCE STACK</span>
+          <h2 id="architecture-heading" class="heading-xl">
+            Field signal to enterprise insight — across five capabilities.
+          </h2>
+          <p class="section-head__subhead">
+            EdgeConnect reads existing controllers directly. Acquisition hardware
+            captures sensors that controllers won't expose. Both feed EREMOS V2.
+            Standard MQTT and OPC UA make every layer interoperable with whatever
+            you already run.
+          </p>
+        </div>
+
+        <div class="arch-panel">
+          <div>
+            <div class="arch-panel__diagram">
+              <img src="assets/architecture-diagram-v2-light.svg"
+                   alt="Industrial Intelligence Stack: Floor signals flow through EdgeConnect or Elpis Acquisition hardware, both feeding into EREMOS V2 which delivers intelligence to enterprise consumers."
+                   width="2400" height="1600"
+                   loading="lazy">
+            </div>
+            <p class="arch-panel__caption">
+              One Acquisition layer at every plant. One Intelligence layer aggregating many sites.<br>
+              Standard MQTT and OPC UA make the integration interoperable with whatever else you run.
+            </p>
+          </div>
+
+          <aside class="arch-panel__annotations" aria-label="What to look at in the diagram">
+            <div class="arch-panel__annot">
+              <span class="eyebrow eyebrow--teal-light" style="margin-bottom: var(--space-1)">WHAT TO LOOK AT</span>
+            </div>
+            <div class="arch-panel__annot">
+              <p class="arch-panel__annot-title">Direct</p>
+              <p class="arch-panel__annot-body">FOCAS2 · MT-LINKi · MTConnect · Brother HTTP · Modbus TCP</p>
+            </div>
+            <div class="arch-panel__annot">
+              <p class="arch-panel__annot-title">Sensor</p>
+              <p class="arch-panel__annot-body">mDAQ · VAS · E-IDOS capture sensor signals natively</p>
+            </div>
+            <div class="arch-panel__annot">
+              <p class="arch-panel__annot-title">Cooperate</p>
+              <p class="arch-panel__annot-body">When both deployed, EdgeConnect normalizes and orchestrates Acquisition</p>
+            </div>
+            <div class="arch-panel__annot">
+              <p class="arch-panel__annot-title">Open</p>
+              <p class="arch-panel__annot-body">MQTT + OPC UA — use what you already run</p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="arch-panel__cta-wrap">
+          <a href="assets/architecture-diagram-v2-dark@2x.png" class="btn btn--secondary-light btn--lg">
+            See the architecture in detail <span class="arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 4 — Hardware ecosystem
+         ============================================================ -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="hardware-heading">
+      <div class="container">
+
+        <div class="section-head">
+          <span class="eyebrow">ACQUISITION HARDWARE — BUILT BY ELPIS</span>
+          <h2 id="hardware-heading" class="heading-xl">
+            When sensors don't have a controller,<br class="break-md">
+            we built the device that does.
+          </h2>
+        </div>
+
+        <ul class="hardware-grid">
+          <li>
+            <a href="mdaq" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="mDAQ product page">
+            <article class="capability-card capability-card--p2">
+              <span class="capability-card__eyebrow">GENERAL-PURPOSE ACQUISITION</span>
+              <h3 class="capability-card__title">mDAQ</h3>
+              <p class="capability-card__body">
+                Multi-channel data acquisition for any analog or digital signal — connect what controllers won't expose.
+              </p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="mtracker" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="mTracker product page">
+            <article class="capability-card capability-card--p3">
+              <span class="capability-card__eyebrow">ASSET UTILIZATION TELEMETRY</span>
+              <h3 class="capability-card__title">mTracker</h3>
+              <p class="capability-card__body">
+                Continuous machine-run telemetry — even on un-connected legacy assets. Tracks utilization, status, cycle data.
+              </p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="vas" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="VAS product page">
+            <article class="capability-card capability-card--p4">
+              <span class="capability-card__eyebrow">VIBRATION ANALYSIS</span>
+              <h3 class="capability-card__title">VAS</h3>
+              <p class="capability-card__body">
+                Real-time vibration capture and analysis for rotating machinery — early warning before failure.
+              </p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="e-idos" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="E-IDOS product page">
+            <article class="capability-card capability-card--p4">
+              <span class="capability-card__eyebrow">OIL HEALTH INTELLIGENCE</span>
+              <h3 class="capability-card__title">E-IDOS</h3>
+              <p class="capability-card__body">
+                In-line hydraulic oil contamination monitoring. Elpis-built Sensor/HMI controller, sensor-agnostic input (HYDAC, Parker, MP Filter, Argo-hytos).
+              </p>
+            </article>
+            </a>
+          </li>
+          <li>
+            <a href="edge-gateway" class="product-card-link" style="text-decoration:none;color:inherit;display:block;height:100%;" aria-label="Edge Gateway product page">
+            <article class="capability-card capability-card--p1">
+              <span class="capability-card__eyebrow">LINUX APPLIANCE · PLC BRIDGE</span>
+              <h3 class="capability-card__title">Edge Gateway</h3>
+              <p class="capability-card__body">
+                Industrial appliance running EdgeConnect — direct PLC integration where a Windows server isn't appropriate.
+              </p>
+            </article>
+            </a>
+          </li>
+        </ul>
+
+        <p class="hardware-strip eyebrow eyebrow--teal-light">
+          SENSOR-AGNOSTIC · BUILT BY ELPIS · DEPLOYED ACROSS DEFENSE, AEROSPACE, AND HEAVY MANUFACTURING
+        </p>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 5 — EdgeConnect depth
+         ============================================================ -->
+    <section id="platform" class="section" data-mode="light-tinted" aria-labelledby="edgeconnect-heading">
+      <div class="container container--narrow">
+        <div class="depth-section__inner">
+
+          <div class="depth-section__head">
+            <span class="eyebrow eyebrow--teal-light">CONNECTIVITY &amp; EDGE — THE RUNTIME BACKBONE</span>
+            <h2 id="edgeconnect-heading" class="heading-xl">
+              EdgeConnect — the industrial edge runtime that reads everything,<br class="break-md">
+              normalizes everything, and ships it anywhere.
+            </h2>
+          </div>
+
+          <p class="depth-section__body">
+            EdgeConnect runs on the factory floor as a Windows service or Linux
+            appliance. It reads controllers directly via native protocols (FOCAS2,
+            MT-LINKi, MTConnect, Brother HTTP, Modbus TCP), normalizes every signal
+            to a canonical model, and routes it to MQTT brokers, OPC UA servers,
+            HTTP endpoints, or TCP listeners — to EREMOS V2 or to whatever you
+            already run.
+          </p>
+
+          <div class="metric-strip">
+            <div class="metric">
+              <div class="metric__value">6+</div>
+              <div class="metric__label">PROTOCOLS SUPPORTED</div>
+              <p class="metric__caption">FOCAS2 · MT-LINKi · MTConnect · Brother HTTP · Modbus TCP · OPC UA</p>
+            </div>
+            <div class="metric">
+              <div class="metric__value">2</div>
+              <div class="metric__label">DELIVERY MODES</div>
+              <p class="metric__caption">AtMostOnce · AtLeastOnce (per route)</p>
+            </div>
+            <div class="metric">
+              <div class="metric__value">3</div>
+              <div class="metric__label">DIAGNOSTICS LAYERS</div>
+              <p class="metric__caption">Source · Pipeline · Sink (always-on three-way visibility)</p>
+            </div>
+          </div>
+
+          <div class="depth-section__cta-wrap">
+            <a href="edgeconnect" class="btn btn--secondary-light btn--lg">
+              Explore EdgeConnect <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 6 — EREMOS V2 depth
+         ============================================================ -->
+    <section class="section" data-mode="light" aria-labelledby="eremos-heading">
+      <div class="container container--narrow">
+        <div class="depth-section__inner">
+
+          <div class="depth-section__head">
+            <span class="eyebrow eyebrow--teal-light">OPERATIONAL INTELLIGENCE</span>
+            <h2 id="eremos-heading" class="heading-xl">
+              EREMOS V2 — multi-tenant intelligence<br class="break-md">
+              across every plant you run.
+            </h2>
+          </div>
+
+          <p class="depth-section__body">
+            EREMOS V2 is the Elpis intelligence platform — multi-tenant analytics,
+            OEE via Segments, persistent alarms and incidents, configurable alerting,
+            PDF and Excel reports, tool-life tracking, and the full PLANT-to-
+            SUB_EQUIPMENT asset tree. One tenant, many plants, multi-vendor fleets.
+          </p>
+
+          <div class="metric-strip">
+            <div class="metric">
+              <div class="metric__value">5</div>
+              <div class="metric__label">ASSET TREE DEPTH</div>
+              <p class="metric__caption">PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT</p>
+            </div>
+            <div class="metric">
+              <div class="metric__value">Yes</div>
+              <div class="metric__label">MULTI-TENANCY</div>
+              <p class="metric__caption">One tenant aggregates many plants — multi-vendor by design</p>
+            </div>
+            <div class="metric">
+              <div class="metric__value">PDF · Excel</div>
+              <div class="metric__label">REPORT FORMATS</div>
+              <p class="metric__caption">Scheduled or on-demand, per asset / per shift / per segment</p>
+            </div>
+          </div>
+
+          <div class="depth-section__cta-wrap">
+            <a href="eremos-v2" class="btn btn--secondary-light btn--lg">
+              Explore EREMOS V2 <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 7 — Proof band
+         ============================================================ -->
+    <section class="section section--tight" data-mode="dark-deep" aria-labelledby="proof-heading">
+      <div class="container">
+
+        <div class="proof-band__head">
+          <span class="eyebrow eyebrow--teal">DEPLOYED WHERE FAILURE ISN'T AN OPTION</span>
+          <h2 id="proof-heading" class="heading-xl">
+            Defense.  Aerospace.  Heavy manufacturing.  AMC-partner ready.
+          </h2>
+        </div>
+
+        <div class="proof-anchors">
+          <article class="proof-anchor proof-anchor--p4">
+            <h3 class="proof-anchor__title">Defense + space-agency deployments</h3>
+            <p class="proof-anchor__body">
+              Satellite radar antenna vibration monitoring — VAS deployed via 3rd-party supplier to a national defense customer.
+            </p>
+          </article>
+          <article class="proof-anchor proof-anchor--p4">
+            <h3 class="proof-anchor__title">Hydraulic-system condition monitoring</h3>
+            <p class="proof-anchor__body">
+              E-IDOS deployed in defense and AMC contexts in India and the Middle East — prevents unexpected hydraulic shutdowns.
+            </p>
+          </article>
+          <article class="proof-anchor proof-anchor--p1">
+            <h3 class="proof-anchor__title">AMC-partner channel</h3>
+            <p class="proof-anchor__body">
+              Maintenance and AMC providers across India and the Middle East deploy Elpis hardware in their service offerings.
+            </p>
+          </article>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 8 — Audiences
+         ============================================================ -->
+    <section class="section" data-mode="light" aria-labelledby="audiences-heading">
+      <div class="container">
+
+        <div class="section-head">
+          <span class="eyebrow">WHO ELPIS IS BUILT FOR</span>
+          <h2 id="audiences-heading" class="heading-xl">
+            Three audiences. One stack between them.
+          </h2>
+        </div>
+
+        <ul class="audience-grid">
+          <li>
+            <article class="audience-card">
+              <span class="audience-card__eyebrow">MAINTENANCE MANAGERS</span>
+              <h3 class="audience-card__headline">
+                When unplanned downtime costs more than the equipment itself.
+              </h3>
+              <p class="audience-card__hook">
+                VAS, E-IDOS, mTracker keep your maintenance team ahead of failure — not reacting to it.
+              </p>
+            </article>
+          </li>
+          <li>
+            <article class="audience-card">
+              <span class="audience-card__eyebrow">OPERATIONS LEADERS</span>
+              <h3 class="audience-card__headline">
+                When you need OEE you can trust — across every plant and every vendor.
+              </h3>
+              <p class="audience-card__hook">
+                EREMOS V2 aggregates real signal from real machines. No spreadsheets. No estimation.
+              </p>
+            </article>
+          </li>
+          <li>
+            <article class="audience-card">
+              <span class="audience-card__eyebrow">AMC PARTNERS</span>
+              <h3 class="audience-card__headline">
+                When your service offering needs a hardware + intelligence platform behind it.
+              </h3>
+              <p class="audience-card__hook">
+                White-label-ready hardware, AMC-channel pricing, partner enablement collateral.
+              </p>
+            </article>
+          </li>
+        </ul>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================================
+         SECTION 9 — CTA
+         ============================================================ -->
+    <section id="cta" class="section cta-section" data-mode="dark-deep" aria-labelledby="cta-heading">
+      <div class="container">
+
+        <div class="cta-section__head">
+          <span class="eyebrow eyebrow--teal">READY TO TALK</span>
+          <h2 id="cta-heading" class="heading-bold">
+            Bring the Industrial Intelligence Ecosystem<br class="break-md">
+            to your floor.
+          </h2>
+          <p class="hero__subhead" style="text-align: center; max-width: 50ch;">
+            30-minute discovery call — we walk your asset list and tell you
+            which capabilities give you the fastest return.
+          </p>
+        </div>
+
+        <div class="cta-section__group">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Discovery%20call%20request" class="btn btn--primary btn--lg">
+            Book a discovery call <span class="arrow" aria-hidden="true">→</span>
+          </a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">
+            Download the platform datasheet (PDF)
+          </a>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

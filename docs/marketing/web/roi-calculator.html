@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/roi-calculator.html
+  Purpose:     Static HTML mockup of the /roi-calculator WEB variant — for
+               visual sign-off. Faithful to the LOCKED roi-calculator-spec-v3.md.
+               Reuses styles.css + the standardized nav/footer.
+  Discipline:  No-fabrication. SAMPLE mode by default (the §5 worked example,
+               corrected). Live recalc uses the locked formulas: reporting is
+               hours/DAY (no shifts/day); downtime is multiplied by the
+               customer-supplied throughput factor; hardware BOM bucket is $0
+               unless the customer enters source-backed rows; payback is split
+               into recurring-value payback vs a separate Year-1 cash-impact
+               view (platform cost P supplied by sales). "What this does NOT
+               compute" is shown beside the output, not buried.
+  Version:     v1 (mockup for sign-off)
+  Date:        2026-06-05
+  NOTE: SAMPLE numbers match spec §5 (corrected): downtime $32,400, reporting
+        $33,750, engineering $68,400 one-time → recurring $66,150 / Year-1
+        $134,550 / 3-year $266,850. Hardware BOM = $0 (software-only example).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROI Calculator — build your own business case · Elpis</title>
+  <meta name="description" content="A transparent operational-value worksheet: enter your own production constants and see a defensible payback range. No fabricated savings — every output is a function of your inputs.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/roi-calculator">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="ROI Calculator">
+  <meta property="og:description" content="A transparent operational-value worksheet: enter your own production constants and see a defensible payback range. No fabricated savings — every output is a function of your inputs.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/roi-calculator">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ROI Calculator">
+  <meta name="twitter:description" content="A transparent operational-value worksheet: enter your own production constants and see a defensible payback range. No fabricated savings — every output is a function of your inputs.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+
+    /* mode toggle */
+    .mode-toggle { display:inline-flex; border:1px solid var(--color-border-subtle); border-radius:999px; overflow:hidden; margin-top: var(--space-4); }
+    .mode-toggle button { background:transparent; border:none; color:var(--color-text-muted-dark); font:inherit; font-size:var(--size-sm); font-weight:var(--weight-semibold); padding:8px 18px; cursor:pointer; }
+    .mode-toggle button.active { background:var(--color-brand-teal); color:var(--color-bg-deep); }
+    .mode-note { color: var(--color-text-muted-dark); font-size: var(--size-sm); margin-top: var(--space-2); font-style:italic; }
+
+    /* calc layout */
+    .calc-grid { display:grid; grid-template-columns: 1.3fr 1fr; gap: var(--space-8); align-items:start; }
+    @media (max-width: 880px){ .calc-grid { grid-template-columns: 1fr; } }
+    .input-group { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-5); margin-bottom: var(--space-5); background: var(--color-surface-light-secondary); }
+    .input-group h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-4); }
+    .field { display:flex; align-items:center; justify-content:space-between; gap: var(--space-4); padding: 6px 0; }
+    .field label { font-size: var(--size-sm); color: var(--color-text-body-light); flex:1; }
+    .field input[type=number]{ width:100px; padding:6px 8px; border:1px solid var(--color-border-light-strong); border-radius:6px; font:inherit; font-size:var(--size-sm); text-align:right; background:#fff; }
+    .field .ph { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight:var(--weight-semibold); }
+    .field--slider { display:block; }
+    .field--slider .row { display:flex; justify-content:space-between; }
+    .field--slider input[type=range]{ width:100%; margin-top:6px; accent-color: var(--color-brand-teal); }
+
+    /* output panel */
+    .out-panel { border:1px solid var(--color-border-light-strong); border-radius:12px; padding: var(--space-6); background:#fff; position:sticky; top: var(--space-5); }
+    .sample-badge { display:inline-block; background: rgba(0,160,224,0.14); color: var(--color-brand-teal-light); border:1px solid rgba(0,160,224,0.4); border-radius:999px; padding:2px 12px; font-size:var(--size-xs); font-weight:var(--weight-semibold); letter-spacing:1.5px; }
+    .sample-badge.is-pending { background: rgba(214,158,46,0.16); color:#B7791F; border-color: rgba(214,158,46,0.5); }
+    .sample-badge.is-customer { background: var(--color-brand-teal); color: var(--color-bg-deep); border-color: var(--color-brand-teal); }
+    /* customer-mode confirmation gate */
+    .confirm-bar { border:1px solid var(--color-border-light-strong); border-left:3px solid var(--color-brand-teal); border-radius:0 8px 8px 0; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); background: var(--color-surface-light-hero); }
+    .confirm-bar[hidden] { display:none; }
+    .confirm-bar .cb-status { font-size: var(--size-sm); color: var(--color-text-body-light); line-height: var(--line-body); margin:0 0 var(--space-3); }
+    .confirm-bar .cb-status .count { color: var(--color-text-heading-light); font-weight: var(--weight-bold); }
+    .confirm-bar .cb-status strong { color: var(--color-text-heading-light); }
+    .confirm-bar.is-met { border-left-color: var(--color-brand-teal); background: rgba(0,160,224,0.08); }
+    .confirm-bar label.ack { display:flex; gap: var(--space-2); align-items:flex-start; font-size: var(--size-sm); color: var(--color-text-heading-light); cursor:pointer; }
+    .confirm-bar label.ack input { margin-top:3px; accent-color: var(--color-brand-teal); }
+    .field.is-entered input[type=number] { border-color: var(--color-brand-teal); }
+    .field.is-entered label .ph { color: var(--color-brand-teal); }
+    .out-row { display:flex; justify-content:space-between; padding: var(--space-3) 0; border-bottom:1px solid var(--color-border-light-subtle); font-size: var(--size-sm); }
+    .out-row .lbl { color: var(--color-text-muted-light); }
+    .out-row .val { font-weight: var(--weight-semibold); color: var(--color-text-heading-light); }
+    .out-row.total .lbl, .out-row.total .val { color: var(--color-text-heading-light); font-weight: var(--weight-bold); }
+    .out-row.payback { background: var(--color-surface-light-hero); margin: var(--space-3) calc(-1 * var(--space-6)) 0; padding: var(--space-3) var(--space-6); border-bottom:none; }
+    .out-note { color: var(--color-text-muted-light); font-size: var(--size-xs); line-height: var(--line-body); margin-top: var(--space-3); font-style:italic; }
+
+    /* hardware + protocol tables */
+    .tbl { width:100%; border-collapse:collapse; margin-top: var(--space-4); font-size: var(--size-sm); }
+    .tbl th, .tbl td { text-align:left; padding: var(--space-2) var(--space-3); border-bottom:1px solid var(--color-border-light-subtle); vertical-align:top; }
+    .tbl thead th { border-bottom:2px solid var(--color-brand-teal); text-transform:uppercase; font-size:var(--size-xs); letter-spacing:1px; color: var(--color-text-heading-light); }
+    .tbl td.muted { color: var(--color-text-muted-light); font-style:italic; }
+    .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:var(--size-xs); font-weight:var(--weight-semibold); }
+    .pill--ship { background: rgba(0,160,224,0.14); color: var(--color-brand-teal-light); border:1px solid rgba(0,160,224,0.4); }
+    .pill--road { background:transparent; color: var(--color-text-muted-light); border:1px dashed var(--color-border-light-strong); }
+
+    /* sensitivity */
+    .sens { width:100%; border-collapse:collapse; margin-top: var(--space-5); font-size: var(--size-sm); text-align:center; }
+    .sens th, .sens td { padding: var(--space-3); border:1px solid var(--color-border-light-subtle); }
+    .sens th { background: var(--color-bg-light-deep); color: var(--color-text-muted-light); font-size:var(--size-xs); text-transform:uppercase; letter-spacing:1px; }
+    .sens td.mid { background: var(--color-surface-light-hero); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); }
+
+    /* does-not-compute */
+    .dnc { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); background: var(--color-surface-light-secondary); padding: var(--space-5); border-radius:0 10px 10px 0; }
+    .dnc h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); }
+    .dnc ul { list-style:none; padding:0; }
+    .dnc li { padding: var(--space-2) 0; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); padding-left: var(--space-5); position:relative; }
+    .dnc li::before { content:"✕"; position:absolute; left:0; color: var(--color-border-light-strong); font-weight:var(--weight-bold); }
+
+    .deploy-note { color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; line-height: var(--line-body); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <span class="eyebrow eyebrow--teal">RESOURCES · ROI</span>
+        <h1 id="hero-heading" class="hero__headline">Build your own business case.</h1>
+        <p class="hero__subhead" style="max-width:62ch;">
+          A transparent operational-value worksheet, not an ROI fantasy machine. Enter your own production constants and see a defensible payback range your CFO can audit. Every output is a function of the numbers <em>you</em> supply — nothing is fabricated.
+        </p>
+        <div class="mode-toggle" role="group" aria-label="Calculator mode">
+          <button id="mode-sample" class="active" type="button">SAMPLE MODE</button>
+          <button id="mode-customer" type="button">CUSTOMER MODE</button>
+        </div>
+        <p class="mode-note" id="mode-note">Sample mode shows the worked-example math. Switch to Customer mode and the result only counts once you enter your own values (placeholders must be acknowledged).</p>
+      </div>
+    </section>
+
+    <!-- CALCULATOR -->
+    <section class="section" data-mode="light" aria-labelledby="calc-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">THE WORKSHEET</span>
+          <h2 id="calc-heading" class="section-title">Your inputs. Your math. Your number.</h2>
+        </div>
+
+        <div class="calc-grid">
+          <!-- INPUTS -->
+          <div>
+            <div class="confirm-bar" id="confirm-bar" hidden>
+              <p class="cb-status" id="cb-status"></p>
+              <label class="ack"><input type="checkbox" id="cb-ack"> I'm using the example values for the inputs I haven't changed — accept them as placeholders.</label>
+            </div>
+            <div class="input-group">
+              <h3>Operating constants</h3>
+              <div class="field"><label for="controllers">Controllers (CNCs + PLCs + meters)</label><input type="number" id="controllers" value="30"></div>
+              <div class="field"><label for="partsHr">Parts per hour (per controller)</label><input type="number" id="partsHr" value="6"></div>
+              <div class="field"><label for="margin">Contribution margin per part ($)</label><input type="number" id="margin" value="12"></div>
+              <div class="field"><label for="opRate">Operator loaded rate ($/hr)</label><input type="number" id="opRate" value="45"></div>
+              <div class="field"><label for="engRate">Engineer loaded rate ($/hr)</label><input type="number" id="engRate" value="95"></div>
+              <div class="field"><label for="opDays">Operating days per year</label><input type="number" id="opDays" value="250"></div>
+              <div class="field"><label for="tput">Throughput conversion factor (0–1) <span class="ph">customer-supplied</span></label><input type="number" id="tput" value="1.0" step="0.05" min="0" max="1"></div>
+            </div>
+
+            <div class="input-group">
+              <h3>Current-state pain</h3>
+              <div class="field"><label for="dtHours">Annual unplanned downtime hours / controller <span class="ph">150 = placeholder</span></label><input type="number" id="dtHours" value="150"></div>
+              <div class="field"><label for="repHrsDay">Reporting hours per <strong>day</strong> (per supervisor)</label><input type="number" id="repHrsDay" value="2"></div>
+              <div class="field"><label for="sup">Shift supervisors involved in reporting</label><input type="number" id="sup" value="3"></div>
+              <div class="field"><label for="protocols">Shipped protocols you'd otherwise build (see below)</label><input type="number" id="protocols" value="3"></div>
+              <div class="field"><label for="engWeeks">Engineer-weeks saved per protocol</label><input type="number" id="engWeeks" value="6"></div>
+            </div>
+
+            <div class="input-group">
+              <h3>Assumed improvements <span class="ph" style="font-weight:600;">— you own these</span></h3>
+              <div class="field field--slider">
+                <div class="row"><label for="dtRed">Downtime reduction</label><span class="val" id="dtRedVal">10%</span></div>
+                <input type="range" id="dtRed" min="0" max="25" value="10">
+              </div>
+              <div class="field field--slider">
+                <div class="row"><label for="repRed">Reporting-labor reduction</label><span class="val" id="repRedVal">50%</span></div>
+                <input type="range" id="repRed" min="0" max="80" value="50">
+              </div>
+              <p class="deploy-note" style="margin-top:var(--space-3);">Conservative placeholders. Values above 20% downtime reduction are uncommon — review carefully.</p>
+            </div>
+          </div>
+
+          <!-- OUTPUT -->
+          <div>
+            <div class="out-panel">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+                <strong style="color:var(--color-text-heading-light); font-size:var(--size-md);">Value worksheet</strong>
+                <span class="sample-badge" id="out-badge">SAMPLE</span>
+              </div>
+              <div class="out-row"><span class="lbl">Downtime savings / yr</span><span class="val" id="o-downtime">$32,400</span></div>
+              <div class="out-row"><span class="lbl">Reporting labor savings / yr</span><span class="val" id="o-reporting">$33,750</span></div>
+              <div class="out-row"><span class="lbl">Hardware BOM-elimination (recurring)</span><span class="val" id="o-hwrec">$0</span></div>
+              <div class="out-row total"><span class="lbl">Total annual recurring value</span><span class="val" id="o-recurring">$66,150</span></div>
+              <div class="out-row"><span class="lbl">Engineering driver savings (one-time)</span><span class="val" id="o-eng">$68,400</span></div>
+              <div class="out-row"><span class="lbl">Hardware BOM-elimination (one-time)</span><span class="val" id="o-hwone">$0</span></div>
+              <div class="out-row total"><span class="lbl">Total one-time value (Year 1)</span><span class="val" id="o-onetime">$68,400</span></div>
+              <div class="out-row total"><span class="lbl">3-year cumulative value</span><span class="val" id="o-3yr">$266,850</span></div>
+
+              <div class="out-row payback">
+                <span class="lbl">Recurring-value payback</span>
+                <span class="val"><span id="o-monthly">$5,513</span>/mo → <strong>P ÷ that</strong></span>
+              </div>
+              <p class="out-note">
+                <strong>Recurring-value payback</strong> = Year-1 platform cost <em>P</em> ÷ monthly recurring value. <strong>Year-1 cash-impact view</strong> = <em>P</em> − one-time value (shown separately; one-time savings never fold into recurring payback). <em>P</em> — the full quoted Year-1 scope (software + Elpis hardware + implementation + services + support) — is supplied by Elpis sales, not this calculator.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HARDWARE BOM + PROTOCOL CHECKLIST -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="bom-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">CUSTOMER-SUPPLIED INPUTS</span>
+          <h2 id="bom-heading" class="section-title">Hardware BOM-elimination &amp; protocol coverage.</h2>
+        </div>
+
+        <h3 style="font-size:var(--size-md); color:var(--color-text-heading-light); margin-bottom:var(--space-2);">Avoided hardware / BOM line items <span style="font-weight:400; color:var(--color-text-muted-light); font-size:var(--size-sm);">(optional — labels only; $0 until you enter source-backed figures)</span></h3>
+        <table class="tbl">
+          <thead><tr><th>Avoided line item (example)</th><th>Unit avoided cost</th><th>Qty</th><th>One-time / recurring</th><th>Avoidable %</th><th>Cost source</th><th>Confirmed removed?</th></tr></thead>
+          <tbody>
+            <tr><td>Separate industrial PC (per gateway site)</td><td class="muted">— customer —</td><td class="muted">—</td><td>one-time</td><td class="muted">—</td><td class="muted">quote / invoice / budget</td><td class="muted">—</td></tr>
+            <tr><td>Separate cellular modem (per remote site)</td><td class="muted">— customer —</td><td class="muted">—</td><td>one-time</td><td class="muted">—</td><td class="muted">quote / invoice / budget</td><td class="muted">—</td></tr>
+            <tr><td>Third-party oil-lab / sample contract</td><td class="muted">— customer —</td><td class="muted">—</td><td>recurring</td><td class="muted">% displaced</td><td class="muted">contract</td><td class="muted">—</td></tr>
+          </tbody>
+        </table>
+        <p class="deploy-note" style="margin-top:var(--space-3);">A row counts only with cost + quantity + avoidable % + source + a confirmed-removed flag. The calculator never prices Elpis hardware. Don't count the same avoided device twice. Recurring contracts are pro-rated by avoidable %. This SAMPLE is software-only → the bucket is <strong>$0</strong>.</p>
+
+        <h3 style="font-size:var(--size-md); color:var(--color-text-heading-light); margin:var(--space-8) 0 var(--space-2);">Shipped-protocol checklist <span style="font-weight:400; color:var(--color-text-muted-light); font-size:var(--size-sm);">(only shipped protocols count as avoided in-house drivers)</span></h3>
+        <table class="tbl">
+          <thead><tr><th>Protocol</th><th>Status</th><th>Count as avoided driver?</th></tr></thead>
+          <tbody>
+            <tr><td>FOCAS2</td><td><span class="pill pill--ship">Shipped</span></td><td>☑ counted</td></tr>
+            <tr><td>MTConnect</td><td><span class="pill pill--ship">Shipped</span></td><td>☐</td></tr>
+            <tr><td>Brother HTTP (southbound source)</td><td><span class="pill pill--ship">Shipped</span></td><td>☑ counted</td></tr>
+            <tr><td>Modbus TCP</td><td><span class="pill pill--ship">Shipped</span></td><td>☑ counted</td></tr>
+            <tr><td>OPC UA Client</td><td><span class="pill pill--ship">Shipped</span></td><td>☐</td></tr>
+            <tr><td>Siemens S7</td><td><span class="pill pill--ship">Shipped</span></td><td>☐</td></tr>
+            <tr><td>FANUC MT-LINKi (REST)</td><td><span class="pill pill--road">Roadmap</span></td><td class="muted">disabled — not counted</td></tr>
+            <tr><td>HTTP sink / TCP sink (northbound)</td><td><span class="pill pill--road">Roadmap</span></td><td class="muted">disabled — not counted</td></tr>
+          </tbody>
+        </table>
+        <p class="deploy-note" style="margin-top:var(--space-3);">SAMPLE counts 3 shipped protocols (FOCAS2, Brother HTTP, Modbus TCP). Roadmap items are disabled so MT-LINKi can't be counted before it ships.</p>
+      </div>
+    </section>
+
+    <!-- SENSITIVITY + DOES NOT COMPUTE -->
+    <section class="section" data-mode="light" aria-labelledby="sens-heading">
+      <div class="container">
+        <div class="calc-grid">
+          <div>
+            <div class="section-head"><span class="eyebrow">SENSITIVITY</span><h2 id="sens-heading" class="section-title">Annual recurring value by assumption.</h2></div>
+            <p class="deploy-note">The two assumptions you're least sure of. Payback = your Year-1 platform cost ÷ (the cell ÷ 12).</p>
+            <table class="sens">
+              <thead><tr><th>↓ Downtime \ Reporting →</th><th>25%</th><th>50%</th><th>75%</th></tr></thead>
+              <tbody id="sens-body"><!-- filled by JS --></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="section-head"><span class="eyebrow">HONEST BOUNDARIES</span><h2 class="section-title">What this does <em>not</em> compute.</h2></div>
+            <div class="dnc">
+              <ul>
+                <li><strong>OEE improvement value</strong> — depends on your baseline + commercial structure. A discussion, not a calculation.</li>
+                <li><strong>Production-quality / scrap / yield</strong> — never included without your own quality data.</li>
+                <li><strong>Predictive-maintenance value (VAS / E-IDOS)</strong> — avoided failures / component life are site-specific; E-IDOS counts only via the BOM bucket (e.g. avoided oil-lab contract), never via predicted failure avoidance. (E-IDOS is standalone today; no EREMOS streaming value.)</li>
+                <li><strong>Tool-life, cyber-insurance, SCADA-avoidance, soft benefits</strong> — real, but uncalculated here.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size: var(--size-2xl); margin-top: var(--space-3);">Review these numbers with our team.</h2>
+        <p class="hero__subhead" style="margin-left:auto; margin-right:auto;">Download the full Excel model, or bring us your real operating constants and we'll scope a proof of value against them.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=ROI%20model%20(Excel)" class="btn btn--primary btn--lg">Download the full Excel model <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=ROI%20scoping%20call" class="btn btn--secondary btn--lg">Book a scoping call</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Locked v3 formulas. Reporting is hours/DAY (no shifts/day). Downtime × throughput factor.
+    var fmt = function(n){ return '$' + Math.round(n).toLocaleString('en-US'); };
+    var ids = ['controllers','partsHr','margin','opRate','engRate','opDays','tput','dtHours','repHrsDay','sup','protocols','engWeeks','dtRed','repRed'];
+    function val(id){ return parseFloat(document.getElementById(id).value) || 0; }
+    function recurringAt(dtRed, repRed){
+      var downtime = val('dtHours')*val('controllers')*(dtRed/100)*val('partsHr')*val('margin')*val('tput');
+      var reporting = val('repHrsDay')*val('opDays')*val('sup')*(repRed/100)*val('opRate');
+      return { downtime: downtime, reporting: reporting, recurring: downtime + reporting };
+    }
+    function recalc(){
+      var dtRed = val('dtRed'), repRed = val('repRed');
+      document.getElementById('dtRedVal').textContent = dtRed + '%';
+      document.getElementById('repRedVal').textContent = repRed + '%';
+      var r = recurringAt(dtRed, repRed);
+      var engineering = val('protocols')*val('engWeeks')*40*val('engRate');
+      var hwRec = 0, hwOne = 0; // SAMPLE: no customer hardware rows
+      var recurring = r.recurring + hwRec;
+      var oneTime = engineering + hwOne;
+      document.getElementById('o-downtime').textContent = fmt(r.downtime);
+      document.getElementById('o-reporting').textContent = fmt(r.reporting);
+      document.getElementById('o-hwrec').textContent = fmt(hwRec);
+      document.getElementById('o-recurring').textContent = fmt(recurring);
+      document.getElementById('o-eng').textContent = fmt(engineering);
+      document.getElementById('o-hwone').textContent = fmt(hwOne);
+      document.getElementById('o-onetime').textContent = fmt(oneTime);
+      document.getElementById('o-3yr').textContent = fmt(recurring*3 + oneTime);
+      document.getElementById('o-monthly').textContent = fmt(recurring/12);
+      // sensitivity grid: annual recurring value at 3×3
+      var dts = [5,10,15], reps = [25,50,75], body = '';
+      for (var i=0;i<dts.length;i++){
+        body += '<tr><th>' + dts[i] + '%</th>';
+        for (var j=0;j<reps.length;j++){
+          var cell = recurringAt(dts[i], reps[j]).recurring;
+          var mid = (dts[i]===10 && reps[j]===50) ? ' class="mid"' : '';
+          body += '<td'+mid+'>' + fmt(cell) + '</td>';
+        }
+        body += '</tr>';
+      }
+      document.getElementById('sens-body').innerHTML = body;
+    }
+    // ---- customer-mode confirmation gate ----
+    // Default snapshot: a field is "your own value" once it differs from the example default.
+    var defaults = {}; ids.forEach(function(id){ var el=document.getElementById(id); if(el) defaults[id]=el.value; });
+    var mode = 'sample';
+    var ms = document.getElementById('mode-sample'), mc = document.getElementById('mode-customer'),
+        note = document.getElementById('mode-note'), badge = document.getElementById('out-badge'),
+        bar = document.getElementById('confirm-bar'), ack = document.getElementById('cb-ack'),
+        cbStatus = document.getElementById('cb-status');
+
+    function enteredCount(){
+      var n = 0;
+      ids.forEach(function(id){
+        var el = document.getElementById(id); if(!el) return;
+        var changed = el.value !== defaults[id];
+        var field = el.closest('.field');
+        if(field) field.classList.toggle('is-entered', changed && mode === 'customer');
+        if(changed) n++;
+      });
+      return n;
+    }
+    function updateGate(){
+      var entered = enteredCount();
+      if(mode === 'sample'){ badge.textContent = 'SAMPLE'; badge.className = 'sample-badge'; return; }
+      var remaining = ids.length - entered;
+      var gateMet = (entered === ids.length) || ack.checked;   // own value for each, OR acknowledged placeholders
+      if(gateMet){
+        badge.textContent = 'CUSTOMER ✓'; badge.className = 'sample-badge is-customer';
+        bar.classList.add('is-met');
+        cbStatus.innerHTML = (entered === ids.length)
+          ? '<strong>Customer result.</strong> All ' + ids.length + ' inputs are your own values.'
+          : '<strong>Customer result.</strong> ' + entered + ' of ' + ids.length + ' inputs are your own values; the remaining ' + remaining + ' are acknowledged as placeholders.';
+      } else {
+        badge.textContent = 'SAMPLE — not your numbers yet'; badge.className = 'sample-badge is-pending';
+        bar.classList.remove('is-met');
+        cbStatus.innerHTML = '<span class="count">' + entered + ' of ' + ids.length + '</span> inputs are your own values; the other ' + remaining + ' still use example values. <strong>Edit them, or tick the box below</strong> to accept the rest as placeholders — then this becomes a customer result.';
+      }
+    }
+    function setMode(m){
+      mode = m; var sampleActive = (m === 'sample');
+      ms.classList.toggle('active', sampleActive); mc.classList.toggle('active', !sampleActive);
+      bar.hidden = sampleActive;
+      note.textContent = sampleActive
+        ? 'Sample mode shows the worked-example math. Switch to Customer mode and the result only counts once you enter your own values (placeholders must be acknowledged).'
+        : 'Customer mode: this result is not your ROI until every operating constant and improvement assumption is your own value or an explicitly acknowledged placeholder.';
+      updateGate();
+    }
+    ids.forEach(function(id){ var el = document.getElementById(id); if(el){ el.addEventListener('input', function(){ recalc(); updateGate(); }); } });
+    ack.addEventListener('change', updateGate);
+    ms.addEventListener('click', function(){ setMode('sample'); });
+    mc.addEventListener('click', function(){ setMode('customer'); });
+    recalc();
+    setMode('sample');
+  </script>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

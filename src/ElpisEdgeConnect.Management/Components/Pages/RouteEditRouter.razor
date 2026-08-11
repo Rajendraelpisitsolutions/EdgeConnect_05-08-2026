@@ -1,0 +1,167 @@
+@*
+    RouteEditRouter — single resolver page for /routes/{routeId}/edit.
+
+    M.2d.3 v2 §3.3 — mirrors SourceEditRouter.razor. Routes have only
+    one wizard (AddRoute) so the protocol-dispatch switch collapses to
+    a direct render once the entity is loaded.
+
+    Three-branch UX matrix (no UnknownProtocol needed — routes have no
+    protocol; the wizard is always available once the route is found):
+       1. Loading    — fetch in flight
+       2. NotFound   — no route with this id in current config
+       3. LoadError  — HTTP / config-load error
+       4. Loaded     → renders AddRoute in Edit mode
+
+    Optimistic concurrency: captures CurrentVersionId at hydration
+    time as BaseVersionId for the save-collision check.
+
+    Reference: docs/sessions/2026-05-26-m2d3-sink-route-editors-plan-v2.md §3.3
+*@
+
+@page "/routes/{RouteId}/edit"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Components.Pages.RouteWizards
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ILogger<RouteEditRouter> Logger
+
+<PageTitle>Edit route · Connectivity Studio</PageTitle>
+
+@if (_loadState == LoadState.Loading)
+{
+    <MudPaper Class="pa-6 my-4" data-testid="route-edit-loading">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <MudText>Loading route <code>@RouteId</code>…</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else if (_loadState == LoadState.NotFound)
+{
+    <MudPaper Class="pa-6 my-4" Outlined="true" data-testid="route-edit-not-found">
+        <MudStack Spacing="3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h5">Route not found</MudText>
+            </MudStack>
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                No route with id <code>@RouteId</code> exists in the current configuration.
+                It may have been deleted by another session, or the link you followed is stale.
+            </MudAlert>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                       Href="/routes"
+                       data-testid="route-edit-back-link">
+                Back to routes
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else if (_loadState == LoadState.LoadError)
+{
+    <MudPaper Class="pa-6 my-4" Outlined="true" data-testid="route-edit-load-error">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            <strong>Failed to load route.</strong> @_loadErrorMessage
+        </MudAlert>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadAsync"
+                   Class="mt-3">
+            Retry
+        </MudButton>
+    </MudPaper>
+}
+else if (_loadState == LoadState.Loaded && _route is not null)
+{
+    @* Banner — hydration source (current config) *@
+    <MudAlert Severity="Severity.Info"
+              Variant="Variant.Outlined"
+              Class="my-3"
+              data-testid="hydration-source-banner-current">
+        <strong>Editing runtime configuration</strong> — version
+        <code>@_baseVersionId</code>.
+    </MudAlert>
+
+    @* Routes have a single wizard — no protocol dispatch needed. *@
+    <div data-testid="render-wizard-active">
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+            BaseVersionId: <code data-testid="base-version-id">@_baseVersionId</code>
+        </MudText>
+        <AddRoute EditMode="@(EditModeContext.Edit(_route.RouteId, _baseVersionId ?? "unknown"))"
+                  HydratedConfig="@_route" />
+    </div>
+}
+
+@code {
+    [Parameter] public string RouteId { get; set; } = string.Empty;
+
+    private LoadState _loadState = LoadState.Loading;
+    private string? _loadErrorMessage;
+    private RouteConfig? _route;
+    private string? _baseVersionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loadState = LoadState.Loading;
+        _loadErrorMessage = null;
+        _route = null;
+
+        if (string.IsNullOrWhiteSpace(RouteId))
+        {
+            _loadState = LoadState.NotFound;
+            return;
+        }
+
+        try
+        {
+            var versionDto = await HttpClient.GetFromJsonAsync<CurrentConfigVersionDto>("/api/v1/config/version");
+            _baseVersionId = versionDto?.VersionId ?? "unknown";
+
+            var config = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (config is null)
+            {
+                _loadState = LoadState.LoadError;
+                _loadErrorMessage = "Configuration response was empty.";
+                return;
+            }
+
+            var match = config.Routes.FirstOrDefault(r =>
+                string.Equals(r.RouteId, RouteId, StringComparison.Ordinal));
+            if (match is null)
+            {
+                _loadState = LoadState.NotFound;
+                return;
+            }
+
+            _route = match;
+            _loadState = LoadState.Loaded;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            _loadState = LoadState.NotFound;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load route {RouteId} for editing.", RouteId);
+            _loadState = LoadState.LoadError;
+            _loadErrorMessage = ex.Message;
+        }
+    }
+
+    internal enum LoadState
+    {
+        Loading,
+        Loaded,
+        NotFound,
+        LoadError,
+    }
+}

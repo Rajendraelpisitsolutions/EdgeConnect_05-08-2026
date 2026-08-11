@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/capabilities-operational-intelligence.html
+  Purpose:     Static mockup of /capabilities/operational-intelligence — the
+               Pillar 5 (EREMOS V2) CapabilityDeepDive (§14) deep-dive page.
+               Inherits the 9-section structure from the pattern-setter
+               (capabilities-connectivity-edge.html). Faithful to
+               page-capabilities-operational-intelligence-spec-v1.md (LOCKED).
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       Honesty constraints: AI-assisted operations agents are an
+               architectural commitment / roadmap (Phase 4.5) — framed as
+               roadmap, not shipped. Multi-tenant isolation phrased as the
+               spec phrases it (tenant-scoped boundaries / no cross-tenant
+               blending by design). No fabricated metrics, no customer or
+               competitor names, no screenshots (Phase 2 proof discipline).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operational Intelligence — OEE, alarms, reports · Elpis</title>
+  <meta name="description" content="Multi-tenant analytics platform for industrial operations. Auditable OEE, persistent alarms, incident workflows, and shift reports the team uses.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/capabilities-operational-intelligence">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Operational Intelligence">
+  <meta property="og:description" content="Multi-tenant analytics platform for industrial operations. Auditable OEE, persistent alarms, incident workflows, and shift reports the team uses.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/capabilities-operational-intelligence">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Operational Intelligence">
+  <meta name="twitter:description" content="Multi-tenant analytics platform for industrial operations. Auditable OEE, persistent alarms, incident workflows, and shift reports the team uses.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .feature-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--space-5); margin-top: var(--space-8); }
+    .feature-card { border:1px solid var(--color-border-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-bg-raised); border-top: 3px solid var(--color-pillar-5); }
+    .feature-card .eyebrow { display:block; color: var(--color-pillar-5); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); margin-bottom: var(--space-2); }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .ftr { display:block; margin-top: var(--space-3); color: var(--color-text-caption); font-size: var(--size-xs); font-weight: var(--weight-semibold); }
+    .feature-card a { color: var(--color-pillar-5); font-weight: var(--weight-semibold); text-decoration:none; font-size: var(--size-sm); }
+    .feature-card .coming-soon { color: var(--color-text-caption); font-weight: var(--weight-semibold); font-size: var(--size-sm); font-style:italic; }
+    .bom-list { margin-top: var(--space-6); max-width: 78ch; list-style:none; padding:0; }
+    .bom-list li { padding: var(--space-3) 0 var(--space-3) var(--space-6); border-bottom:1px solid var(--color-border-light-subtle); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .bom-list li::before { content:"✕"; position:absolute; left:0; color: var(--color-pillar-5); font-weight: var(--weight-bold); }
+    .get-instead { border-left:3px solid var(--color-pillar-5); padding: var(--space-5) var(--space-6); margin-top: var(--space-8); background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .get-instead .eyebrow { display:block; color: var(--color-text-heading-light); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); margin-bottom: var(--space-3); }
+    .get-instead .outputs { color: var(--color-text-body-light); font-size: var(--size-base); line-height: var(--line-body); }
+    .get-instead .subline { margin-top: var(--space-3); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 60ch; }
+    .adj-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .adj-grid h3 { font-size: var(--size-sm); font-weight: var(--weight-semibold); color: var(--color-pillar-5); letter-spacing: var(--tracking-loose); text-transform:uppercase; margin-bottom: var(--space-3); }
+    .adj-grid ul { list-style:none; padding:0; }
+    .adj-grid li { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); padding: var(--space-1) 0; }
+    .callout { border-left:3px solid var(--color-pillar-5); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .trust-cue { border-left:2px solid var(--color-pillar-5); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .pillar-link { color: var(--color-pillar-5); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-pillar-5); }
+    .mock-banner { background: var(--color-pillar-5); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">CAPABILITY · OPERATIONAL INTELLIGENCE</span>
+        <h1 id="hero-heading" class="hero__headline">Turn machine data into OEE, alarms, incident workflows, and reports your team actually uses.</h1>
+        <p class="hero__subhead" style="font-style:italic;">"How do I turn all of this into OEE, alarms, incidents, and reports the team actually uses?"</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Talk to an engineer about Operational Intelligence</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 PRODUCTS IN THIS PILLAR -->
+    <section class="section" data-mode="dark" aria-labelledby="products-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">PRODUCTS IN THIS PILLAR</span>
+          <h2 id="products-heading" class="section-title">The analytics layer where collected signals become operational decisions.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <span class="eyebrow">MULTI-TENANT ANALYTICS PLATFORM</span>
+            <h3>EREMOS V2 — Industrial intelligence for operations teams</h3>
+            <p>Multi-tenant analytics platform that turns collected signals into operational decisions. Models the real industrial hierarchy — <strong>PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT</strong> — with first-class Devices, Tags, and quality codes. Computes <strong>OEE via Segments</strong> (RUNNING / PLANNED_STOP / UNPLANNED_STOP / IDLE / SETUP) on edge-collected signals — <strong>against your OEE definition, not a vendor preset</strong>. <strong>Persistent alarms with incident workflows</strong>, configurable alerting on the channels your operations team already uses. <strong>Per-tenant isolation by design</strong>. Dashboards split automatically by device class — mixed fleets render cleanly.</p>
+            <span class="ftr">MULTI-TENANT SAAS · PLANT→…→SUB_EQUIPMENT HIERARCHY · OEE SEGMENTS · PER-TENANT ISOLATION</span>
+            <p style="margin-top:var(--space-3);"><a href="eremos-v2">See the EREMOS V2 product page →</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §3 BOM ELIMINATION -->
+    <section class="section" data-mode="light" aria-labelledby="bom-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHAT THIS PILLAR ELIMINATES FROM YOUR BOM</span>
+          <h2 id="bom-heading" class="section-title">Operational Intelligence consolidates the reporting / alarm / dashboarding tools that plants typically run separately — into one analytics platform on one canonical data layer.</h2>
+        </div>
+        <ul class="bom-list">
+          <li>The stitched-spreadsheet OEE process (operator → supervisor → manager → corporate, each adding their own re-calculation)</li>
+          <li>A separate alarm-management system bolted onto the SCADA</li>
+          <li>A separate incident-workflow tool (or worse, a shared inbox + email threads)</li>
+          <li>A separate reporting tool generating shift reports that don't reconcile with the OEE dashboards</li>
+          <li>Per-site SCADA-based dashboards that don't compose across plants</li>
+          <li>The manual effort to keep tool-life records when the tool-life sensors are already publishing data</li>
+          <li>Multi-vendor dashboard sprawl when every CNC / PLC / DAQ vendor ships its own visualization layer</li>
+        </ul>
+        <div class="get-instead">
+          <span class="eyebrow">WHAT YOU GET INSTEAD</span>
+          <p class="outputs">Shift reports · OEE summaries · Downtime breakdowns · Tool-life trends · Incident histories · Per-cell utilization · Cross-site benchmarking views · Audit-ready configuration history</p>
+          <p class="subline">Same definitions across every plant. Same math across every shift. Same source-of-truth across every dashboard.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 STRATEGIC ADJACENCIES -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="adj-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHO IT'S FOR · WHERE IT DEPLOYS</span></div>
+        <div class="adj-grid">
+          <div>
+            <h3>Buyers</h3>
+            <ul>
+              <li><strong>Plant manager / Ops VP</strong> — defensible OEE, less manual reporting, audit-ready data</li>
+              <li><strong>CTO / CIO</strong> — vendor consolidation, multi-tenant architecture, OT/IT integration</li>
+              <li><strong>Quality / compliance manager</strong> — audit-defensible OEE, per-tag quality codes, hash-chained configuration history</li>
+              <li><strong>Multi-site operations leadership</strong> — fleet-level dashboards, per-site identity, cross-plant benchmarking</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Industries</h3>
+            <ul>
+              <li>Manufacturing — discrete (CNC, machining, automotive parts) → OEE / alarms / shift reports</li>
+              <li>Manufacturing — process (flow / temperature / pressure analytics)</li>
+              <li>Oil &amp; Gas (operational dashboards for surface and downhole equipment)</li>
+              <li>Power &amp; Energy (substation operational visibility; generation OEE)</li>
+              <li>Water &amp; Utilities (pump-station operational dashboards; flow / pressure analytics)</li>
+              <li>OEM machine monitoring (installed-base operational visibility for service organizations)</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Deployment footprint</h3>
+            <ul>
+              <li>Operating across India and the Middle East</li>
+              <li>Multi-tenant by design — one deployment serves many sites or business units without data leakage</li>
+              <li>On-prem / private-cloud / Elpis-managed deployment options</li>
+              <li>Dashboards split automatically by device class — mixed fleets render cleanly without per-vendor visualization work</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 WHERE IT FITS -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="fit-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="fit-heading" class="section-title">Operational Intelligence is the analytics layer of the Industrial Intelligence Stack — where signals become decisions.</h2>
+        </div>
+        <p style="color:var(--color-text-body-light); font-size:var(--size-md); line-height:var(--line-body); max-width:80ch;">
+          Pillar 5 receives signals from all four other pillars: Connectivity &amp; Edge (controller-collected signals), Data Acquisition (direct sensor signals from mDAQ), Asset Intelligence (utilization + location + OEE inputs from mTracker), and Condition Monitoring (vibration alarms from VAS; oil-health data from E-IDOS — streaming integration on the near-term roadmap). EREMOS V2 turns those signals into auditable OEE, persistent alarm records, incident workflows, and shift / OEE / downtime / tool-life reports.
+        </p>
+        <figure style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 150" width="100%" role="img" aria-label="Pillar 5 analytics layer: canonical signals from EdgeConnect and field hardware feed EREMOS V2, which produces OEE, alarms, reports, and dashboards.">
+            <defs><marker id="oi-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <rect x="8" y="38" width="200" height="74" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="108" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Canonical signals</text>
+            <text x="108" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">EdgeConnect · field hardware</text>
+            <line x1="212" y1="75" x2="266" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#oi-arr)"/>
+            <rect x="270" y="30" width="220" height="90" rx="10" fill="#E7F2F8" stroke="#1A8FC2" stroke-width="2"/>
+            <text x="380" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2</text>
+            <text x="380" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">multi-tenant analytics layer</text>
+            <text x="380" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">OEE Segments · per-tenant isolation</text>
+            <line x1="494" y1="75" x2="548" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#oi-arr)"/>
+            <rect x="552" y="38" width="180" height="74" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="642" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">OEE · alarms</text>
+            <text x="642" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">incident workflows</text>
+            <text x="642" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">persistent records</text>
+            <line x1="736" y1="75" x2="790" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#oi-arr)"/>
+            <rect x="794" y="38" width="158" height="74" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="873" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Reports · dashboards</text>
+            <text x="873" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">the team actually uses</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">Pillar 5 is the analytics layer — where collected signals become operational decisions. See the full Industrial Intelligence Stack → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §6 TRUST POSTURE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span><h2 id="trust-heading" class="section-title">Multi-tenant by design. Tenant data never blends.</h2></div>
+        <div class="trust-cue">
+          <p>EREMOS V2 is <strong>multi-tenant by design</strong>. One deployment serves many sites, business units, or customers — and tenant data never blends. For multi-plant operators, that means each plant's data stays isolated within the tenant boundary you define. For OEM machine builders running EREMOS V2 to monitor their installed base, that means each customer's machine data stays isolated from every other customer's machine data. Per-tenant isolation is the foundation of the analytics layer's trust posture.</p>
+        </div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §7 RELATED SOLUTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">RELATED SOLUTIONS</span>
+          <p style="color:var(--color-text-body-light); font-size:var(--size-md); line-height:var(--line-body); max-width:74ch; margin-top:var(--space-3);">Operational Intelligence powers every solution in the Elpis stack. Two representative outcome stories:</p>
+        </div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="solutions-multi-site-operations"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">One operational view across every plant — EREMOS V2 aggregates OEE, alarms, and reports across sites without losing per-site identity or tenant isolation.</span></a>
+          <a class="crosslens-card" href="solutions-cnc-machining"><span class="eyebrow">SOLUTION · CNC MACHINING</span><span class="cl-desc">Mixed-vendor CNC floors on one operational view — canonical CNC signals become per-shift OEE, alarm-pattern visibility, and replace-the-spreadsheet operational reporting.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How does this pillar fit the data flow?</span></a>
+          <a class="crosslens-card" href="solutions-multi-site-operations"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">The outcome-organised version for plant operators.</span></a>
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">Back to all 5 pillars.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §9 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your OEE definition. We'll scope the deployment.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're trying to defend OEE numbers across mixed-vendor cells, consolidate per-site dashboards into one fleet view, or replace the spreadsheet operations that everyone agrees aren't working — the first conversation is about your specific OEE definition and your specific reporting cadence. Bring us those, and we'll scope what EREMOS V2 delivers on top of your existing operational data.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Operational%20Intelligence%20scoping" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Operational%20Intelligence%20engineering" class="btn btn--secondary btn--lg">Talk to an engineer about Operational Intelligence</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

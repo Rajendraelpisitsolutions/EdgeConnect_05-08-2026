@@ -1,0 +1,4 @@
+deviceId,deviceName,host,enabled
+plc-001,Press-A,192.168.30.21,true
+plc-002,Press-B,192.168.30.22,true
+plc-003,Press-C,192.168.30.23,false

@@ -1,0 +1,29 @@
+<!--
+  SchemaGen. Internal tool that emits JSON Schema for the configuration
+  records in ElpisEdgeConnect.Core.Configuration.
+  Reference: PHASE1_EXECUTION_PLAN.md Milestone B1 Definition of Done.
+
+  This is a tools project, not part of the runtime. Usage:
+    dotnet run  project tools/SchemaGen -c Release
+
+  Output is written to docs/config-schemas/.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.SchemaGen</RootNamespace>
+    <AssemblyName>SchemaGen</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.SchemaValidation\ElpisEdgeConnect.SchemaValidation.csproj" />
+  </ItemGroup>
+
+</Project>

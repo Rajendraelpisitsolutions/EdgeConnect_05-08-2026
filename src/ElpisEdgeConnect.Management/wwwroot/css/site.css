@@ -1,0 +1,2158 @@
+/*
+  Connectivity Studio — application-level CSS (operator-UI redesign).
+
+  Owns the app-shell layout, the left navigation rail, the shared page-heading
+  band, the typography weight scale, table/surface calming, protocol-tile
+  fixes, and the responsive breakpoints. MudBlazor's base styles ship in
+  MudBlazor.min.css; everything here is the Studio's own layer on top.
+
+  Downstream page/wizard agents consume these named hooks:
+    * .page-heading            — sticky per-page heading band (icon + title + desc)
+    * .page-heading__icon / __title / __desc  — its three slots
+    * .protocol-tile           — equal-height, accessible protocol picker tile
+    * .status-chip             — sentence-case, normal-weight status chip
+    * .num                     — tabular-nums numeric cell/text
+    * .identifier-cell         — single-line ellipsised identifier
+    * .grid-toolbar / __filter — count-left / filter-right strip above a grid
+    * .wizard-section__head / __title / __index / __desc  — numbered section head
+    * --page-gutter / --page-heading-gap / --w-body / --w-emphasis  — shared CSS vars
+    * --card-radius / --card-border / --card-shadow / --card-icon-bg  — card tokens
+
+  Reference: operator-UI redesign report §2, §3, §4, §5, §7.1, §7.4, §9, §12.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─────────────────────────────  Design tokens  ───────────────────────────── */
+:root {
+    /* Typography weight scale (§5.1). Segoe UI only ships 300/400/600/700 and
+       rounds weights >500 UP to bold, so we commit to a two-step scale. */
+    --w-body: 400;
+    --w-emphasis: 600;
+
+    /* Single source of truth for horizontal page gutters (§9). The page-heading
+       band cancels it with a negative margin, so it follows automatically. */
+    --page-gutter: 24px;
+
+    /* Breathing room between the sticky .page-heading band and the page body
+       beneath it. Lives on the heading (not on each page's first element) so
+       all 20 pages inherit the same separation from ONE value — the alternative
+       is a utility class on twenty razor files that drift apart the first time
+       one of them is edited. */
+    --page-heading-gap: 20px;
+
+    /* Card surfaces (§7.4). One set of tokens for every card in the product, so
+       a protocol tile in the Connect wizard, a route card on Overview and a
+       panel on Backup are visibly the same object rather than three near-misses.
+       Shadows are LAYERED and low-alpha — a tight contact shadow plus a wide
+       soft one — which is what reads as "raised paper". A single heavy drop
+       shadow reads as Material, which this UI is not. */
+    --card-radius: 12px;
+    --card-border: #E7E9EE;
+    --card-border-hover: #BBD5F5;
+    --card-shadow:
+        0 1px 2px rgba(16, 24, 40, 0.04),
+        0 1px 3px rgba(16, 24, 40, 0.06);
+    --card-shadow-hover:
+        0 4px 8px -2px rgba(16, 24, 40, 0.08),
+        0 14px 28px -8px rgba(16, 24, 40, 0.14);
+    /* Tinted backdrop behind a card's leading icon — what separates a card with
+       an icon in it from a card that merely starts with a glyph. */
+    --card-icon-bg: #EFF6FF;
+
+    /* Navigation rail geometry. */
+    --nav-rail-width: 240px;
+    --nav-rail-collapsed: 62px;
+
+    /* Navigation rail item states — one visible step between each, so hover
+       never reads as selected and the selected tab is obvious at a glance:
+           rest    transparent
+           hover   blue-50   (#EFF6FF)
+           active  blue-100  (#DBEAFE)  + inset bar + semibold
+       The active foreground is darker than the primary blue on purpose: the
+       label sits on the darker fill and must clear 4.5:1 (see the note at
+       .nav-rail__item--active). */
+    --nav-item-hover-bg: #EFF6FF;
+    --nav-item-active-bg: #DBEAFE;
+    --nav-item-active-hover-bg: #C7DEFC;
+    --nav-item-active-fg: #0B5AA5;
+
+    /* Fixed status footer height (matches StatusFooter.razor inline height). */
+    --footer-height: 32px;
+
+    /* Breathing room under the last row of page content. Named because the
+       sticky action bar has to cancel exactly this much to reach the bottom
+       of the scroll region — see .sticky-action-bar. */
+    --content-bottom-pad: 40px;
+
+    /* Surface used by the shell / sticky heading; falls back if Mud var absent. */
+    --studio-surface: var(--mud-palette-surface, #FFFFFF);
+    --studio-lines: var(--mud-palette-lines-default, #E5E7EB);
+}
+
+html, body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-weight: var(--w-body);
+}
+
+/* NB: scrollbar-gutter belongs on .app-content-scroll, not here. The document
+   never scrolls — .app-shell is height-clamped with overflow:hidden — so a
+   gutter reserved on <html> was a permanent empty strip down the right-hand
+   side of every page, holding space for a scrollbar that can never appear.
+   Moved to the element that actually scrolls; see .app-content-scroll below. */
+
+/* No document-level horizontal scrollbar, ever.
+   The shell is built around ONE scrolling region (.app-content-scroll), and
+   anything genuinely wider than the viewport — a data grid with a dozen
+   columns on Sources / Destinations / Routes — scrolls inside its own
+   container (.mud-table-container, overflow-x:auto; .scroll-x further down).
+   A second scrollbar on the document is therefore always a layout leak, and a
+   nasty one: it slides the nav rail and the status footer off-screen with the
+   content, so the operator loses the page furniture to reach a column.
+
+   Clamping here kills the leak wherever it originates rather than chasing each
+   overflowing child. The grids keep their own horizontal scrollbars — this
+   removes the outer one only. */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* ───────────────────────────  Application shell  ─────────────────────────── */
+/* Flex ROW: rail beside the main column. Height stops above the fixed footer so
+   the footer never overlaps the rail or content. */
+.app-shell {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - var(--footer-height));
+    width: 100%;
+    overflow: hidden;
+    background: var(--mud-palette-background, #F8FAFC);
+}
+
+/* Main column: banner row (fixed) above the single content scroller. */
+.app-main {
+    flex: 1 1 auto;
+    min-width: 0;               /* allow the column to shrink below its content */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Banner region — auto height, never scrolls (§2). */
+.app-banner-row {
+    flex: 0 0 auto;
+}
+
+/* The single scroller (§2). min-height:0 lets it shrink below content so
+   overflow-y engages here rather than on the page; padding-top:0 lets a sticky
+   .page-heading reach the very top. Horizontal padding = shared gutter. */
+.app-content-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 var(--page-gutter) var(--content-bottom-pad);
+    /* Reserved HERE, on the element that actually scrolls, so page content does
+       not shift sideways as the vertical scrollbar appears and disappears
+       between short and long pages. On <html> it reserved a strip for a
+       scrollbar that can never appear there — see the note above the
+       html/body clamp. */
+    scrollbar-gutter: stable;
+}
+
+/* A sticky child is confined to its parent's CONTENT box, so the bottom padding
+   above stops a pinned action bar short of the scroll region's bottom edge and
+   page content shows through the strip underneath. On a page that ends in an
+   action bar the bar IS the terminus and needs no breathing room beneath it, so
+   the padding is dropped there. (:has() is already used in this file for the
+   table-cell button rule.)
+
+   DESCENDANT, not direct child. The Add wizards sit straight inside the scroll
+   region, but the Edit route renders through SourceEditRouter, which wraps the
+   wizard in <div data-testid="render-wizard-active"> to carry the BaseVersionId
+   caption. That one wrapper made a `> ` selector miss, leaving the 40px padding
+   in place and a 40px strip under the pinned bar where the page content and the
+   status footer showed through. Measured on /sources/{id}/edit: gap 40px before,
+   0px after. Any future wrapper would have reintroduced it. */
+.app-content-scroll:has(.sticky-action-bar) {
+    padding-bottom: 0;
+
+    /* Column layout so the action bar can be parked at the BOTTOM even when the
+       page content is shorter than the scroll region. `position: sticky` only
+       pins an element once its container overflows; on a short page it just sits
+       wherever the content happens to end. Measured on /onboard step 1: the bar
+       floated 243px above the bottom with empty space beneath it, reading as a
+       footer stranded in the middle of the page, while every scrollable wizard
+       measured 0. Flex + `margin-top: auto` makes short and tall pages agree. */
+    display: flex;
+    flex-direction: column;
+}
+
+/* The bar is a direct child on the Add wizards and on /onboard. */
+.app-content-scroll > .sticky-action-bar {
+    margin-top: auto;
+}
+
+/* …and a grandchild on the Edit routes, where SourceEditRouter wraps the wizard
+   in <div data-testid="render-wizard-active">. That wrapper becomes the growing
+   column so the bar inside it still lands on the bottom edge. */
+.app-content-scroll > *:has(> .sticky-action-bar) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-content-scroll > *:has(> .sticky-action-bar) > .sticky-action-bar {
+    margin-top: auto;
+}
+
+/* The scroll region is the skip link's target and carries tabindex="-1", so the
+   browser draws its default focus ring around the whole page body when focus
+   lands there. Suppress it: the ring says nothing useful at that size, and the
+   heading the operator was sent to is already at the top of the region. */
+.app-content-scroll:focus,
+.app-content-scroll:focus-visible {
+    outline: none;
+}
+
+/* ─────────────────────────  Skip to main content  ────────────────────────── */
+/* Off-screen until focused, then pinned to the top-left over the rail. Moved
+   with `top`, never display:none or visibility:hidden — either of those removes
+   it from the tab order entirely, which is the one thing it must stay in. */
+.op-skip-link {
+    position: fixed;
+    top: -100px;
+    left: 8px;
+    z-index: 2000;              /* above the rail and every sticky heading */
+    padding: 0.5rem 0.9rem;
+    border-radius: 0 0 8px 8px;
+    background: var(--studio-surface);
+    color: var(--mud-palette-primary, #1976D2);
+    font-weight: var(--w-emphasis);
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(27, 37, 48, 0.18);
+    transition: top 120ms ease;
+}
+.op-skip-link:focus,
+.op-skip-link:focus-visible {
+    top: 0;
+    outline: 2px solid var(--mud-palette-primary, #1976D2);
+    outline-offset: 2px;
+}
+
+/* ─────────────────────────────  Navigation rail  ─────────────────────────── */
+.nav-rail {
+    flex: 0 0 auto;
+    width: var(--nav-rail-width);
+    display: flex;
+    flex-direction: column;
+    background: var(--studio-surface);
+    border-right: 1px solid var(--studio-lines);
+    transition: width 160ms ease;
+    overflow: hidden;
+}
+.nav-rail--collapsed {
+    width: var(--nav-rail-collapsed);
+}
+
+/* Brand + collapse control. */
+.nav-rail__head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 12px 8px;
+    min-height: 56px;
+}
+.nav-rail__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.nav-rail__logo {
+    height: 32px;               /* square Elpis mark — bounded by height */
+    width: 32px;
+    object-fit: contain;
+    display: block;
+    flex: 0 0 auto;
+}
+.nav-rail__logo-fallback {
+    display: none;              /* shown by the img onerror handler */
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--mud-palette-primary, #1976D2);
+    color: #FFFFFF;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+.nav-rail__brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+}
+.nav-rail__product {
+    font-weight: var(--w-emphasis);
+    font-size: 1rem;
+    color: var(--mud-palette-text-primary, #1F2937);
+    white-space: nowrap;
+}
+.nav-rail__by {
+    font-size: 0.7rem;
+    color: var(--mud-palette-text-secondary, #6B7280);
+    white-space: nowrap;
+}
+
+/* Collapse control — its own full-width row under the brand, shaped like a nav
+   item (same gutter, padding, radius and icon gap) so the rail reads as one
+   column of rows rather than a chevron floating beside the logo. It is a
+   SIBLING of .nav-rail__head, not a child of it, so nothing here may assume
+   that nesting. */
+.nav-rail__collapse {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 8px 4px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--mud-palette-text-secondary, #6B7280);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: var(--w-body);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+/* Same ellipsis behaviour as a nav item's label, so the row degrades the same
+   way while the rail animates between the two widths. */
+.nav-rail__collapse-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-rail__collapse:hover {
+    /* Same hover as the tabs — one hover colour for the whole rail. */
+    background: var(--nav-item-hover-bg);
+    color: var(--mud-palette-primary, #1976D2);
+}
+.nav-rail__collapse:focus-visible {
+    outline: 2px solid var(--mud-palette-primary, #1976D2);
+    outline-offset: 2px;
+}
+
+/* ── Primary CTA (ADR-0016 Q6) ──
+   Now rendered INLINE as an item of .nav-rail__list, but still filled so it
+   reads as an action rather than a destination. White on #1976D2 measures
+   4.6:1, clearing the 4.5:1 floor for its semibold label. Nothing below is
+   scoped to a wrapper element — the CTA is styled by its own class alone, so
+   moving it between containers cannot silently unstyle it. */
+
+/* MudTooltip wraps every rail row (the CTA and each tab) in a div carrying BOTH
+   .mud-tooltip-root (width: fit-content) and .mud-tooltip-inline
+   (display: inline-block). Left as shipped, that wrapper shrinks to its
+   content — invisible while the rail is expanded, because the label makes it
+   wide enough to look full-width, but it breaks the moment the rail collapses:
+   with .nav-rail__item-label hidden the wrapper is only as wide as the icon, so
+   the anchor cannot fill the rail and its justify-content:center has nothing to
+   centre within. Icons then sit hard against the left edge and the CTA / active
+   pills render icon-width instead of rail-width.
+
+   Overriding `display` alone is NOT enough — `width` is the property doing the
+   damage — and the second selector exists to beat MudBlazor's
+   `.mud-tooltip-root.mud-tooltip-inline` compound on specificity rather than on
+   source order. Note .mud-tooltip-inline is a second class on the SAME element,
+   never a child, so a `>` combinator here would match nothing. */
+.nav-rail__list .mud-tooltip-root,
+.nav-rail__list .mud-tooltip-root.mud-tooltip-inline {
+    display: block;
+    width: 100%;
+}
+.nav-rail__connect {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    background: var(--mud-palette-primary, #1976D2);
+    color: #FFFFFF;
+    font-weight: var(--w-emphasis);
+    white-space: nowrap;
+    overflow: hidden;
+    transition: background 120ms ease;
+}
+.nav-rail__connect:hover {
+    background: #1565C0;
+    color: #FFFFFF;
+}
+.nav-rail__connect:focus-visible {
+    outline: 2px solid var(--mud-palette-primary, #1976D2);
+    outline-offset: 2px;
+}
+/* On /onboard the CTA is the current page. It cannot use the tabs' blue inset
+   bar — that is invisible against a blue fill — so it inverts instead. */
+.nav-rail__connect[aria-current="page"] {
+    background: #0B5AA5;
+    box-shadow: inset 3px 0 0 0 #FFFFFF;
+}
+
+/* Collapsed rail: icon only, centred, same as the tabs around it. */
+.nav-rail--collapsed .nav-rail__connect {
+    justify-content: center;
+    gap: 0;
+    padding: 10px 0;
+}
+/* The collapse row narrows with them — it is a row of the same column. */
+.nav-rail--collapsed .nav-rail__collapse {
+    justify-content: center;
+    gap: 0;
+    margin: 0 6px 4px;
+    padding: 8px 0;
+}
+
+/* Scrolling list of groups + items. */
+.nav-rail__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 8px 12px;
+}
+.nav-rail__group-label {
+    padding: 12px 10px 4px;
+    font-size: 0.68rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+.nav-rail__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.nav-rail__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--mud-palette-text-primary, #374151);
+    font-weight: var(--w-body);
+    white-space: nowrap;
+    overflow: hidden;
+}
+.nav-rail__item-icon {
+    flex: 0 0 auto;
+}
+.nav-rail__item-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-rail__item:hover {
+    background: var(--nav-item-hover-bg);
+    color: var(--mud-palette-primary, #1976D2);
+}
+.nav-rail__item:focus-visible {
+    outline: 2px solid var(--mud-palette-primary, #1976D2);
+    outline-offset: 2px;
+}
+/* Active item — carries aria-current="page"; styled on the attribute AND the
+   modifier class so the active state is never a colour-only signal.
+
+   The fill is a full step darker than hover. Both used to be #EFF6FF, so the
+   selected tab was distinguishable only by its weight and inset bar — and
+   hovering it made even those read as an ordinary hover.
+
+   The label darkens with the fill. #1976D2 on this background is 3.8:1, under
+   the 4.5:1 floor for 14px semibold; --nav-item-active-fg restores it to 5.7:1.
+   Keep the two in step if either is retuned. */
+.nav-rail__item--active,
+.nav-rail__item[aria-current="page"] {
+    background: var(--nav-item-active-bg);
+    color: var(--nav-item-active-fg);
+    font-weight: var(--w-emphasis);
+    box-shadow: inset 3px 0 0 0 var(--mud-palette-primary, #1976D2);
+}
+
+/* Hover is `.class:hover` (0,2,0) and outranks `--active` (0,1,0), so without
+   this the selected tab reverted to the lighter hover fill under the pointer —
+   the one moment the operator is most likely to be looking at it. */
+.nav-rail__item--active:hover,
+.nav-rail__item[aria-current="page"]:hover {
+    background: var(--nav-item-active-hover-bg);
+    color: var(--nav-item-active-fg);
+}
+
+/* Collapsed rail: hide brand text + group labels + item labels; centre icons. */
+.nav-rail--collapsed .nav-rail__brand-text,
+.nav-rail--collapsed .nav-rail__group-label,
+.nav-rail--collapsed .nav-rail__collapse-label,
+.nav-rail--collapsed .nav-rail__item-label {
+    display: none;
+}
+.nav-rail--collapsed .nav-rail__item {
+    justify-content: center;
+    gap: 0;
+    padding: 8px 0;
+}
+.nav-rail--collapsed .nav-rail__head {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 6px 8px;
+}
+.nav-rail--collapsed .nav-rail__brand {
+    justify-content: center;
+}
+
+/* ────────────────────────  Sticky wizard action bar  ────────────────────── */
+/* The Back / Next / Save row at the foot of a wizard or the onboarding flow.
+   Pins to the bottom of the scroll region so it stays reachable on a form that
+   is taller than the window.
+
+   bottom:0, NOT bottom:32px. The bars carried a hard-coded 32px to clear the
+   status footer, but .app-shell is already `height: calc(100vh - footer)`, so
+   the scroll region's bottom edge sits above the footer to begin with. The
+   offset double-counted it: the bar floated 32px high and a strip of page
+   content showed through underneath, which read as a rendering fault.
+
+   The negative margin lets the bar span the full width of the scroll region —
+   without it the page gutter stays transparent at each end and content slides
+   through the gap beside it, the same failure the page-heading band solves. */
+.sticky-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 6;                 /* above page content, below the overlay (1200) */
+    margin: 16px calc(-1 * var(--page-gutter)) 0;
+    padding: 12px var(--page-gutter);
+    background: var(--studio-surface);
+    border-top: 1px solid var(--studio-lines);
+}
+
+/* ───────────────────  Connect-a-device configure overlay  ───────────────── */
+/* The configure-source step of the onboarding flow paints as a modal panel over
+   the protocol picker, so the operator can still see the tile they chose while
+   filling the form in.
+
+   This is a scrim, not a MudDialog, and that is load-bearing: ADR-0016 Rule 2
+   keeps every step mounted and hides the inactive ones with d-none so probe
+   results and half-typed values survive Back/Next. A MudDialog would tear the
+   wizard down when it closed and lose all of it. Here the same component
+   instance stays mounted — only where it paints changes.
+
+   z-index sits above the sticky page heading (5) and the wizard action bar (5),
+   but below MudBlazor's own dialog layer (1300+), so a confirm dialog raised
+   from inside the panel still lands on top of it. */
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4vh var(--page-gutter);
+    overflow-y: auto;
+}
+/* Flex COLUMN with one scrolling row. The panel used to scroll as a whole, so
+   its title scrolled off the top and its actions off the bottom on any wizard
+   taller than the window — the operator lost both the name of what they were
+   configuring and the button to finish it. Only __body scrolls now.
+
+   The padding moved off the panel and onto the three regions so the body's
+   scrollbar sits inside the panel rather than beside its padding. */
+.onboarding-overlay__panel {
+    width: min(1100px, 100%);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--studio-surface);
+    border: 1px solid var(--studio-lines);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.28);
+}
+.onboarding-overlay__head {
+    flex: 0 0 auto;
+    padding: 20px 24px 12px;
+    border-bottom: 1px solid var(--studio-lines);
+}
+/* min-height:0 is load-bearing: a flex item defaults to min-height:auto and
+   refuses to shrink below its content, which would push the panel past its
+   max-height and put the scrollbar back on the whole panel. */
+.onboarding-overlay__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 24px;
+}
+.onboarding-overlay__foot {
+    flex: 0 0 auto;
+    padding: 12px 24px 16px;
+}
+/* On a phone the panel IS the screen — a centred card with margins wastes the
+   width these forms need for their tag tables. */
+@media (max-width: 767px) {
+    .onboarding-overlay {
+        padding: 0;
+    }
+    .onboarding-overlay__panel {
+        max-height: 100%;
+        min-height: 100%;
+        border: none;
+        border-radius: 0;
+    }
+    .onboarding-overlay__head { padding: 14px 16px 10px; }
+    .onboarding-overlay__body { padding: 12px 16px; }
+    .onboarding-overlay__foot { padding: 10px 16px 14px; }
+}
+
+/* ──────────────────────────────  Page heading  ───────────────────────────── */
+/* A class WE own (§4) so a MudBlazor upgrade can't break it. Pins to the top of
+   the scroll region and spans the full width by cancelling the page gutter with
+   a negative margin, then re-adding it as padding.
+
+   The bottom margin is --page-heading-gap: the separation between the band and
+   the first row of page content belongs to the HEADING, which every page shares,
+   not to whatever each page happens to render first. One value, twenty pages. */
+.page-heading {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--studio-surface);
+    margin: 0 calc(-1 * var(--page-gutter)) var(--page-heading-gap);
+    padding: 16px var(--page-gutter);
+    border-bottom: 1px solid var(--studio-lines);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+/* Icon centred on the label optical centre-line: align to the heading row's
+   centre and nudge to sit against the title, not the description below it. */
+.page-heading__icon {
+    flex: 0 0 auto;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    color: var(--mud-palette-primary, #1976D2);
+}
+.page-heading__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+.page-heading__title {
+    font-weight: var(--w-emphasis);
+    font-size: 1.25rem;
+    line-height: 1.2;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+/* Wraps rather than truncating: several real descriptions (Routes, Sinks) run
+   well past one line, and an ellipsis silently ate the half that explained what
+   the page is for. The measure is capped so the sticky band can't stretch into a
+   single 200-character line on a 4K screen — ~88ch lands the longest current
+   description on two lines at desktop width. */
+.page-heading__desc {
+    font-weight: var(--w-body);
+    font-size: 0.85rem;
+    color: var(--mud-palette-text-secondary, #6B7280);
+    max-width: 88ch;
+}
+/* Trailing actions (buttons/filters) pushed to the right of the heading row. */
+.page-heading__actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+/* ──────────────────  MudStack row helpers (MudBlazor 7)  ─────────────────── */
+/* MudBlazor 7 renders a Stack as role="group" class="d-flex flex-row" — there is
+   NO .mud-stack-row class. These replace the six inert rules that targeted it. */
+
+/* (a) Icon on the same optical centre-line as its sibling label. */
+[role="group"].flex-row {
+    align-items: center;
+}
+[role="group"].flex-row > .mud-icon-root {
+    align-self: center;
+}
+
+/* (b) Wizard section filters pushed to the right end of a stack row.
+
+   Done by the CONTAINER, not by a margin on the filter. MudBlazor ships
+   `.mud-input-control { margin: 0 !important }`, which silently beat the
+   `margin-left: auto` this rule used to carry — the filter simply sat against
+   the label to its left with no clue why. Answering their !important with one
+   of ours would only start an arms race we lose again on the next upgrade;
+   justify-content cannot be reached by any declaration on the child at all, so
+   the child's margins stop mattering.
+
+   Harmless where a MudSpacer is already present (it eats the free space, so
+   justify-content has nothing left to distribute), which is what makes this
+   safe to apply to every stack row that ends in an input. */
+[role="group"].flex-row:has(> .mud-input-control:last-child) {
+    justify-content: space-between;
+}
+
+/* (c) Action buttons in a table cell kept on one line. */
+.mud-table-cell:has(.mud-button-root) {
+    white-space: nowrap;
+}
+
+/* (d) Mobile-width variants of (a) and (c): keep the centre-line, but allow the
+   button cell to wrap so narrow screens don't force horizontal scroll. */
+@media (max-width: 767px) {
+    [role="group"].flex-row > .mud-icon-root {
+        align-self: center;
+    }
+    .mud-table-cell:has(.mud-button-root) {
+        white-space: normal;
+    }
+}
+
+/* ─────────────────────────  Typography weight scale  ─────────────────────── */
+/* Pull stray inline font-weights onto the two-step scale (§5.1). Values >500
+   round UP to bold on Segoe UI, so anything emphasised collapses to 600 and
+   anything body-ish to 400. */
+[style*="font-weight:500"],
+[style*="font-weight: 500"],
+[style*="font-weight:550"],
+[style*="font-weight: 550"] {
+    font-weight: var(--w-body) !important;
+}
+[style*="font-weight:600"],
+[style*="font-weight: 600"],
+[style*="font-weight:620"],
+[style*="font-weight: 620"],
+[style*="font-weight:640"],
+[style*="font-weight: 640"],
+[style*="font-weight:650"],
+[style*="font-weight: 650"],
+[style*="font-weight:700"],
+[style*="font-weight: 700"] {
+    font-weight: var(--w-emphasis) !important;
+}
+.mud-typography-h1,
+.mud-typography-h2,
+.mud-typography-h3,
+.mud-typography-h4,
+.mud-typography-h5,
+.mud-typography-h6,
+.mud-typography-subtitle1,
+.mud-typography-subtitle2 {
+    font-weight: var(--w-emphasis);
+}
+
+/* ─────────────────────────────  Surfaces + tables  ──────────────────────── */
+/* Soften the inline elevation-8 paper used on some cards, WITHOUT touching
+   dialogs/menus/popovers (which legitimately float high). */
+.app-content-scroll .mud-paper.mud-elevation-8 {
+    box-shadow: var(--mud-elevation-2);
+}
+
+/* A page that nests its own width-capped MudContainer inside the scroller reads
+   as broken next to every other page: the body stops two-thirds across and the
+   container's own padding double-indents on top of the shared gutter. Neutralise
+   the cap here so one stray container can't make a page look misaligned.
+   md/lg/xl only — MaxWidth.Small is used deliberately for short centred
+   messages (the router's "nothing at this address"), and must stay narrow. */
+.app-content-scroll .mud-container-maxwidth-md,
+.app-content-scroll .mud-container-maxwidth-lg,
+.app-content-scroll .mud-container-maxwidth-xl {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Table headers de-shouted (§5.2): pick ONE quiet emphasis — no bold+uppercase+
+   wide-tracking pile-up. */
+.mud-table-head th,
+.mud-table-head .mud-table-cell,
+.mud-table-root .mud-table-head .mud-table-cell {
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: var(--w-emphasis);
+}
+
+/* Numeric cells / spans: tabular figures so columns of numbers align. */
+.num,
+.mud-table-cell.num,
+td.num,
+.mud-table-cell[data-numeric="true"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}
+
+/* Status chips: sentence case, normal weight. */
+.status-chip,
+.mud-chip.status-chip {
+    text-transform: none;
+    font-weight: var(--w-body);
+    letter-spacing: normal;
+}
+
+/* ─────────────────────────────  Row height baseline  ─────────────────────── */
+/* Shared MIN-height (not fixed) so Sources/Destinations/Routes list rows share
+   a baseline and vertically centre their content (§5.3). */
+.mud-data-grid .mud-table-row,
+.mud-data-grid .mud-table-body .mud-table-row {
+    min-height: 52px;
+}
+.mud-data-grid .mud-table-cell {
+    vertical-align: middle;
+}
+/* Identifier cells: single line + ellipsis. */
+.identifier-cell,
+.mud-table-cell.identifier-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 1px;             /* let ellipsis engage inside the flexible cell */
+}
+
+/* ─────────────────────────────  Button case  ─────────────────────────────── */
+/* ONE root rule fixes ~180 buttons (§7.1). */
+.mud-button-root {
+    text-transform: none;
+}
+
+/* ──────────────────────────────  Bold weight  ────────────────────────────── */
+/* The browser default for <strong> is 700 — a full step ABOVE the two-step
+   scale declared at the top of this file (400 body / 600 emphasis). Every
+   inline-bolded instance id, buffer mode and error code was therefore heavier
+   than any heading around it, which is what made cards read as shouting. Pull
+   <strong> back onto the scale; it stays clearly emphasised at 600. */
+strong,
+b {
+    font-weight: var(--w-emphasis);
+}
+
+/* ─────────────────────────────  Grid toolbars  ───────────────────────────── */
+/* The strip above a MudDataGrid: record count on the left, filter box hard
+   right. `.mud-table-toolbar` itself contributes padding only — the flex row
+   comes from `.mud-toolbar` beside it, and MudSpacer is nothing but
+   `flex-grow-1` — so the split silently depends on two vendor classes staying
+   as they are. Wrapping the two ends in an explicit full-width flex row of our
+   own states the intent once and makes every grid toolbar the same object.
+
+   The split is done by the CONTAINER, not by a margin on the filter. Pushing a
+   MudBlazor input with `margin-left: auto` is a losing position: `margin` is a
+   property the vendor resets on `.mud-input-control` (to 0 in the base rule, and
+   to `0 !important` in some scoped contexts such as data-grid edit cells), so
+   the alignment depends on which reset the field happens to sit under. Escalating
+   to an !important of our own would only lose again on the next upgrade —
+   justify-content, by contrast, cannot be reached by any rule on the child. */
+/* Filter strip with NO count beside it — Diagnostics, where the controls are
+   the only thing on the row. `.grid-toolbar` splits count-left / filter-right;
+   here there is nothing to sit on the left, so everything is pushed to the end
+   instead. Laid out on a 12-column grid the controls stretched the full width
+   and read as a FORM to fill in, rather than as a way to narrow what is already
+   on screen. */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    width: 100%;
+}
+
+/* Cancel the growth at the WRAPPER, which is the only place it can be reached.
+   MudSelect renders an outer `.mud-select` around the element that receives its
+   `Class` parameter, and `flex-grow: 1` lives on that outer div:
+
+       <div class="mud-select">        <- flex-grow:1 is HERE, still growing
+           <div class="my-class">      <- Class lands HERE, one level too deep
+
+   So sizing passed through the component's own Class silently does nothing —
+   the rule is on the child, and the parent is what is growing. Same trap as the
+   grid toolbar's filter field. Drive MudBlazor layout from the container. */
+.filter-bar > .mud-input-control,
+.filter-bar > .mud-select {
+    flex: 0 1 12rem;
+    min-width: 9rem;
+}
+
+.grid-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+/* Anything after the first child joins the right-hand cluster, so a toolbar that
+   later grows a third control still splits count | rest rather than spreading
+   three items evenly across the strip. */
+.grid-toolbar > :first-child {
+    margin-right: auto;
+}
+/* Sized by flex-basis rather than width, deliberately: MudBlazor sets a width on
+   .mud-input-control with !important, and in a flex row the flex basis decides
+   the main size regardless — so the field lands at 280px without this file
+   having to escalate. Shrink is allowed so a narrow toolbar squeezes the field
+   instead of overflowing. */
+.grid-toolbar__filter {
+    flex: 0 1 280px;
+    width: 280px;
+    max-width: 280px;
+}
+
+/* ────────────────────────────────  Cards  ────────────────────────────────── */
+/* ONE treatment for every content card in the product — this is what makes a
+   protocol tile, a route card and a Backup panel read as the same object.
+   Scoped to the papers that actually ARE cards (elevation 1/2 and outlined
+   surfaces) and explicitly NOT to chrome: `.mud-paper-square` is the opt-out
+   MudBlazor already gives us and is what the status footer and the layout
+   banners use, while popovers, menus, dialogs and snackbars sit at elevation 6+
+   and so never match. That keeps this rule out of overlays, which need their own
+   much heavier shadow. */
+.mud-paper.mud-elevation-1:not(.mud-paper-square),
+.mud-paper.mud-elevation-2:not(.mud-paper-square),
+.mud-paper.mud-paper-outlined:not(.mud-paper-square),
+.mud-card:not(.mud-paper-square) {
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+}
+
+/* ─────────────────────────────  Protocol tiles  ──────────────────────────── */
+/* Equal-height AND equal-width tiles (§7.4): a MudTooltip-wrapped disabled tile
+   must match a bare MudPaper tile in both axes.
+
+   Width matters as much as height. MudBlazor ships
+   `.mud-tooltip-root { width: fit-content }` plus `display: inline-block`, so a
+   wrapped tile shrank to its own text while the bare tiles beside it filled
+   their grid column — which is what left the "Not available yet" tiles narrower
+   than their neighbours with a gap gaping open beside them.
+
+   One selector, not two: `.mud-tooltip-inline` is a second class on the SAME
+   element (`.mud-tooltip-root.mud-tooltip-inline`), never a child, so the old
+   `> .mud-tooltip-inline` half of this rule matched nothing at all. */
+.protocol-tile-grid .mud-tooltip-root,
+.protocol-tile-grid .mud-tooltip-root.mud-tooltip-inline {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+/* .mud-paper-qualified so these outrank the shared card rule above on
+   specificity rather than on source order. */
+.mud-paper.protocol-tile {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
+}
+/* Only the ACTIONABLE tiles lift, and they take a blue-tinted border with them.
+   A disabled tile that animates under the pointer promises a click it will not
+   honour — which is why the lift is keyed off [role="button"] (the same
+   attribute that makes the tile operable) and not off the tile class. */
+.mud-paper.protocol-tile[role="button"]:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--card-border-hover);
+    transform: translateY(-2px);
+}
+/* Press settles the tile back onto the page, so the click has a physical answer
+   instead of the hover state simply persisting under the pointer. */
+.mud-paper.protocol-tile[role="button"]:active {
+    box-shadow: var(--card-shadow);
+    transform: translateY(0);
+}
+/* The leading icon gets a tinted plate. Both selectors describe the SAME icon:
+   the tile's own first glyph, whether the wizard has adopted the
+   .protocol-tile__body hook on its stack or not. Deliberately child-combined
+   rather than the looser `.protocol-tile .mud-icon-root:first-child` — that
+   also matches the lock glyph inside the "Requires Premium" chip, which would
+   then wear a blue plate of its own. */
+.protocol-tile > [role="group"] > .mud-icon-root:first-child,
+.protocol-tile__body > .mud-icon-root:first-child {
+    background: var(--card-icon-bg);
+    border-radius: 10px;
+    padding: 8px;
+    box-sizing: content-box;
+    transition: background 180ms ease;
+}
+/* Disabled tile: quiet surface, full-strength text (NOT opacity:0.55, which dims
+   text below the contrast minimum). Flat — it is not a raised, pressable thing,
+   so it carries no shadow to lift from. */
+.mud-paper.protocol-tile--disabled {
+    background: var(--mud-palette-background-grey, #F3F4F6);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+/* Neutral plate on a disabled tile: blue would read as actionable. */
+.protocol-tile--disabled > [role="group"] > .mud-icon-root:first-child,
+.protocol-tile--disabled .protocol-tile__body > .mud-icon-root:first-child {
+    background: rgba(16, 24, 40, 0.05);
+}
+.protocol-tile--disabled .protocol-tile__title,
+.protocol-tile--disabled .protocol-tile__desc {
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+/* Tile internals. The tiles were already equal-height, but the status chip sat
+   directly under the description — and descriptions run to one or two lines
+   depending on the protocol, so "Available" and "Not available yet" landed at
+   different heights across an otherwise tidy row. Fill the tile with the body
+   stack and let the chip take the slack above it: every chip then sits on its
+   tile's bottom edge, which is one straight line across the grid. */
+.protocol-tile__body {
+    flex: 1 1 auto;
+    width: 100%;
+}
+/* margin-top:auto does the pushing. The 0s replace MudBlazor's blanket
+   `.mud-chip { margin: 4px }`, which indented the chip 4px past the left edge of
+   the title and description it sits under. */
+.protocol-tile__body > .mud-chip {
+    margin: auto 0 0 0;
+}
+/* Two-line reserve under the title so the text blocks share a depth and the
+   descriptions all start AND end on the same rhythm. A longer description at a
+   narrow breakpoint just grows past it. */
+.protocol-tile__desc {
+    min-height: 2.86em;
+}
+/* MudBlazor's h6 line-height (1.6) is set for running prose and reads loose on a
+   short card title. Tighten it so the title binds to its description instead of
+   floating between the icon and the text. */
+.protocol-tile__title {
+    line-height: 1.35;
+}
+/* Visible focus ring for keyboard users on interactive tiles. */
+.protocol-tile[role="button"]:focus-visible,
+[role="button"].protocol-tile:focus-visible {
+    outline: 2px solid var(--mud-palette-primary, #1976D2);
+    outline-offset: 2px;
+}
+
+/* ───────────────────────────  Wizard sections  ───────────────────────────── */
+/* The configure panels are stacks of WizardSection cards. They read as one
+   undifferentiated wall of inputs because the numbered heading had no weight of
+   its own and no rule beneath it, so nothing marked where a section started.
+
+   STYLING ONLY. The heading text stays exactly "{Index}. {Title}" — that format
+   is a tested contract (WizardSectionTests) and the number is merely wrapped in
+   a span so it can be tinted; the text content, and so the accessible name, is
+   unchanged. */
+.wizard-section__head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--card-border);
+}
+.wizard-section__title {
+    font-weight: var(--w-emphasis);
+}
+/* Tinting the number turns "1." "2." "3." into a countable spine down the panel,
+   which is what tells an operator mid-setup how much of the form is left. */
+.wizard-section__index {
+    color: var(--mud-palette-primary, #1976D2);
+    font-weight: var(--w-emphasis);
+}
+/* Same measure cap as .page-heading__desc — help text is prose and stops being
+   readable long before it stops fitting. */
+.wizard-section__desc {
+    display: block;
+    max-width: 88ch;
+}
+
+/* The BLOCK root (.wizard-section on the section's paper) carries no surface of
+   its own — border, radius and shadow all come from the shared card rule, and
+   restating them here would give the same three properties two owners. It earns
+   its place as a SCOPE: helper text sets the row height in a field grid, so one
+   long helper under a narrow column stretches that entire row. Tighten the
+   leading and give it a little air so the wrapped lines stay readable rather
+   than merely small — scoped to the wizard because a helper under a lone field
+   elsewhere has no row to stretch. */
+.wizard-section .mud-input-helper-text {
+    line-height: 1.45;
+    margin-top: 6px;
+}
+
+/* ────────────────────────────  Dialog polish  ────────────────────────────── */
+/* A dialog is a card the operator cannot ignore, so it uses the card radius
+   rather than MudBlazor's `--mud-default-borderradius` — a 4px box floating in
+   front of 12px cards reads as a different product.
+
+   Radius only. MudBlazor gives `.mud-dialog` `max-height` + `overflow-y: auto`,
+   which is how a tall dialog scrolls; an `overflow: hidden` here would clip the
+   bottom off every long dialog in the Studio instead. The scoped confirm rule
+   below can afford it because that dialog is sized by its content and short.
+
+   The mobile rule further down sets border-radius:0 for full-screen dialogs and
+   sits LATER in this file, so it still wins there. */
+.mud-dialog-container .mud-dialog {
+    border-radius: var(--card-radius);
+}
+/* Buttons in the action row match the inner blocks, not the paper: a button
+   with the card's own 12px radius reads as a panel someone forgot to fill. */
+.mud-dialog-actions .mud-button-root {
+    border-radius: 8px;
+}
+
+/* ─────────────────  Confirm dialog — non-destructive (shared)  ───────────── */
+/* Same anatomy as .confirm-delete below, in amber rather than red: this is the
+   discard/back dialog, so nothing is removed from the gateway — the operator
+   only loses what they typed. Keeping the two dialogs structurally identical
+   but chromatically distinct is what lets an operator tell "you will lose your
+   edits" from "this device is about to be deleted" before reading a word.
+
+   No width pin here, deliberately. .confirm-delete has to escalate to
+   `width: 560px !important` to beat MudBlazor's `.mud-dialog-width-xs` on the
+   same element, because its cascade list needs the extra measure; this dialog
+   is two short paragraphs and reads fine at the ExtraSmall default, so it stays
+   out of that arms race entirely.
+
+   Radius scale is the same three steps as the delete dialog — paper
+   (--card-radius, 12px) > icon plate (10px) > consequence block and buttons
+   (8px) — so nesting reads as nesting rather than one radius at every depth. */
+.confirm-dialog .mud-dialog,
+.mud-dialog.confirm-dialog {
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    box-shadow:
+        0 8px 20px -6px rgba(16, 24, 40, 0.16),
+        0 32px 64px -12px rgba(16, 24, 40, 0.28);
+}
+
+/* ── Header band. Tinted amber with a hairline under it, so the "you are about
+      to lose something" register is set before the message is read. ── */
+.confirm-dialog__head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 12px 20px;
+    margin: -16px -24px 0;              /* cancel MudDialog's own title padding */
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.10), rgba(245, 158, 11, 0.04));
+    border-bottom: 1px solid rgba(245, 158, 11, 0.22);
+    box-sizing: content-box;
+}
+/* Ringed plate behind the glyph, same construction as .confirm-delete__icon.
+   The foreground is #B45309, not the raw amber: amber-500 on its own 16% tint
+   is far under 4.5:1, and the glyph is the first thing the eye lands on. */
+.confirm-dialog__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border-radius: 10px;
+    color: #B45309;
+    background: rgba(245, 158, 11, 0.16);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.07);
+}
+.confirm-dialog__icon .mud-icon-root {
+    font-size: 24px;
+}
+.confirm-dialog__title {
+    font-weight: var(--w-emphasis);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+.confirm-dialog__body {
+    padding: 24px 4px 8px;
+}
+.confirm-dialog__message {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+/* The cost of continuing, boxed so it cannot be skimmed past as more prose. */
+.confirm-dialog__consequence {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.09);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: #92400E;                     /* 6.9:1 on this tint — see .status-pill--warn */
+}
+.confirm-dialog__consequence .mud-icon-root {
+    margin-top: 1px;
+    flex: none;
+}
+/* Two selectors for ONE element, not two elements. The component passes
+   `.confirm-dialog__actions` through MudDialog's ActionsClass, so the hook
+   lands on the `mud-dialog-actions` element itself rather than on a wrapper —
+   there is no extra div to target. The descendant form is what the reference
+   build uses and is kept so the two trees stay comparable; the BEM form is kept
+   so the rule survives if the dialog is ever rebuilt off MudDialog. They carry
+   identical declarations, so which one wins the cascade does not matter. */
+.confirm-dialog .mud-dialog-actions,
+.confirm-dialog__actions {
+    gap: 10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--studio-lines);
+    background: var(--mud-palette-background, #F8FAFC);
+}
+/* Both buttons share a hit area and a radius so the safe choice (keep editing)
+   is never the harder one to press. The 8px matches the generic
+   `.mud-dialog-actions .mud-button-root` rule above rather than fighting it. */
+.confirm-dialog__cancel,
+.confirm-dialog__confirm {
+    text-transform: none;
+    border-radius: 8px;
+    font-weight: var(--w-emphasis);
+    padding-inline: 20px;
+    min-height: 40px;
+}
+
+/* ──────────────────────  Confirm-delete dialog (shared)  ─────────────────── */
+/* The dialog paper itself: the card radius and a heavier lift than a page card,
+   because it is a modal interrupt, not another surface on the board. The radius
+   scale is deliberately three steps — paper (--card-radius) > icon plate (10px)
+   > inner blocks and buttons (8px) — so nesting reads as nesting rather than as
+   one radius repeated at every depth. */
+.confirm-delete .mud-dialog,
+.mud-dialog.confirm-delete {
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    box-shadow:
+        0 8px 20px -6px rgba(16, 24, 40, 0.16),
+        0 32px 64px -12px rgba(16, 24, 40, 0.28);
+
+    /* Wider and shorter than MudBlazor's ExtraSmall default (444px). The extra
+       width lets the consequence sentence and each cascade line sit on ONE line
+       instead of wrapping to two or three, which is where most of the dialog's
+       height was going — the box was tall because the text was cramped, not
+       because it said much.
+
+       No min-height: the dialog is sized by its content, so a route delete with
+       no cascade list stays genuinely short instead of padding itself out to
+       match the tallest variant.
+
+       !important is needed on the width pair, and only there. MudBlazor 7's
+       DialogOptions exposes no width, so it sets the ExtraSmall max-width via
+       `.mud-dialog-width-xs` on THIS SAME ELEMENT at equal specificity — without
+       !important the winner depends on stylesheet order and the dialog renders
+       at 444px. This is a framework rule on the same element, not a child rule
+       that could be fixed from its container, which is why the escalation is
+       correct here and nowhere else in this file. */
+    width: 560px !important;
+    max-width: 560px !important;
+}
+
+/* ── Header band. Tinted, with a hairline under it, so the destructive nature
+      is established before a word is read. ── */
+.confirm-delete__head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 9px 20px;                  /* trimmed with the rest of the vertical rhythm */
+    margin: -16px -24px 0;              /* cancel MudDialog's own title padding */
+    background: linear-gradient(180deg, rgba(220, 38, 38, 0.07), rgba(220, 38, 38, 0.03));
+    border-bottom: 1px solid rgba(220, 38, 38, 0.16);
+    box-sizing: content-box;
+}
+/* Ringed plate behind the bin glyph. The ring is what lifts it from "tinted
+   square" to a deliberate emblem. */
+.confirm-delete__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 10px;
+    color: var(--mud-palette-error, #DC2626);
+    background: rgba(220, 38, 38, 0.12);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.06);
+}
+.confirm-delete__icon .mud-icon-root {
+    font-size: 24px;
+}
+.confirm-delete__head-text {
+    min-width: 0;
+}
+.confirm-delete__title {
+    font-weight: var(--w-emphasis);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+.confirm-delete__subtitle {
+    color: var(--mud-palette-text-secondary, #6B7280);
+    line-height: 1.4;
+}
+
+/* Vertical rhythm trimmed throughout: the dialog is five short blocks stacked,
+   so its height was mostly the gaps between them, not the text. Each step below
+   is a single-figure reduction — enough to close the box up without letting the
+   target block, the consequence and the cascade run together. */
+.confirm-delete__body {
+    padding: 9px 0 0;
+}
+
+/* ── The "what am I deleting" block. Raised white card rather than a recessed
+      grey one: it is the SUBJECT of the sentence, so it should sit forward of
+      the page, not sink into it. Same tokens as every other card. ── */
+.confirm-delete__target {
+    display: block;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    border-left: 4px solid var(--mud-palette-error, #DC2626);
+    background: var(--studio-surface);
+    box-shadow: var(--card-shadow);
+}
+.confirm-delete__target-kind {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: 0.08em;
+    line-height: 1;
+    color: var(--mud-palette-error, #DC2626);
+    opacity: 0.85;
+}
+/* Monospace so a trailing "1" is unmistakable — instance ids on one gateway
+   routinely differ by a single character. */
+.confirm-delete__target-name {
+    display: block;
+    margin-top: 7px;
+    font-size: 0.9375rem;
+    font-weight: var(--w-emphasis);
+    line-height: 1.3;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+
+.confirm-delete__consequence {
+    margin: 8px 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+
+/* ── Cascade panel. Countable at a glance, which an appended sentence is not,
+      and boxed so it reads as a distinct list of casualties. ── */
+.confirm-delete__impacts {
+    margin-top: 8px;
+    padding: 9px 20px;
+    border-radius: 8px;
+    background: var(--mud-palette-background-grey, #F3F4F6);
+    border: 1px solid var(--card-border);
+}
+.confirm-delete__impacts-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 0.6875rem;
+    font-weight: var(--w-emphasis);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+.confirm-delete__impacts-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+.confirm-delete__impacts-list li::marker {
+    color: var(--mud-palette-error, #DC2626);
+}
+
+.confirm-delete__reversible {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px dashed var(--studio-lines);
+    font-size: 0.8125rem;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+
+/* MudBlazor gives .mud-dialog-content a 24px horizontal padding of its own, so
+   with the header and actions on a 20px gutter the body blocks sat 4px inboard
+   of the title above them. Pull the content onto the same 20px so every band —
+   header, target, impacts, actions — shares one left edge. */
+.confirm-delete .mud-dialog-content {
+    padding-inline: 20px;
+}
+
+/* ── Actions. Cancel stays quiet but gains a hit area equal to the confirm, so
+      the safe choice is never the harder one to press. ── */
+.confirm-delete .mud-dialog-actions {
+    gap: 10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--studio-lines);
+    background: var(--mud-palette-background, #F8FAFC);
+}
+.confirm-delete__cancel,
+.confirm-delete__confirm {
+    text-transform: none;
+    border-radius: 8px;
+    font-weight: var(--w-emphasis);
+    padding-inline: 20px;
+}
+.confirm-delete__confirm {
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.32);
+}
+.confirm-delete__confirm:hover {
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.42);
+}
+
+/* ──────────────────  Verdict banner — expandable reasons  ────────────────── */
+/* Revealed by clicking the "N broken" chip on the Overview verdict banner. Sits
+   INSIDE the banner, separated by a hairline rather than boxed as its own
+   panel: it is the same statement continuing ("…and here is which ones"), not a
+   second alert stacked on the first. The hairline is tinted from the same red
+   as the banner so the continuation is visibly part of it.
+
+   All of these are descendants of the banner, never the route card, so the
+   (0,3,0) shared-card rule is not in play for any of them. */
+.verdict-reasons {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(220, 38, 38, 0.28);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+/* Baseline alignment, not centre: the three parts are different sizes (name,
+   prose, monospace code) and centring them makes the code chip float. Wraps so
+   a long reason drops to its own line instead of squeezing the route id. */
+.verdict-reason {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+/* The route id leads and is the only emphasised part — it answers "which one?",
+   which is what the operator is scanning for before they read any prose. */
+.verdict-reason__route {
+    font-weight: var(--w-emphasis);
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+/* flex-basis 16rem is the wrap trigger: above it the reason sits on the id's
+   line, below it takes a line of its own with the full measure back. */
+.verdict-reason__why {
+    color: var(--mud-palette-text-secondary, #6B7280);
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+/* Demoted, not removed — still greppable in a support ticket. */
+.verdict-reason__code {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.6875rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(220, 38, 38, 0.09);
+    color: #9B1C1C;
+    white-space: nowrap;
+}
+
+/* ─────────────────────────────  Overview cards  ──────────────────────────── */
+/* A route card and a protocol tile are the same kind of object and must not
+   behave differently under the pointer: same tokens, same 2px lift, same timing,
+   same blue-tinted border on hover.
+
+   The resting three are restated here rather than left to the shared card rule.
+   Today the card IS a MudPaper at elevation 1, so the shared rule already
+   supplies them (identically — these are the same tokens, so nothing changes
+   visually); stated here as well, the card still looks like a card if it is ever
+   rebuilt as a plain <article>, which is exactly how the reference build lost
+   its hover treatment silently. */
+.route-card {
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
+}
+/* Health accent — the same 4px left edge the Overview verdict banner wears, so a
+   card and the banner counting it are visibly the same object. The banner says
+   "5 of 7 routes are not delivering data"; these edges are which five, readable
+   down the column without parsing a chip.
+
+   Class-TRIPLED (0,3,0) for the same specificity reason as the hover rule
+   below, and it has to be three: the shared card rule is
+   `.mud-paper.mud-elevation-1:not(.mud-paper-square)` — two classes plus a
+   :not() whose argument also counts — so it lands at (0,3,0) and sets `border`
+   as a SHORTHAND, which includes border-left. A two-class accent (0,2,0) is
+   therefore silently overwritten and no edge paints at all. Matching (0,3,0)
+   and sitting later in the file wins the tie.
+
+   Colour is never the only signal — each card also carries a worded state chip
+   ("Not delivering" / "Degraded" / "Running"), so the accent is reinforcement
+   for scanning, not the message itself. */
+.route-card.route-card.route-card--attention {
+    border-left: 4px solid var(--mud-palette-error);
+}
+
+.route-card.route-card.route-card--healthy {
+    border-left: 4px solid var(--mud-palette-success);
+}
+
+/* Class-doubled (0,3,0), NOT for source-order reasons but for specificity: the
+   shared card rule is `.mud-paper.mud-elevation-1:not(.mud-paper-square)`, which
+   also counts three classes, so a plain `.route-card:hover` (0,2,0) loses to it
+   and the hover shadow never paints. Doubling the class also keeps this working
+   if the card stops being a MudPaper — `.mud-paper.route-card:hover` would not. */
+.route-card.route-card:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--card-border-hover);
+    transform: translateY(-2px);
+}
+
+/* Route-card weights are deliberately a step below the rest of the product.
+   A board of these cards is read by scanning, and at that density the headline
+   plus three bolded instance names per card made every card compete with its
+   neighbours instead of the eye landing on the status dot and chips — which are
+   the things that actually differ between one card and the next.
+   500 is a REAL weight here (the Inter face imported at the top of this file
+   ships 400/500/600/700), so it renders as medium rather than being rounded up
+   to bold the way a Segoe-only stack would treat it. */
+.route-card .mud-typography-h6 {
+    font-weight: 500;
+}
+/* Beats the global `strong` rule (0,0,1) on specificity (0,1,1) — the instance
+   names, buffer mode and error codes inside a card only need to separate from
+   their dimmed labels, not to shout across the grid. */
+.route-card strong {
+    font-weight: 500;
+}
+
+/* Motion is decoration here: the shadow and the border already carry the state
+   change, so drop the travel for anyone who asked the OS for less of it. The
+   transitions are restated without `transform` rather than switched off
+   entirely — a colour that snaps is not what was objected to. */
+@media (prefers-reduced-motion: reduce) {
+    .mud-paper.protocol-tile,
+    .route-card {
+        transition: box-shadow 180ms ease, border-color 180ms ease;
+    }
+    /* Class-doubled to match the specificity of the hover rules above — a
+       single .route-card:hover would lose to .route-card.route-card:hover and
+       the lift would survive the media query. */
+    .mud-paper.protocol-tile[role="button"]:hover,
+    .mud-paper.protocol-tile[role="button"]:active,
+    .route-card.route-card:hover {
+        transform: none;
+    }
+}
+
+/* ────────────────────────  Route card — internal grid  ───────────────────── */
+/* The card's contents as a named structure instead of ad-hoc flex stacks:
+   header (dot · identity · pill) over a rows block over an optional fault
+   panel. The point of the grid is COLUMN ALIGNMENT ACROSS ROWS — every icon on
+   one vertical rule, every text block on one left edge, every trailing control
+   in one right-hand column — which a stack of independently-sized flex rows
+   cannot promise, and which is what makes a board of these cards scannable.
+
+   SPECIFICITY NOTE for anything added here. The target's card is a MudPaper, so
+   it is already matched by the shared card rule
+   `.mud-paper.mud-elevation-1:not(.mud-paper-square)` — two classes plus a
+   :not() whose argument counts too, i.e. (0,3,0) — which sets `border`,
+   `border-radius` and `box-shadow` WHOLESALE on the card element. Any rule
+   below that wants one of those three ON THE CARD ITSELF must reach (0,3,0) or
+   it is silently overwritten; that is why `.route-card.route-card:hover` and
+   `.route-card.route-card.route-card--attention` above are class-doubled and
+   -tripled. Every rule in this section either targets a DESCENDANT of the card
+   (where the shared rule does not reach at all) or sets properties the shared
+   rule does not mention (display, gap, padding), so none of them needed the
+   escalation — but check any new one against that (0,3,0) floor. */
+
+/* The BEM layout needs the card to be a flex COLUMN with a gap: that gap is the
+   only separation between the header, the rows block and the fault panel — the
+   fault panel deliberately carries no margin of its own (see its note below).
+   Gated on :has(.route-card__header) rather than applied to every .route-card,
+   because this build still renders the older ad-hoc stacks in places: written
+   bare, this would open 10px gaps inside a card that has not been rebuilt yet.
+   With the guard it switches itself on exactly when the new markup lands.
+   (:has() is already used in this file for the sticky-action-bar rules.)
+
+   Sets no border/radius/shadow, so the (0,3,0) shared card rule is not in play.
+   Padding is left to the card's own `pa-4` utility — see the mobile override at
+   the foot of this section for why that one DOES need an escalation. */
+.route-card:has(.route-card__header) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── Header: dot · identity · state pill ── */
+/* Grid, not flex: the middle column is `minmax(0, 1fr)` so the identity block
+   is the only thing that shrinks, and a long route name ellipsises instead of
+   squeezing the state pill out of the card. */
+.route-card__header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+.route-card__dot {
+    flex: none;
+}
+/* min-width:0 is what actually permits the ellipsis below — a grid item
+   defaults to min-width:auto and refuses to shrink below its content, so
+   without this the title pushes the card wide instead of truncating. */
+.route-card__identity {
+    min-width: 0;
+}
+/* Micro-label above the route name ("ROUTE"), which is what lets the name
+   itself be read as a name rather than as an unlabelled headline. */
+.route-card__eyebrow {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+/* 500, NOT the reference's 600. This build makes a deliberate exception for
+   route cards — see the note above `.route-card .mud-typography-h6`: a board of
+   these is read by scanning, and at that density bold titles compete with the
+   status dot and pills, which are the things that actually differ card to card.
+   Left at 600 this would also have lost silently to that existing (0,2,0) rule
+   whenever the title renders as a MudTypography h6, so the two now agree
+   explicitly instead of fighting. */
+.route-card__title {
+    margin: 2px 0 0;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--mud-palette-text-primary, #1F2937);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Rows. ONE grid shape for source, destination and buffer, so the icons form
+      a single vertical rule, the text shares one left edge, and every trailing
+      control lands in one right-hand column. Separators come from this rule
+      alone — no MudDivider elements, which is what previously produced double
+      lines where a divider met a card's own border. ── */
+.route-card__rows {
+    display: flex;
+    flex-direction: column;
+}
+/* Adjacent-sibling rule so the FIRST row has no rule above it and no dead
+   space: a top border on every row would draw one against the header. */
+.route-card__rows > * + * {
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid var(--studio-lines);
+}
+/* 22px icon gutter, flexible body, auto trailing column. `align-items: start`
+   keeps the icon on the first line of a two-line body instead of floating
+   beside its vertical centre. */
+.route-row {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px 10px;
+}
+/* .route-row--empty is emitted by the markup (a row whose target is not
+   configured) but is deliberately left WITHOUT a rule, here and in the
+   reference build, which has no counterpart for it at all. The muting for that
+   case already arrives on the element that should carry it —
+   .route-row__name--muted below — so a second dimming rule on the whole row
+   would double it and grey the label and icon that still have to be read. Kept
+   as a semantic hook: give it declarations only if the empty state needs
+   something the muted name cannot express. */
+
+.route-row__icon {
+    color: var(--mud-palette-text-secondary, #6B7280);
+    opacity: 0.75;
+    margin-top: 1px;
+}
+.route-row__body {
+    min-width: 0;                              /* same shrink reason as __identity */
+}
+.route-row__label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--mud-palette-text-secondary, #6B7280);
+    margin-bottom: 3px;
+}
+/* 500 for the same reason as __title, and for a second one: if the name renders
+   inside a <strong>, `.route-card strong` (0,1,1) already pins it to 500 and a
+   600 here (0,1,0) would never take effect. An instance name only has to
+   separate from its dimmed label, not shout across the board. */
+.route-row__name {
+    font-weight: 500;
+    color: var(--mud-palette-text-primary, #1F2937);
+    text-decoration: none;
+    overflow-wrap: anywhere;                   /* instance ids have no spaces */
+}
+.route-row__name:hover {
+    text-decoration: underline;
+}
+.route-row__name--muted {
+    font-weight: var(--w-body);
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+.route-row__proto {
+    color: var(--mud-palette-text-secondary, #6B7280);
+    font-size: 0.875rem;
+}
+/* Separator in CSS rather than in the markup, so the protocol suffix can be
+   omitted without leaving a stranded middot behind it. */
+.route-row__proto::before {
+    content: " · ";
+}
+.route-row__meta,
+.route-row__buffer {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+.route-row__buffer {
+    margin-top: 0;
+}
+.route-row__buffer strong {
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+.route-row__dropped {
+    color: var(--mud-palette-error, #DC2626);
+    font-weight: 500;
+}
+.route-row__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-self: end;
+}
+/* Trim MudBlazor's default icon-button padding so the log button does not push
+   the pill off the shared right-hand column. Two classes (0,2,0) to match the
+   vendor's own `.mud-button-root.mud-icon-button`; this file loads after
+   MudBlazor.min.css, so an equal-specificity rule wins the tie without needing
+   an !important. */
+.route-row__log.mud-icon-button {
+    padding: 4px;
+}
+
+/* ────────────────────────────  Status pills  ─────────────────────────────── */
+/* One pill component for route, source and sink state. Solid tinted fill with a
+   hairline, rather than MudChip's outline: an outlined chip at this size reads
+   as a button, and three of them per card made every card look actionable.
+
+   CONTRAST IS PART OF THE COMPONENT, not a detail of it. Each pair below was
+   measured and is recorded beside the colour — 7.4:1 ok, 6.9:1 warn, 7.1:1
+   error, 7.5:1 neutral, all comfortably over the 4.5:1 AA floor that 12px
+   semibold text must clear. State here is never signalled by colour alone (the
+   pill is worded: "Running" / "Degraded" / "Not delivering"), but an operator
+   reading a board across a lit shop floor is exactly the person the margin is
+   for. If either half of a pair is retuned, re-measure and update the figure —
+   these are the numbers a future edit must not break. */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;                      /* full round — a pill, not a tag */
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: var(--w-emphasis);
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    flex: none;                                /* never squeezed by the row grid */
+}
+.status-pill .mud-icon-root {
+    font-size: 0.875rem;
+}
+.status-pill--ok {
+    background: #DCFCE7;
+    border-color: #A7F3C4;
+    color: #166534;                            /* 7.4:1 on #DCFCE7 */
+}
+.status-pill--warn {
+    background: #FEF3C7;
+    border-color: #FCD97D;
+    color: #92400E;                            /* 6.9:1 on #FEF3C7 */
+}
+.status-pill--error {
+    background: #FEE2E2;
+    border-color: #FCA5A5;
+    color: #991B1B;                            /* 7.1:1 on #FEE2E2 */
+}
+.status-pill--neutral {
+    background: #F1F5F9;
+    border-color: #E2E8F0;
+    color: #475569;                            /* 7.5:1 on #F1F5F9 */
+}
+
+/* ───────────────────────  Route card — fault panel  ──────────────────────── */
+/* The panel at the foot of a broken card. Replaces MudAlert so the guidance can
+   be laid out as meaning → what-to-check → code + age, rather than one
+   undifferentiated run of caption text. */
+.route-card__fault {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+/* Spacing above the panel comes from .route-card's own flex gap (see the
+   :has() rule at the top of this section). A margin-top here would stack on top
+   of that gap and push the card taller than the sum of its parts. */
+.route-card__fault--active {
+    background: rgba(220, 38, 38, 0.055);
+    border-color: rgba(220, 38, 38, 0.22);
+    color: var(--mud-palette-error, #DC2626);
+}
+/* NO amber --stale variant, deliberately. A fault stays red for as long as it
+   is reported; its age is carried in the meta line's WORDING instead. Fading
+   the panel to amber with age meant the longer a device had been unreachable,
+   the calmer its card looked — a machine down for an hour read as less urgent
+   than one down for a minute, which is precisely backwards. Do not reintroduce
+   an age-derived severity here or in the component that fills it. */
+.route-card__fault .mud-icon-root {
+    margin-top: 1px;
+    flex: none;
+}
+.route-card__fault-body {
+    min-width: 0;
+}
+.route-card__fault-meaning {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: var(--w-emphasis);
+    line-height: 1.45;
+}
+/* What-to-check sits a step down from the meaning: same size, quieter colour.
+   It is the second thing read, not a competing headline. */
+.route-card__fault-check {
+    margin: 3px 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-weight: var(--w-body);
+    color: var(--mud-palette-text-primary, #1F2937);
+    opacity: 0.78;
+}
+/* The code is demoted to metadata but kept greppable for support tickets. */
+.route-card__fault-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary, #6B7280);
+}
+.route-card__fault-code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(16, 24, 40, 0.06);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    color: var(--mud-palette-text-primary, #1F2937);
+}
+
+/* ── Small phones (≤599). Below 600px the trailing actions column would squeeze
+      the name down to a few characters, so the row drops to two columns and the
+      actions move onto their own line under the text. Nothing overlaps and the
+      22px icon gutter is preserved, so the vertical rule survives. ── */
+@media (max-width: 599px) {
+    /* Both declarations need help on this element, for different reasons:
+         · gap — the base value is set at (0,2,0) by the :has() rule above, and
+           specificity beats media-query order, so a bare `.route-card` (0,1,0)
+           here would lose and the card would keep its 10px gap. Same selector,
+           same weight, later in the file → this one wins.
+         · padding — the card carries MudBlazor's `pa-4` utility on the SAME
+           element, and their spacing utilities ship as `padding:16px !important`.
+           An !important is the only thing that can answer one, which is why it
+           is used here and nowhere else in this section. */
+    .route-card:has(.route-card__header) {
+        padding: 12px 14px !important;
+        gap: 9px;
+    }
+    .route-row {
+        grid-template-columns: 22px minmax(0, 1fr);
+    }
+    .route-row__actions {
+        grid-column: 2;                        /* under the text, not the icon */
+        justify-self: start;
+        margin-top: 6px;
+    }
+    .route-card__title {
+        font-size: 1rem;
+    }
+}
+
+/* ─────────────────────────────  Status footer  ───────────────────────────── */
+.status-footer .mud-typography-caption {
+    letter-spacing: 0.01em;
+}
+
+/* ─────────────  Centred success snackbar (License Buy/Upgrade)  ───────────── */
+.snackbar-center-middle {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Wide content (tables, diagrams, code) scrolls inside its OWN container so the
+   page body never scrolls horizontally at any width. Apply .scroll-x to wrap. */
+.scroll-x {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+/* ───────────────────────────────  Responsive  ────────────────────────────── */
+/* Mobile 320–767: rail becomes a horizontal strip along the top; brand hidden;
+   heading band flattened; dialogs full-screen. */
+@media (max-width: 767px) {
+    .app-shell {
+        flex-direction: column;
+        height: calc(100vh - var(--footer-height));
+    }
+    .nav-rail,
+    .nav-rail--collapsed {
+        width: 100%;
+        flex-direction: column;
+        border-right: none;
+        border-bottom: 1px solid var(--studio-lines);
+    }
+    .nav-rail__head {
+        min-height: 0;
+        padding: 6px 10px;
+    }
+    /* Brand hidden on mobile; the collapse control is not useful on a strip. */
+    .nav-rail__brand,
+    .nav-rail__collapse {
+        display: none;
+    }
+    .nav-rail__scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 4px 8px;
+    }
+    .nav-rail__scroll .nav-rail__list {
+        flex-direction: row;
+        gap: 4px;
+    }
+    .nav-rail__group-label {
+        display: none;
+    }
+    .nav-rail__item {
+        flex-direction: row;
+    }
+    .nav-rail__item--active,
+    .nav-rail__item[aria-current="page"] {
+        /* On the horizontal strip an inset left bar reads wrong — underline it. */
+        box-shadow: inset 0 -3px 0 0 var(--mud-palette-primary, #1976D2);
+    }
+
+    :root {
+        --page-gutter: 14px;
+    }
+    .page-heading {
+        flex-wrap: wrap;
+        padding: 12px var(--page-gutter);
+    }
+    .page-heading__actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    /* Full-screen dialogs on mobile. */
+    .mud-dialog-container .mud-dialog {
+        width: 100vw;
+        max-width: 100vw;
+        margin: 0;
+        border-radius: 0;
+    }
+    /* The confirm-delete dialog pins itself to 560px with !important, because
+       that is the only way to beat MudBlazor's `.mud-dialog-width-xs` on the
+       same element. A 560px box does not fit a 375px phone, and only an
+       !important can release a pin set with one — this one answers OUR rule,
+       not the framework's, so it cannot be lost to a MudBlazor upgrade. */
+    .confirm-delete .mud-dialog,
+    .mud-dialog.confirm-delete {
+        width: 100vw !important;
+        max-width: 100vw !important;
+    }
+}
+
+/* ─────────────────────────  License status card  ─────────────────────────
+   Icon + text + status chip on one row. The row must WRAP, because the three
+   items have very different shrink behaviour: the icon and the chip are fixed
+   size, so on a narrow screen every pixel comes out of the text column. Locked
+   in a row at 375px it collapsed to about 130px and "Licensed — Professional
+   edition" wrapped every two words while most of the card sat empty.
+
+   flex-basis 220px is the trigger point: above it the three sit on one line as
+   designed, below it the chip drops to its own line and the text gets the full
+   width back.
+
+   The gap lives here rather than in an inline style so the wrap behaviour and
+   the spacing it depends on stay in one place. NOTE: License.razor in this tree
+   still writes `class="d-flex align-center" style="gap:16px"` on the status row
+   and does not yet carry the .license-status-row hook — these rules are inert
+   until that class is applied (that file is owned elsewhere). */
+/* Activate / Buy cards — the two ways to get a licence, presented as a pair.
+
+   Both papers already carry height:100%, so the CARDS matched; the BUTTONS did
+   not. Each action sat immediately under its own description, and the Activate
+   description wraps to two lines where Buy's fits on one — so the two buttons
+   landed a row apart and read as two unrelated controls instead of a choice
+   between two routes to the same outcome.
+
+   Flex column + margin-top:auto on the action puts both on one baseline however
+   the copy reflows: a longer description, a narrower window or a translation
+   moves the text, never the buttons. Doing it with a fixed min-height on the
+   description would have held only for this exact wording at this exact width. */
+.license-card {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Left accent, same anatomy as the route cards — but LIGHT BLUE, deliberately
+   not the red/amber/green those cards use. Those accents report health, and an
+   operator who has learned to read a coloured edge as a verdict must not meet
+   one here that means nothing: "Activate" and "Buy" are two routes to the same
+   outcome, not two states of anything. A neutral tint marks the pair as a
+   related group and leaves the status colours to the status panel above, which
+   is the only thing on this page with a verdict to give.
+
+   Class-TRIPLED to (0,3,0). These papers are MudPaper elevation-1, so the shared
+   card rule `.mud-paper.mud-elevation-1:not(.mud-paper-square)` — also (0,3,0) —
+   sets `border` as a SHORTHAND, which includes border-left. A single-class
+   accent (0,1,0) is silently swallowed and no edge paints at all.
+
+   Kept SEPARATE from .license-card because the status panel at the top of the
+   page wears the same edge but must NOT become a flex column — it lays its
+   icon, text and chip out in a row, and inheriting the column direction would
+   stack them. One class per job. */
+.license-accent.license-accent.license-accent,
+.wizard-section.wizard-section.wizard-section {
+    border-left: 4px solid var(--card-border-hover);
+}
+
+.license-card__action {
+    margin-top: auto;
+}
+
+.license-status-row {
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.license-status-row__text {
+    /* min-width:0 is what actually permits the shrink — a flex item defaults to
+       min-width:auto and refuses to go below its content. */
+    flex: 1 1 220px;
+    min-width: 0;
+}
+.license-status-row .mud-chip {
+    flex: 0 0 auto;
+}
+/* The gateway id is a 36-character unbroken UUID. It has hyphens to break on,
+   but `anywhere` stops a longer identity string from pushing the card wide. */
+.license-status-row [data-testid="gateway-identity"] {
+    overflow-wrap: anywhere;
+}
+/* Small phones (≤599): once the row has wrapped, the items should align to the
+   TOP rather than to each other's centres — centred, the icon floats beside the
+   middle of a three-line block instead of sitting on its first line.
+
+   !important, and it is unavoidable: the row carries MudBlazor's `align-center`
+   utility on the SAME element, and their flex utilities ship as
+   `align-items:center !important`. No amount of specificity answers an
+   !important, so the reference build's version of this rule — the identical
+   selector without one — silently never applied. Fixed here rather than ported
+   as-is. The alternative is dropping `align-center` from the markup, which is a
+   file this agent does not own. */
+@media (max-width: 599px) {
+    .license-status-row.d-flex {
+        align-items: flex-start !important;
+    }
+}
+
+/* Tablet 768–1023: reduced gutters; grids collapse to two columns. */
+@media (min-width: 768px) and (max-width: 1023px) {
+    :root {
+        --page-gutter: 18px;
+    }
+}
+
+/* Laptop 1024–1439: full rail + standard gutters (baseline values apply). */
+
+/* Desktop 1440–1919: baseline. */
+
+/* 4K 1920+: cap and centre the content measure so long lines stay readable —
+   a wider symmetric gutter recentres the content column. */
+@media (min-width: 1920px) {
+    :root {
+        --page-gutter: max(24px, calc((100% - 1600px) / 2));
+    }
+}
+
+/* ─────────────────────────  Snackbar (toast) position  ───────────────────── */
+/* Centres toasts on BOTH axes. MudBlazor stamps SnackbarConfiguration.
+   PositionClass straight onto #mud-snackbar-container, whose only vendor rule is
+   `position: fixed` — each of its six built-in location classes supplies its own
+   offsets, and every one pins an edge:
+
+       .mud-snackbar-location-top-center     top:24px;    left:50%; translateX(-50%)
+       .mud-snackbar-location-bottom-center  bottom:24px; left:50%; translateX(-50%)
+
+   So none of the six centres vertically; there was no setting to switch to and
+   this class had to be written. The name is deliberately NOT one MudBlazor ships,
+   so a package upgrade cannot silently start overriding it.
+
+   Registered from ManagementHostingExtensions.SnackbarCentreMiddleClass. The
+   container is z-index --mud-zindex-snackbar (1400), above the sticky page
+   heading (5) and the onboarding overlay (1200), and it inherits the vendor's
+   pointer-events:none so a centred toast never swallows a click meant for the
+   form underneath. */
+.mud-snackbar-location-centre-middle {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}

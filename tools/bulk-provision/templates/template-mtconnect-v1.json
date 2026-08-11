@@ -1,0 +1,83 @@
+{
+  "_provisioning": {
+    "_TEMPLATE_NOTE": "This block is REPLACED by generate.ps1 at generation time with the actual 9-field provisioning block."
+  },
+  "Gateway": {
+    "GatewayId": "{{ gatewayId }}",
+    "GatewayName": "{{ gatewayName }}"
+  },
+  "Sources": [
+    {
+      "InstanceId": "{{ instanceId }}",
+      "ProtocolName": "mtconnect",
+      "DeviceId": "{{ deviceId }}",
+      "DeviceName": "{{ deviceName }}",
+      "DeviceClass": "cnc",
+      "Enabled": {{ enabled }},
+      "Polling": {
+        "IntervalMs": 3000
+      },
+      "Connection": {
+        "agentBaseUrl": "{{ host }}",
+        "timeoutSeconds": 10,
+        "initialBackoffMs": 2000,
+        "maxBackoffMs": 60000,
+        "backoffMultiplier": 2.0,
+        "degradeAfterConsecutiveFailures": 3,
+        "dataPoints": [
+          "Program/MainProgram",
+          "Status/RunState",
+          "Axes/Position/Absolute",
+          "Axes/Position/Machine",
+          "Axes/FeedRate",
+          "Spindle/Speed",
+          "Spindle/Load",
+          "Alarms/Active",
+          "CycleTime",
+          "PartsCount"
+        ]
+      }
+    }
+  ],
+  "Sinks": [
+    {
+      "InstanceId": "{{ mqttClientIdPrefix }}-mqtt",
+      "ProtocolName": "mqtt",
+      "Enabled": true,
+      "Connection": {
+        "brokerHost": "{{ mqttHost }}",
+        "brokerPort": {{ mqttPort }},
+        "clientId": "{{ mqttClientIdPrefix }}-{{ gatewayProvisioningId }}",
+        "useTls": false,
+        "publishMode": "PerTag",
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "qosLevel": {{ mqttQos }},
+        "reconnectDelayMs": 1000,
+        "maxReconnectDelayMs": 30000
+      }
+    }
+  ],
+  "Routes": [
+    {
+      "RouteId": "route-mtconnect-{{ gatewayProvisioningId }}",
+      "Name": "MTConnect CNCs to MQTT",
+      "SourceInstanceId": "{{ instanceId }}",
+      "SinkInstanceIds": [ "{{ mqttClientIdPrefix }}-mqtt" ],
+      "Enabled": true,
+      "Buffer": {
+        "Mode": "StoreAndForward",
+        "MaxDepth": 100000,
+        "MaxAgeDays": 7,
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "Mode": "AtLeastOnce",
+        "MaxRetries": 100,
+        "InitialBackoffMs": 100,
+        "MaxBackoffMs": 30000,
+        "BackoffMultiplier": 2.0,
+        "JitterPercent": 10
+      }
+    }
+  ]
+}

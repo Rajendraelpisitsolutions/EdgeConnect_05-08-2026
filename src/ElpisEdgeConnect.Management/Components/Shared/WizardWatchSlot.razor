@@ -1,0 +1,91 @@
+@*
+    WizardWatchSlot — reserved Runtime Tap embed point for the wizards.
+    M.2d.1 deliverable per v2 plan §5.4.
+
+    Default behaviour (Q1 lock — strict no-op):
+      * When Available is false (default until M.2c lands), this component
+        renders ZERO DOM. M.2d.2/.3 can drop the slot into wizard sections
+        without any visual side-effect.
+
+    Optional debug-time placeholder:
+      * When the environment variable
+        EDGECONNECT_WIZARD_WATCH_PLACEHOLDER is "true" (case-insensitive)
+        AND Available is false, render a small Info banner showing the
+        source instance id + tag-path list. Useful during M.2d.2/.3
+        development to confirm the slot is in the right place.
+      * Never enabled by default; never visible in production.
+
+    Available=true branch:
+      * Reserved for the M.2c implementation. M.2d.1 renders a clearly-
+        marked TODO placeholder since IRuntimeTap doesn't exist yet.
+        M.2c will replace the body with the actual Live Tag Watch table
+        when it lands.
+
+    Reference: docs/sessions/2026-05-21-m2d1-shared-primitives-plan-v2.md §5.4
+*@
+
+@if (Available)
+{
+    @* Placeholder body — M.2c replaces this with the actual Live Tag Watch UI. *@
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4"
+              data-testid="wizard-watch-slot-pending-m2c">
+        <strong>Live Tag Watch will appear here.</strong>
+        Source: <code>@SourceInstanceId</code>.
+        @if (TagPaths is { Count: > 0 })
+        {
+            <text> Tags: <code>@string.Join(", ", TagPaths)</code></text>
+        }
+    </MudAlert>
+}
+else if (_debugPlaceholderEnabled)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-4"
+              data-testid="wizard-watch-slot-debug-placeholder">
+        <small>
+            [DEBUG placeholder] Live Tag Watch slot — source: <code>@SourceInstanceId</code>
+            @if (TagPaths is { Count: > 0 })
+            {
+                <text>, tags: <code>@string.Join(", ", TagPaths)</code></text>
+            }. Renders nothing in production until M.2c is wired and <code>Available=true</code>.
+        </small>
+    </MudAlert>
+}
+@*
+    No <else> branch — when Available is false AND the debug placeholder
+    env var is unset, this component renders zero DOM. Unit test pins
+    this contract.
+*@
+
+@code {
+    private const string DebugPlaceholderEnvVar = "EDGECONNECT_WIZARD_WATCH_PLACEHOLDER";
+
+    /// <summary>The source instance id whose Runtime Tap session this slot would consume.</summary>
+    [Parameter] public string SourceInstanceId { get; set; } = string.Empty;
+
+    /// <summary>Optional server-side filter for the Runtime Tap subscription. Null = "all tags for this source".</summary>
+    [Parameter] public IReadOnlyList<string>? TagPaths { get; set; }
+
+    /// <summary>
+    /// Set by the host via DI sniff or a feature-flag when M.2c is wired.
+    /// Defaults to <c>false</c>; M.2c lands → host flips to <c>true</c> →
+    /// the slot's body renders the live-tag table.
+    /// </summary>
+    [Parameter] public bool Available { get; set; }
+
+    /// <summary>
+    /// Optional override for the debug-placeholder env-var lookup. Tests
+    /// inject a deterministic value here; production code reads
+    /// <c>Environment.GetEnvironmentVariable(DebugPlaceholderEnvVar)</c>.
+    /// </summary>
+    [Parameter] public Func<string, string?>? EnvLookup { get; set; }
+
+    private bool _debugPlaceholderEnabled;
+
+    protected override void OnParametersSet()
+    {
+        var lookup = EnvLookup ?? Environment.GetEnvironmentVariable;
+        var raw = lookup(DebugPlaceholderEnvVar);
+        _debugPlaceholderEnabled = !string.IsNullOrEmpty(raw)
+            && string.Equals(raw.Trim(), "true", System.StringComparison.OrdinalIgnoreCase);
+    }
+}

@@ -1,0 +1,680 @@
+@*
+    Add / Edit Brother HTTP source wizard.
+
+    Originally an Add-only wizard from M.P2.4 step 11. Refactored in
+    M.2d.2 step 9 (the template for Focas2 + Modbus) to:
+
+      * Adopt WizardShell + WizardSection from M.2d.1 primitives.
+      * Accept EditMode + HydratedConfig parameters and hydrate from
+        an existing source when rendered by SourceEditRouter.
+      * Wire Test Connection through WizardActions' TestConnectionSlot
+        against POST /api/v1/sources/browse/brother-http.
+      * Save through WizardConfigMerger.BuildNewSourceDraft in Add mode
+        OR PUT /api/v1/sources/{instanceId} in Edit mode (with the
+        optimistic-concurrency BaseVersionId from EditModeContext).
+
+    Edit-mode lifecycle (v2 §5.5):
+      1. SourceEditRouter loads the source + captures BaseVersionId.
+      2. Renders <AddBrotherHttpSource EditMode=Edit(id, baseVer)
+                                       HydratedConfig=loadedSource />.
+      3. OnParametersSet hydrates _model from HydratedConfig (idempotent
+         via _hydrated flag).
+      4. Wizard renders sections; wiring section hidden in Edit mode.
+      5. Save → PUT endpoint; 409+ConflictType="VersionMismatch" surfaces
+         StaleEditWarningBanner; 200 → navigate to /sources/{id} +
+         snackbar with reload classification.
+
+    Reference: docs/sessions/2026-05-22-m2d2-steps-8-10-plan-v2.md §3
+*@
+@page "/sources/new/brother-http"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Management.Api
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") Brother HTTP source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+@* Subtitle is ONE line, like every other wizard. It used to carry a third
+   sentence of gateway setup instruction (an env-var name), which wrapped to
+   three lines in the PINNED header — permanently eating vertical space and
+   clipping the first form row on every scroll. The demo-mode hint moved into
+   the Connection section, where it is Add-mode only and actually actionable.
+   Keep Razor comments OUTSIDE the component tag: between attributes they are
+   parsed as an attribute NAME, which compiles cleanly and then throws
+   "does not have a property matching the name '@*...'" at render time. *@
+<WizardShell Icon="@Icons.Material.Filled.Build"
+             Title="@(_isEdit ? $"Edit Brother HTTP source — {_model.InstanceId}" : "Add Brother HTTP source")"
+             Subtitle="@(_isEdit
+                 ? "Change how this Brother CNC is polled. Use Test Connection to confirm reachability before saving."
+                 : "Connect a Brother CNC (Speedio and similar) through the web-monitoring page it already serves on port 80.")"
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             Embedded="@EmbeddedMode"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    @* M.2d.4 / ADR-0015 Rule 5 — cumulative validation surface. *@
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Device identity">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              Error="@(!string.IsNullOrEmpty(_instanceIdError))"
+                              ErrorText="@_instanceIdError"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
+                              HelperText="Operator-readable; defaults to instance id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Device name"
+                              HelperText="Display name shown in lists and tooltips."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PollIntervalMs" Label="Poll interval (ms)"
+                                 HelperText="Q10 default 3000 ms. Hard min 500."
+                                 Min="500" Max="60000" Step="500"
+                                 Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+    </WizardSection>
+
+    <WizardSection Index="2" Title="Connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="_model.BaseUrl"
+                              Label="Machine address *"
+                              HelperText="The CNC's IP address or host name — e.g. 192.168.2.110. http:// is added for you; add https:// only if this CNC needs it."
+                              Placeholder="192.168.2.110"
+                              Variant="Variant.Outlined" Immediate="true" />
+                @* Relocated from the page header. Shown only when adding, which
+                   is the one moment "I have no machine to test against" is a
+                   live question. *@
+                @if (!_isEdit)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1" Style="display:block;">
+                        No machine to hand? Set <code>EDGECONNECT_BROTHER_FAKE_MODE=true</code> on the
+                        gateway to run against simulated data — the address is then ignored.
+                    </MudText>
+                }
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="_model.TimeoutSeconds" Label="Timeout (s)"
+                                 Min="1" Max="60" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="_model.FaultThresholdConsecutiveFailures"
+                                 Label="Fault threshold"
+                                 HelperText="HTTPD_MCNINFO failures before Faulted"
+                                 Min="1" Max="100" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+
+        @if (_probeResult is not null)
+        {
+            <MudAlert Severity="@(_probeResult.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      data-testid="brother-probe-result">
+                @if (_probeResult.Success)
+                {
+                    <strong>Connection succeeded.</strong>
+                    <MudText Typo="Typo.body2">
+                        Endpoint <code>@_probeResult.EndpointTested</code>
+                        responded HTTP @_probeResult.HttpStatusObserved in @_probeResult.ElapsedMs ms.
+                    </MudText>
+                }
+                else
+                {
+                    <strong>Connection failed (@_probeResult.ErrorCode).</strong>
+                    <MudText Typo="Typo.body2">@_probeResult.ErrorMessage</MudText>
+                    @if (_probeResult.EndpointTested is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Tested: <code>@_probeResult.EndpointTested</code>
+                            @if (_probeResult.HttpStatusObserved is { } status) { @($" → HTTP {status}") }
+                        </MudText>
+                    }
+                }
+            </MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="3" Title="Data points"
+                   Description="Brother's tag catalog is fixed (the canonical BrotherTagMap). MachineInfo and Status are always collected. Use the picker to limit which optional groups are emitted.">
+        <MudRadioGroup T="string" @bind-Value="_dataPointsMode" @bind-Value:after="OnDataPointsModeChanged">
+            <MudRadio T="string" Value="@("collectAll")">Collect all (emit empty <code>dataPoints</code>)</MudRadio>
+            <MudRadio T="string" Value="@("selective")">Limit to specific groups</MudRadio>
+        </MudRadioGroup>
+
+        @if (_dataPointsMode == "selective")
+        {
+            <MudGrid Spacing="1" Class="mt-2">
+                @foreach (var group in BrotherHttpSourceWizardModel.DataPointGroups)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudCheckBox T="bool"
+                                     Value="@_model.SelectedGroupKeys.Contains(group.Key)"
+                                     ValueChanged="@((bool on) => ToggleGroup(group.Key, on))"
+                                     Color="Color.Primary" Dense="true">
+                            <strong>@group.DisplayName</strong>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Description</MudText>
+                        </MudCheckBox>
+                    </MudItem>
+                }
+            </MudGrid>
+            @* Mirrors AddFocas2Source's analogous warning. Operators picking
+               "selective" but checking nothing get a no-op source otherwise. *@
+            @if (_model.SelectedGroupKeys.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2"
+                          Icon="@Icons.Material.Filled.WarningAmber"
+                          data-testid="brother-no-groups-warning">
+                    <strong>No data-point groups selected.</strong>
+                    This source won't produce any data until you pick at least one group above,
+                    or switch back to "Collect all" mode.
+                </MudAlert>
+            }
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        @* Wiring section is Add-mode only. Edit mode never mutates routes
+           per M.2d.2 v2 §5.5 invariant — pin tested by sub-step 8.5's
+           Put_RoutePreservation test. *@
+        <WizardSection Index="4" Title="Wire to a route">
+            <MudRadioGroup T="string" @bind-Value="_wiringChoice">
+                <MudRadio T="string" Value="@("none")">Do not wire yet (source lands disabled)</MudRadio>
+                <MudRadio T="string" Value="@("newRoute")">Create a new route now</MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" Label="Route id *"
+                                      HelperText="Unique route identifier. Auto-suggested from instance id."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId"
+                                             Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+    }
+
+    </ChildContent>
+    <Footer>
+        @* ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode; parent owns Next/Back/Save. *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="ProbeAsync"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>
+    /// Wizard mode context. <c>null</c> = Add mode (default; matches the
+    /// /sources/new/brother-http page entry). Non-null + IsEdit = Edit
+    /// mode rendered from <c>SourceEditRouter</c>.
+    /// </summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>
+    /// Source instance loaded by the router in Edit mode. Required when
+    /// <see cref="EditMode"/> indicates Edit; ignored in Add mode.
+    /// </summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>
+    /// ADR-0016 Rule 3 — when true, the wizard is hosted inside the
+    /// Onboarding meta-wizard. Footer / Nav / Snackbar / draft-POST
+    /// are suppressed; parent owns those concerns. Default <c>false</c>
+    /// preserves standalone behaviour invisibly.
+    /// </summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>
+    /// ADR-0016 Rule 4 — fires with the buildable
+    /// <see cref="SourceInstanceConfig"/> when the model becomes valid,
+    /// or with <c>null</c> on the valid → invalid transition. Used by
+    /// the Onboarding flow to enable / disable its Next button. No
+    /// debounce; the parent debounces if it needs to.
+    /// </summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    // M.2d.2 v2 §0.1 Q1=A — _model is NOT readonly so OnParametersSet
+    // can reassign it after HydrateFromExisting in Edit mode.
+    private BrotherHttpSourceWizardModel _model = new();
+    private bool _hydrated;
+
+    // Tracks the last validity state we notified the parent flow of
+    // (EmbeddedMode only). Used by OnAfterRenderAsync to fire
+    // OnInstanceBuilt on transitions, not on every render.
+    private string? _lastNotifiedSignature;
+
+    private string _dataPointsMode = "collectAll";
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private bool _busy;
+
+    private BrotherHttpProbeResultDto? _probeResult;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    /// <summary>
+    /// Aggregate current razor-level validation errors into the shape
+    /// the shared <c>WizardValidationBanner</c> expects. M.2d.4 wires
+    /// the banner per ADR-0015 Rule 5; today only the dup-instance-id
+    /// check has an aggregatable error. Returns an empty list (zero
+    /// DOM in the banner) when no errors are present.
+    /// </summary>
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "brother.instance-id.duplicate",
+                "InstanceId",
+                _instanceIdError,
+                "#field-instance-id"));
+        }
+        return messages;
+    }
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            // Edit mode: SourceEditRouter already loaded the GatewayConfiguration
+            // and passed the source via HydratedConfig. The wiring section is
+            // hidden (§5.5 — Edit never mutates routes) so we don't need
+            // the available-sinks list either. Hydration happens in
+            // OnParametersSet (fires after parameters bind).
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = BrotherHttpSourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _dataPointsMode = _model.DataPointsMode == BrotherHttpDataPointSelectionMode.Selective
+                ? "selective"
+                : "collectAll";
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit)
+        {
+            // InstanceId is immutable in Edit mode — disabled in the UI,
+            // but defensive in case the binding fires regardless.
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different instance id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_routeId) && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnDataPointsModeChanged()
+    {
+        _model.DataPointsMode = _dataPointsMode == "selective"
+            ? BrotherHttpDataPointSelectionMode.Selective
+            : BrotherHttpDataPointSelectionMode.CollectAll;
+    }
+
+    private void ToggleGroup(string key, bool on)
+    {
+        if (on) _model.SelectedGroupKeys.Add(key);
+        else _model.SelectedGroupKeys.Remove(key);
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError)) return false;
+        if (string.IsNullOrWhiteSpace(_model.BaseUrl)) return false;
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return true;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save. The footer
+        // isn't rendered so this entry point shouldn't be reached, but
+        // defence-in-depth.
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Cancel. Footer
+        // isn't rendered; defence-in-depth.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    /// <summary>
+    /// ADR-0016 Rule 4 — fire <see cref="OnInstanceBuilt"/> on validity
+    /// transitions when EmbeddedMode is true. Tracks the last notified
+    /// validity in <see cref="_lastNotifiedSignature"/> so we don't spam the
+    /// parent flow on every render.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try
+            {
+                instance = _model.BuildSourceInstance();
+            }
+            catch
+            {
+                instance = null;
+            }
+        }
+
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private async Task ProbeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.BaseUrl)) return;
+        _busy = true;
+        _probeResult = null;
+        try
+        {
+            var resp = await HttpClient.PostAsJsonAsync(
+                "/api/v1/sources/browse/brother-http",
+                new { baseUrl = _model.BaseUrl });
+            _probeResult = await resp.Content.ReadFromJsonAsync<BrotherHttpProbeResultDto>();
+        }
+        catch (Exception ex)
+        {
+            // ADR-0016 Rule 3 — Snackbar suppressed in EmbeddedMode.
+            // Probe failure is also surfaced via _probeResult panel which
+            // remains visible in both modes.
+            if (!EmbeddedMode)
+            {
+                Snackbar.Add($"Test Connection failed: {ex.Message}", Severity.Error);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnReloadAfterStale()
+    {
+        // Forces SourceEditRouter to re-load the config + capture a fresh
+        // BaseVersionId. The wizard re-hydrates from the new HydratedConfig
+        // (resetting any operator edits — the StaleEditWarningBanner copy
+        // warns about this explicitly).
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                // v2 §0.2 — discriminate the two 409 cases via ConflictType.
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            // v2 §0.1 Q7=B — surface the reload classification.
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add(
+                $"Source '{updatedSource.InstanceId}' updated{reloadHint}.",
+                Severity.Success);
+
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (!CanSave() || _currentConfig is null) return;
+
+        _busy = true;
+        try
+        {
+            _model.Enabled = _wiringChoice == "newRoute";
+
+            var newSource = _model.BuildSourceInstance();
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: _routeId,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

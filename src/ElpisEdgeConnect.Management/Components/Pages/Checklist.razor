@@ -1,0 +1,228 @@
+@*
+    Commissioning Checklist page (M.1d). Read-only operational
+    handover gauge — one row per check, grouped by category.
+
+    The marquee element is the green "Ready to hand over" badge on the
+    summary card, which appears only when Summary.Ready is true (no
+    Fails, no Pendings). Field engineers point at this during customer
+    handover.
+
+    Polls /api/v1/checklist every 5s so operators see the page tick
+    from amber → green as they wire things up.
+*@
+@page "/checklist"
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+<PageTitle>Checklist · Connectivity Studio</PageTitle>
+
+<div class="page-heading">
+    <span class="page-heading__icon"><MudIcon Icon="@Icons.Material.Filled.Checklist" Size="Size.Medium" /></span>
+    <div class="page-heading__text">
+        <div class="page-heading__title">Commissioning Checklist</div>
+        <div class="page-heading__desc">
+            Pre-handover gauge — each check evaluates a concrete operational signal; green means verified, red means action required.
+        </div>
+    </div>
+</div>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <strong>Could not evaluate the checklist.</strong> @_loadError
+    </MudAlert>
+}
+else if (_response is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    var summary = _response.Summary;
+
+    @* ---- Summary card ---- *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Checks evaluated</MudText>
+                <MudText Typo="Typo.h4">@summary.Total</MudText>
+            </MudStack>
+            <MudDivider Vertical="true" FlexItem="true" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Pass</MudText>
+                <MudText Typo="Typo.h5" Style="color:var(--mud-palette-success);">@summary.Pass</MudText>
+            </MudStack>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Fail</MudText>
+                <MudText Typo="Typo.h5"
+                         Style="@(summary.Fail > 0 ? "color:var(--mud-palette-error);" : "opacity:0.4;")">
+                    @summary.Fail
+                </MudText>
+            </MudStack>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Pending</MudText>
+                <MudText Typo="Typo.h5"
+                         Style="@(summary.Pending > 0 ? "color:var(--mud-palette-warning);" : "opacity:0.4;")">
+                    @summary.Pending
+                </MudText>
+            </MudStack>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">N/A</MudText>
+                <MudText Typo="Typo.h5" Style="opacity:0.4;">@summary.NotApplicable</MudText>
+            </MudStack>
+            <MudSpacer />
+            @if (summary.Ready)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Large" Variant="Variant.Filled"
+                         Icon="@Icons.Material.Filled.CheckCircle">
+                    Ready to hand over
+                </MudChip>
+            }
+            else if (summary.Fail > 0)
+            {
+                <MudChip T="string" Color="Color.Error" Size="Size.Large" Variant="Variant.Filled"
+                         Icon="@Icons.Material.Filled.Warning">
+                    Action required
+                </MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Large" Variant="Variant.Filled"
+                         Icon="@Icons.Material.Filled.HourglassEmpty">
+                    Waiting for signals
+                </MudChip>
+            }
+        </MudStack>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            Checked <span title="@OperatorFormat.Absolute(_response.CheckedAtUtc)">@OperatorFormat.Ago(_response.CheckedAtUtc)</span>
+            @if (_response.EvaluationDurationMs is { } ms)
+            {
+                <text> · evaluated in @ms ms</text>
+            }
+            @if (_response.GatewayId is { } gid)
+            {
+                <text> · gateway <code>@gid</code></text>
+            }
+        </MudText>
+    </MudPaper>
+
+    @* ---- Per-category sections ---- *@
+    @foreach (var group in _response.Items.GroupBy(i => i.Category))
+    {
+        <MudPaper Elevation="1" Class="pa-4 mb-3">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-2">@group.Key</MudText>
+            <MudList T="string" Dense="true">
+                @foreach (var item in group)
+                {
+                    <MudListItem T="string">
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                            <MudIcon Icon="@StatusIcon(item.Status)"
+                                     Color="@StatusColor(item.Status)"
+                                     Size="Size.Medium"
+                                     Style="margin-top:2px;" />
+                            <div style="flex-grow:1;">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body2" Style="font-family:monospace; opacity:0.6;">@item.Id</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight:500;">@item.Title</MudText>
+                                </MudStack>
+                                @if (!string.IsNullOrEmpty(item.Detail))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        @item.Detail
+                                    </MudText>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(item.Link))
+                            {
+                                <MudButton Href="@item.Link"
+                                           Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                                           Style="text-transform:none;">
+                                    Open
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        </MudPaper>
+    }
+}
+
+@code {
+    private ChecklistResponse? _response;
+    private string? _loadError;
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+            }
+        }
+        catch (OperationCanceledException) { /* expected on dispose */ }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _response = await HttpClient.GetFromJsonAsync<ChecklistResponse>("/api/v1/checklist");
+            _loadError = null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { /* component torn down */ }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private static string StatusIcon(ChecklistStatus s) => s switch
+    {
+        ChecklistStatus.Pass => Icons.Material.Filled.CheckCircle,
+        ChecklistStatus.Fail => Icons.Material.Filled.Cancel,
+        ChecklistStatus.Pending => Icons.Material.Filled.HourglassEmpty,
+        ChecklistStatus.NotApplicable => Icons.Material.Filled.Remove,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+
+    private static Color StatusColor(ChecklistStatus s) => s switch
+    {
+        ChecklistStatus.Pass => Color.Success,
+        ChecklistStatus.Fail => Color.Error,
+        ChecklistStatus.Pending => Color.Warning,
+        ChecklistStatus.NotApplicable => Color.Default,
+        _ => Color.Default,
+    };
+
+    // Ages come from Components/Shared/OperatorFormat so every page ages a timestamp identically.
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null) await _pollLoop;
+        }
+        catch { /* best-effort */ }
+        finally { _cts?.Dispose(); }
+    }
+}

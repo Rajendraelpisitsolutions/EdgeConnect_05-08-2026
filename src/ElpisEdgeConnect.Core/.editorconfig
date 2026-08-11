@@ -1,0 +1,20 @@
+# Scoped .editorconfig for ElpisEdgeConnect.Core.
+#
+# Core is the protocol-agnostic foundation. It has stricter rules than the
+# rest of the repository: every nullable-reference warning is promoted to an
+# error so that the Core assembly maintains zero tolerance for null-related
+# bugs. This scoping was added during Week 1 so that the legacy
+# src/ElpisEdgeConnect/ project (migrated from FanucCncDataBridge) can keep
+# its existing warnings-as-warnings posture until Phase 2 migrates that code
+# into the new modular structure.
+#
+# This file applies to every .cs file under src/ElpisEdgeConnect.Core/.
+# Settings here override the root .editorconfig.
+
+[*.cs]
+dotnet_diagnostic.CS8600.severity = error
+dotnet_diagnostic.CS8602.severity = error
+dotnet_diagnostic.CS8603.severity = error
+dotnet_diagnostic.CS8604.severity = error
+dotnet_diagnostic.CS8618.severity = error
+dotnet_diagnostic.CS8625.severity = error
