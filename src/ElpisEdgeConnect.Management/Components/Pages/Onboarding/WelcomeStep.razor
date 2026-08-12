@@ -1,0 +1,81 @@
+@*
+    WelcomeStep — conditional first step of the Onboarding flow.
+
+    Shown ONLY when the gateway's GatewayId is still on the auto-provisioned
+    pattern (ADR-0016 Rule 5 — hostname-derived seed). Lets the operator
+    customise the gateway identity before configuring sources/sinks/routes,
+    because GatewayId leaks into MQTT topics, OPC UA browse paths, and
+    license binding — a hostname-derived id is fine for dev/QA but typically
+    not what production wants.
+
+    The Welcome step does NOT apply the identity change immediately. It
+    captures the operator's chosen GatewayId/GatewayName and lets the
+    parent OnboardingFlow include them in the final bundled apply
+    alongside the source/sink/route.
+
+    Reference: docs/decisions/0016-onboarding-meta-wizard.md Rule 5
+               docs/sessions/2026-05-27-connect-a-device-plan-v2.1.md §3.2
+*@
+
+<MudPaper Elevation="1" Class="pa-6 mb-4" data-testid="onboarding-welcome-step">
+    <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.WavingHand" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h5">Welcome to EdgeConnect</MudText>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+        We've auto-generated a gateway identity from this machine's hostname.
+        You can keep it as-is or set a name that's stable across machines —
+        the gateway ID appears in MQTT topics, OPC UA browse paths, and
+        diagnostics, so it's worth setting before you configure data flow.
+    </MudText>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="GatewayId"
+                          @bind-Value:after="@NotifyChanged"
+                          Label="Gateway ID *"
+                          HelperText="Letters, digits, dot, hyphen, underscore. Stable identity — avoid changing later."
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-welcome.gateway-id", ["data-testid"] = "welcome-gateway-id" })" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="GatewayName"
+                          @bind-Value:after="@NotifyChanged"
+                          Label="Display name"
+                          HelperText="Friendly label shown in the UI. Can be changed any time."
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-welcome.gateway-name", ["data-testid"] = "welcome-gateway-name" })" />
+        </MudItem>
+    </MudGrid>
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+        Auto-generated values are populated above. Edit them now, or leave
+        them and we'll keep what's already on disk.
+    </MudAlert>
+</MudPaper>
+
+@code {
+    /// <summary>Gateway ID — bound to the input. Operator-edited.</summary>
+    [Parameter] public string GatewayId { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> GatewayIdChanged { get; set; }
+
+    /// <summary>Gateway display name — bound to the input.</summary>
+    [Parameter] public string GatewayName { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> GatewayNameChanged { get; set; }
+
+    /// <summary>
+    /// Fired whenever either field changes. Parent uses it to refresh
+    /// CanGoNext + capture the latest values into its own state.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private async Task NotifyChanged()
+    {
+        if (GatewayIdChanged.HasDelegate) await GatewayIdChanged.InvokeAsync(GatewayId);
+        if (GatewayNameChanged.HasDelegate) await GatewayNameChanged.InvokeAsync(GatewayName);
+        if (OnChanged.HasDelegate) await OnChanged.InvokeAsync();
+    }
+}

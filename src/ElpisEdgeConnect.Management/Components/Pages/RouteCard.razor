@@ -1,0 +1,521 @@
+@*
+    One route's status card on the Overview grid.
+
+    Layout contract
+    ---------------
+    Every row — source, destination, buffer — is the SAME three-column grid:
+
+        [ icon 22px ] [ body 1fr, min-width:0 ] [ actions auto ]
+
+    so the icons form one vertical rule down the left, the text block shares one
+    left edge, and every status pill lands on one right-hand column. Each row
+    used to be its own ad-hoc flex stack, which is why the source pill sat
+    inboard of the route and destination pills.
+
+    The outer element stays a MudPaper. The card's CSS specificity work — the
+    shared card rule, the hover rule and the health accent — is written against
+    `.mud-paper.route-card`, so swapping it for a plain <article> silently drops
+    all three. Only the INSIDE is BEM.
+
+    Visual rules (locked)
+    ---------------------
+       * Status dot is the focal point — green/red, shape as well as colour.
+       * Route id is the headline.
+       * Source + protocol + state on one line.
+       * Sink(s) each get a line with their adapter state + degraded badge +
+         active-session count when applicable.
+       * Buffer depth as text, NOT a chart. Per the "no analytics in Studio"
+         rule (locked in M plan review).
+       * Last-error guidance + code + age shown when present.
+       * A card that is not green ALWAYS states its reason — from the fault
+         panel when an adapter reported the error, otherwise from the health
+         panel. A red card with nothing to read on it is not reachable.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a
+*@
+@inject IDialogService DialogService
+
+@if (Route is not null)
+{
+    <MudPaper Elevation="1" Class="@($"pa-4 route-card {HealthModifier}")" Style="height:100%;">
+        <div class="route-card__header">
+            @* Shape as well as colour: on a board of cards this dot is the first
+               thing scanned, and it must not be the only thing carrying state. *@
+            <MudIcon Icon="@OperatorFormat.StateIcon(Route.StateName)"
+                     Color="@StateColor" Size="Size.Medium"
+                     Class="route-card__dot" aria-hidden="true" />
+            <div class="route-card__identity">
+                <span class="route-card__eyebrow">Route</span>
+                <MudText Typo="Typo.h6" Class="route-card__title" title="@Route.RouteId">
+                    @Route.RouteId
+                </MudText>
+            </div>
+            <span class="status-pill @StatePillClass" data-testid="route-card-state">
+                @StateLabel
+            </span>
+        </div>
+
+        <div class="route-card__rows">
+            @* ── Source ───────────────────────────────────────────────── *@
+            @if (Route.Source is not null)
+            {
+                <div class="route-row">
+                    <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Small"
+                             Class="route-row__icon" aria-hidden="true" />
+                    <div class="route-row__body">
+                        <span class="route-row__label">Source</span>
+                        <a class="route-row__name" href="@($"/sources/{Route.Source.SourceInstanceId}")">
+                            @Route.Source.SourceInstanceId
+                        </a>
+                        <span class="route-row__proto">@Route.Source.ProtocolName</span>
+
+                        @* Always rendered, including at zero. A disconnected
+                           device reads 0 values, and hiding this line exactly
+                           when the count is 0 removed the evidence at the only
+                           moment it mattered. The second clause separates "never
+                           received anything" from "received something, but not
+                           recently" — different faults. *@
+                        @* While a licensing stop is in force the counters are FROZEN by
+                           definition — the supervisors are down, so nothing can advance
+                           them. The relative age is not frozen though: "last value 2 min
+                           ago" keeps counting up on a card that is deliberately halted,
+                           so an operator returning an hour later reads a gateway that
+                           looks progressively more broken when nothing has changed since
+                           the stop. Under a halt the wall-clock TIME of the last reading
+                           is shown instead, which does stay put, and the count is labelled
+                           as what it is — the total up to the stop, not a live figure.
+
+                           Zero gets its own wording for the same reason: after a restart
+                           under a halt, collection is stopped within a second or so and
+                           every source honestly reports 0. "No values received yet" then
+                           reads as a device that will not talk, sending an operator to the
+                           cabinet for a licensing stop. *@
+                        <span class="route-row__meta">
+                            @if (DataHaltedByLicense)
+                            {
+                                @($"{Route.Source.PointsObserved:N0} values read before collection stopped")
+                                <text> · </text>
+                                @(Route.Source.LastPointAtUtc is { } haltedAt
+                                    ? $"held at the last value, read {haltedAt.ToLocalTime():HH:mm:ss}"
+                                    : "stopped before any value was read")
+                            }
+                            else
+                            {
+                                @($"{Route.Source.PointsObserved:N0} values read since start")
+                                <text> · </text>
+                                @(Route.Source.LastPointAtUtc is { } lastPointAt
+                                    ? $"last value {OperatorFormat.Ago(lastPointAt)}"
+                                    : "no values received yet")
+                            }
+                        </span>
+                    </div>
+                    <div class="route-row__actions">
+                        @* Per-source diagnostic log: view + opt-in enable (records
+                           connect/disconnect + data reads to logs\<source>.txt).
+
+                           Sits BEFORE the state pill so every row's pill lands on
+                           the same right-hand column. *@
+                        <MudTooltip Text="Source log — view / enable logging">
+                            <MudIconButton Icon="@Icons.Material.Filled.Article"
+                                           Size="Size.Small" Color="Color.Default"
+                                           Class="route-row__log"
+                                           OnClick="@(() => OpenLog(Route.Source.SourceInstanceId))"
+                                           aria-label="@($"Open the connection log for {Route.Source.SourceInstanceId}")"
+                                           data-testid="source-log-button" />
+                        </MudTooltip>
+                        <span class="status-pill @PillClass(Route.Source.StateName)">
+                            @Route.Source.StateName
+                        </span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="route-row route-row--empty">
+                    <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Small"
+                             Class="route-row__icon" aria-hidden="true" />
+                    <div class="route-row__body">
+                        <span class="route-row__name route-row__name--muted">No source attached</span>
+                    </div>
+                    @* The empty rows carry a pill too. Every other row lands one
+                       on the right-hand column, so a row without one reads as
+                       "state not reported yet" rather than "nothing is here" —
+                       and this row is a reason the route is red, not a gap. *@
+                    <div class="route-row__actions">
+                        <span class="status-pill status-pill--error"
+                              data-testid="route-card-no-source">not attached</span>
+                    </div>
+                </div>
+            }
+
+            @* ── Destinations ─────────────────────────────────────────── *@
+            @if (Route.Sinks.Count == 0)
+            {
+                <div class="route-row route-row--empty">
+                    <MudIcon Icon="@Icons.Material.Filled.Output" Size="Size.Small"
+                             Class="route-row__icon" aria-hidden="true" />
+                    <div class="route-row__body">
+                        <span class="route-row__name route-row__name--muted">No destinations attached</span>
+                    </div>
+                    <div class="route-row__actions">
+                        <span class="status-pill status-pill--error"
+                              data-testid="route-card-no-destination">not attached</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @foreach (var sink in Route.Sinks)
+                {
+                    <div class="route-row">
+                        <MudIcon Icon="@Icons.Material.Filled.Output" Size="Size.Small"
+                                 Class="route-row__icon" aria-hidden="true" />
+                        <div class="route-row__body">
+                            <span class="route-row__label">Destination</span>
+                            <a class="route-row__name" href="@($"/sinks/{sink.SinkInstanceId}")">
+                                @sink.SinkInstanceId
+                            </a>
+                            @if (!string.IsNullOrEmpty(sink.ProtocolName))
+                            {
+                                <span class="route-row__proto">@sink.ProtocolName</span>
+                            }
+                        </div>
+                        <div class="route-row__actions">
+                            @if (sink.ActiveSessionCount is { } n)
+                            {
+                                <MudTooltip Text="Active client sessions">
+                                    <span class="status-pill status-pill--neutral">
+                                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" aria-hidden="true" />
+                                        @n
+                                    </span>
+                                </MudTooltip>
+                            }
+                            @if (sink.IsDegraded)
+                            {
+                                <span class="status-pill status-pill--warn">degraded</span>
+                            }
+                            else if (sink.AdapterStateName is { } stateName)
+                            {
+                                <span class="status-pill @PillClass(stateName)">@stateName</span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            @* ── Buffer ───────────────────────────────────────────────── *@
+            @if (Route.Buffer is not null)
+            {
+                <div class="route-row">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small"
+                             Class="route-row__icon" aria-hidden="true" />
+                    <div class="route-row__body">
+                        @* Waiting AND delivered, because either number alone lies:
+                           a queue of 7 is normal in flight, a queue of 7 that has
+                           never delivered anything is a wedged route. The <text>
+                           wrappers are load-bearing — without them the @if sits in
+                           a text context and Razor prints the directive itself
+                           onto the card. *@
+                        <span class="route-row__buffer">
+                            <strong>@Route.Buffer.CurrentDepth.ToString("N0") waiting</strong>
+                            · @Route.Buffer.TotalDrained.ToString("N0") delivered
+                            @if (Route.Buffer.SizeBytes > 0)
+                            {
+                                <text> · @OperatorFormat.Bytes(Route.Buffer.SizeBytes) on disk</text>
+                            }
+                            @if (Route.Buffer.TotalDropped > 0)
+                            {
+                                <text> · </text>
+                                <span class="route-row__dropped">@Route.Buffer.TotalDropped.ToString("N0") dropped</span>
+                            }
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ── Faults ───────────────────────────────────────────────────── *@
+        @if (Route.Source?.LastErrorAtUtc is { } errAt)
+        {
+            @ErrorPanel("Source", Route.Source.LastErrorCode, Route.Source.LastErrorMessage, errAt)
+        }
+        @foreach (var sink in Route.Sinks)
+        {
+            @* Destination failures surface here too (e.g. broker unreachable —
+               MQTT.PERTAG_PUBLISH_FAILED). Only source errors used to reach the
+               card, so a degraded destination showed no reason at all. *@
+            @if (sink.LastErrorAtUtc is { } sinkErrAt)
+            {
+                @ErrorPanel($"Destination {sink.SinkInstanceId}", sink.LastErrorCode, sink.LastErrorMessage, sinkErrAt)
+            }
+        }
+
+        @* ── Why this card is red, when no adapter raised an error ──────────
+           Plenty of breakages carry no error code at all: a route with no
+           destination, a source sitting Stopped, a buffer that has never
+           drained. Those printed a red "Not delivering" pill and nothing else,
+           leaving the operator to work out which of the rows above was the
+           problem. The verdict names the exact condition that set the level, so
+           a red or amber card always says why.
+
+           FromAdapterError is the suppression test, rather than "is a fault
+           panel showing?": the panels above render for ANY reported error,
+           including one stale enough that it no longer decides the level. Asking
+           the verdict which kind of condition it came from keeps this in step
+           with the level itself — an error-derived verdict is already stated,
+           word for word, by the panel above. *@
+        @if (RouteHealth.Verdict(Route) is { FromAdapterError: false, Reason: { } reason })
+        {
+            @HealthPanel(reason)
+        }
+
+        @* Gateway-wide licensing state, last on the card. It is the same sentence
+           on every card on the board, so it sits under the route's own rows and
+           panels rather than pushing them down — the per-route detail is what
+           differs card to card and what the operator is scanning for. The top
+           banner carries the same condition where it cannot be missed. *@
+        @if (LicenseStopNotice is { } licenseNotice)
+        {
+            @HealthPanel(licenseNotice)
+        }
+    </MudPaper>
+}
+
+@* Shared fault panel for both ends of the route.
+
+   Leads with what the fault MEANS and what to check (ErrorGuidance), because
+   the operator reading this is standing at a machine deciding whether to look
+   at the cable, the PLC, or the gateway. The raw code stays as a mono chip
+   beside the age, so it is still greppable in a support ticket — demoted, not
+   removed. Uncatalogued codes fall back to the adapter's own message, so
+   nothing is ever swallowed. *@
+@code {
+    // NB: the code parameter is deliberately NOT named `code` — inside a .razor
+    // file `@code` is the code-block directive, so `@code` in the markup below
+    // is a Razor parse error rather than a variable reference.
+    private RenderFragment ErrorPanel(string origin, string? errorCode, string? rawMessage, DateTime whenUtc) => __builder =>
+    {
+        var explanation = ErrorGuidance.For(errorCode);
+
+        @* Always red. The panel used to fade to amber once the error passed two
+           minutes, so a device unreachable for an hour looked calmer than one
+           unreachable for a minute — the longer it was broken, the less broken
+           it looked, on the one screen used for triage. Age still reads in words
+           on the meta line below ("since 17 sec ago" / "last seen 8 min ago"),
+           which is where that distinction belongs. *@
+        <div class="route-card__fault route-card__fault--active" role="status">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" aria-hidden="true" />
+            <div class="route-card__fault-body">
+                <p class="route-card__fault-meaning">@ErrorGuidance.Describe(errorCode, rawMessage)</p>
+                @if (explanation?.WhatToCheck is { } whatToCheck)
+                {
+                    <p class="route-card__fault-check">@whatToCheck</p>
+                }
+                <div class="route-card__fault-meta">
+                    @* Which END failed. A route can fan out to several
+                       destinations, and an uncatalogued code falls back to the
+                       adapter's raw message, which need not name the endpoint —
+                       so the origin is stated rather than inferred. *@
+                    <span>@origin</span>
+                    @if (errorCode is not null)
+                    {
+                        <code class="route-card__fault-code">@errorCode</code>
+                    }
+                    <span>@ErrorAge(whenUtc)</span>
+                </div>
+            </div>
+        </div>
+    };
+
+    // Same panel, same red, for the breakages that never raise an error code.
+    // Deliberately reuses the fault panel's classes rather than inventing a
+    // quieter treatment: the card is red either way, and a softer panel would
+    // say "less wrong" about a route that is delivering exactly nothing.
+    //
+    // The sentence is split at its first full stop so it lands in the panel's
+    // existing grammar — the fact in the bold line, the consequence and the
+    // "nothing is wrong with the machine" reassurance in the quieter one below.
+    private RenderFragment HealthPanel(string reason) => __builder =>
+    {
+        var (fact, consequence) = SplitFirstSentence(reason);
+
+        <div class="route-card__fault route-card__fault--active" role="status"
+             data-testid="route-card-health">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" aria-hidden="true" />
+            <div class="route-card__fault-body">
+                <p class="route-card__fault-meaning">@fact</p>
+                @if (consequence is not null)
+                {
+                    <p class="route-card__fault-check">@consequence</p>
+                }
+            </div>
+        </div>
+    };
+}
+
+@code {
+    [Parameter, EditorRequired] public RouteSummaryDto? Route { get; set; }
+
+    /// <summary>
+    /// Gateway-wide licensing notice, or <c>null</c> when licensing is not
+    /// affecting data collection. Supplied by the Overview page, which already
+    /// polls the license status once per refresh — the cards must not each fetch
+    /// it themselves, or a twelve-route gateway would issue twelve extra
+    /// requests every two seconds to learn one gateway-wide fact.
+    ///
+    /// It renders at the FOOT of the card, below the route's own rows and fault
+    /// panels. Note the interaction that makes it worth having at all: when the
+    /// ADR-0035 cutoff stops the supervisors, every source goes Stopped at once
+    /// and the cards fill with device-shaped guidance — "Cannot reach this
+    /// device. Check it is powered on, plugged in..." — which would send an
+    /// operator to the cabinet for a licensing problem. This notice is what
+    /// tells them otherwise, so it must stay present on the card even though
+    /// the top banner also carries the condition.
+    /// </summary>
+    [Parameter] public string? LicenseStopNotice { get; set; }
+
+    /// <summary>
+    /// True once licensing has actually TORN DOWN collection (the ADR-0035 cutoff,
+    /// a version restriction, or a clock rollback) — not merely when the gateway is
+    /// unlicensed. Distinct from <see cref="LicenseStopNotice"/> being non-null,
+    /// which is also set during the still-collecting "this will stop" phase: the
+    /// counters are only frozen, and may only be described as frozen, in the torn-
+    /// down state.
+    /// </summary>
+    [Parameter] public bool DataHaltedByLicense { get; set; }
+
+    /// <summary>
+    /// Splits "fact. consequence" into its two halves; returns the whole string
+    /// as the fact when it is a single sentence.
+    /// </summary>
+    private static (string Fact, string? Consequence) SplitFirstSentence(string reason)
+    {
+        var cut = reason.IndexOf(". ", StringComparison.Ordinal);
+        return cut < 0
+            ? (reason, null)
+            : (reason[..(cut + 1)], reason[(cut + 2)..]);
+    }
+
+    private Task OpenLog(string sourceId)
+    {
+        var parameters = new DialogParameters<SourceLogDialog>
+        {
+            { x => x.SourceId, sourceId },
+        };
+        return DialogService.ShowAsync<SourceLogDialog>(
+            $"Source log — {sourceId}",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    // §11 — the live/stale ladder now lands in WORDS only, not in colour. A
+    // fault panel is red whatever its age; this line says how old it is and
+    // whether it may already have cleared.
+    private static string ErrorAge(DateTime whenUtc)
+    {
+        if (OperatorFormat.IsStale(whenUtc, TimeSpan.FromMinutes(15)))
+        {
+            return $"last seen {OperatorFormat.Ago(whenUtc)} — may already be cleared";
+        }
+        if (OperatorFormat.IsStale(whenUtc, TimeSpan.FromMinutes(2)))
+        {
+            return $"last seen {OperatorFormat.Ago(whenUtc)}";
+        }
+        return $"since {OperatorFormat.Ago(whenUtc)}";
+    }
+
+    /// <summary>
+    /// Adapter state name to pill modifier. One mapping for the source and sink
+    /// pills, so the same word can never render green in one row and grey in the
+    /// next. The route's own pill goes through <see cref="StatePillClass"/> —
+    /// it answers a different question (delivery, not adapter state).
+    /// </summary>
+    private static string PillClass(string? stateName) => stateName switch
+    {
+        "Running" => "status-pill--ok",
+        "Degraded" => "status-pill--warn",
+        "Stopped" or "Failed" or "Faulted" or "Blocked" => "status-pill--error",
+        _ => "status-pill--neutral",
+    };
+
+    // Colour and label both come from RouteHealth, not from Route.StateName.
+    // StateName describes the PIPELINE: a route whose source is Stopped and
+    // whose sink is disconnected still reports "Running", because the pipeline
+    // task is alive with nothing to read and nowhere to publish. Colouring the
+    // chip from it printed a green RUNNING badge over a route moving no data.
+    // Going through RouteHealth also guarantees this card and the Overview
+    // banner cannot disagree in front of the operator.
+    // Degraded is RED, not amber. An amber strip was read as "not urgent" and
+    // skipped — a gateway with four unreachable devices still looked advisory.
+    // Green has to mean everything runs; everything else is red until it does,
+    // which also matches the verdict banner these cards sit under. The pill
+    // TEXT still separates "Degraded" from "Not delivering", so the distinction
+    // survives where it is actionable, without colour understating either one.
+    private Color StateColor => DataHaltedByLicense
+        ? Color.Error
+        : RouteHealth.Level(Route) switch
+        {
+            RouteHealthLevel.Down or RouteHealthLevel.Degraded => Color.Error,
+            _ => Color.Success,
+        };
+
+    /// <summary>
+    /// The route pill's colour. Deliberately NOT <see cref="PillClass"/>: this
+    /// one tracks delivery via RouteHealth, so Degraded lands on --error to stay
+    /// in step with the header icon and the verdict banner above the board.
+    /// </summary>
+    private string StatePillClass => DataHaltedByLicense
+        ? "status-pill--error"
+        : RouteHealth.Level(Route) switch
+        {
+            RouteHealthLevel.Down or RouteHealthLevel.Degraded => "status-pill--error",
+            _ => "status-pill--ok",
+        };
+
+    /// <summary>
+    /// The left accent answers "IS THE MACHINE CONNECTED?", so it reads
+    /// <see cref="RouteHealth.ConnectionLevel"/> — endpoint states only — not
+    /// <see cref="RouteHealth.Level"/>.
+    ///
+    /// Driving it from Level painted the same red edge on a gateway reading its
+    /// device perfectly but unable to drain to the broker as on one whose device
+    /// was unplugged, so an operator could not tell "walk to the machine" from
+    /// "the broker is down" without opening every card in turn.
+    ///
+    /// Consequence, deliberately accepted: a green edge does not promise data is
+    /// flowing, and this card can be green-edged while the Overview banner still
+    /// counts the route as broken. The delivery fault stays visible on this same
+    /// card — in the state pill, the fault panel and the waiting / delivered
+    /// counters — so nothing is hidden. What stays forbidden is two surfaces
+    /// answering the SAME question differently, which is why the pill below
+    /// still speaks for delivery.
+    /// </summary>
+    // A licensing halt paints the accent red regardless of what the adapters last
+    // reported. Those states are the ones recorded on the way down, and a route
+    // re-added by a config apply after the halt records itself Running — so the
+    // card carried a green edge and a "Running" pill directly above its own "Data
+    // reading stopped" panel. The edge is the first thing scanned on a board of
+    // cards; it may not say healthy about a gateway that is delivering nothing.
+    private string HealthModifier => DataHaltedByLicense
+        ? "route-card--attention"
+        : RouteHealth.ConnectionLevel(Route) switch
+        {
+            RouteHealthLevel.Down or RouteHealthLevel.Degraded => "route-card--attention",
+            _ => "route-card--healthy",
+        };
+
+    /// <summary>
+    /// What the pill says. "Running" is reserved for a route that is actually
+    /// delivering end to end; a broken one says so in words, because a red pill
+    /// reading "Running" asks the operator to reconcile the contradiction
+    /// themselves. The per-endpoint pills below still show each raw state.
+    /// </summary>
+    private string StateLabel => DataHaltedByLicense
+        ? "Not delivering"
+        : RouteHealth.Level(Route) switch
+        {
+            RouteHealthLevel.Down => "Not delivering",
+            RouteHealthLevel.Degraded => "Degraded",
+            _ => Route?.StateName ?? "Unknown",
+        };
+}

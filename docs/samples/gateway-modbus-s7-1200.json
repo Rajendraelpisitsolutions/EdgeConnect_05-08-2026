@@ -1,0 +1,208 @@
+{
+  "gateway": {
+    "gatewayId": "gw-line1-edge",
+    "gatewayName": "Line 1 EdgeConnect"
+  },
+  "sources": [
+    {
+      "instanceId": "modbus-s7-line1",
+      "protocolName": "modbustcp",
+      "deviceId": "S7-1200-Line1",
+      "deviceName": "Siemens S7-1200, Line 1 main controller",
+      "deviceClass": "plc",
+      "enabled": true,
+      "polling": {
+        "intervalMs": 200
+      },
+      "connection": {
+        "host": "127.0.0.1",
+        "port": 5020,
+        "encapsulation": "tcp",
+        "defaultUnitId": 1,
+        "connectTimeoutMs": 3000,
+        "requestTimeoutMs": 2000,
+        "keepAlive": true,
+        "maxTransactionRetries": 2,
+        "initialBackoffMs": 1000,
+        "maxBackoffMs": 30000,
+        "backoffMultiplier": 2.0,
+        "circuitBreakerThreshold": 5,
+        "circuitBreakerResetMs": 30000,
+        "maxGapRegisters": 8,
+        "tagDefinitions": [
+          {
+            "name": "running",
+            "unitId": 1,
+            "registerClass": "Coil",
+            "address": 0,
+            "datatype": "bool",
+            "scanRateMs": 250
+          },
+          {
+            "name": "alarm_active",
+            "unitId": 1,
+            "registerClass": "Coil",
+            "address": 1,
+            "datatype": "bool",
+            "scanRateMs": 250
+          },
+          {
+            "name": "door_closed",
+            "unitId": 1,
+            "registerClass": "DiscreteInput",
+            "address": 0,
+            "datatype": "bool",
+            "scanRateMs": 250
+          },
+          {
+            "name": "tool_in_spindle",
+            "unitId": 1,
+            "registerClass": "DiscreteInput",
+            "address": 1,
+            "datatype": "bool",
+            "scanRateMs": 250
+          },
+
+          {
+            "name": "spindle_rpm",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 0,
+            "datatype": "uint16",
+            "scanRateMs": 200,
+            "unit": "rpm"
+          },
+          {
+            "name": "spindle_load",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 1,
+            "datatype": "int16",
+            "scanRateMs": 200,
+            "unit": "%"
+          },
+
+          {
+            "name": "feed_rate",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 10,
+            "datatype": "float32",
+            "byteOrder": "ABCD",
+            "scanRateMs": 200,
+            "unit": "mm/min"
+          },
+          {
+            "name": "cycle_time",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 30,
+            "datatype": "float32",
+            "byteOrder": "ABCD",
+            "scanRateMs": 500,
+            "unit": "s"
+          },
+          {
+            "name": "energy_kwh",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 40,
+            "datatype": "float32",
+            "byteOrder": "ABCD",
+            "scanRateMs": 500,
+            "unit": "kWh"
+          },
+
+          {
+            "name": "parts_count",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 20,
+            "datatype": "uint32",
+            "byteOrder": "CDAB",
+            "scanRateMs": 500
+          },
+
+          {
+            "name": "alarm_code",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 50,
+            "datatype": "int16",
+            "scanRateMs": 500
+          },
+
+          {
+            "name": "mode",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 60,
+            "datatype": "string8",
+            "scanRateMs": 1000
+          },
+          {
+            "name": "part_id",
+            "unitId": 1,
+            "registerClass": "HoldingRegister",
+            "address": 100,
+            "datatype": "string8",
+            "scanRateMs": 1000
+          },
+
+          {
+            "name": "temperature",
+            "unitId": 1,
+            "registerClass": "InputRegister",
+            "address": 0,
+            "datatype": "int16",
+            "scanRateMs": 500,
+            "scale": 0.1,
+            "unit": "C"
+          }
+        ]
+      }
+    }
+  ],
+
+  "sinks": [
+    {
+      "instanceId": "mqtt-eremos",
+      "protocolName": "mqtt",
+      "enabled": true,
+      "connection": {
+        "brokerHost": "20.197.8.189",
+        "brokerPort": 1883,
+        "clientId": "edgeconnect-gw-line1-edge",
+        "useTls": false,
+        "publishMode": "PerTag",
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "qosLevel": 0,
+        "reconnectDelayMs": 1000,
+        "maxReconnectDelayMs": 30000
+      }
+    }
+  ],
+
+  "routes": [
+    {
+      "routeId": "route-line1-to-eremos",
+      "name": "Line 1 PLC → EREMOS",
+      "sourceInstanceId": "modbus-s7-line1",
+      "sinkInstanceIds": [ "mqtt-eremos" ],
+      "enabled": true,
+      "buffer": {
+        "mode": "InMemory",
+        "maxDepth": 50000,
+        "onOverflow": "DropOldest"
+      },
+      "delivery": {
+        "mode": "AtLeastOnce",
+        "maxRetries": 100,
+        "initialBackoffMs": 100,
+        "maxBackoffMs": 30000,
+        "backoffMultiplier": 2.0,
+        "jitterPercent": 10
+      }
+    }
+  ]
+}

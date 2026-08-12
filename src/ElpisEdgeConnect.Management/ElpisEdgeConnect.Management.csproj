@@ -1,0 +1,111 @@
+<!--
+  ElpisEdgeConnect.Management — Connectivity Studio host.
+
+  Single project containing both the management REST API and the
+  Blazor Server UI (Connectivity Studio). Runs in-process alongside
+  EdgeConnect.Host's runtime so it has direct DI access to the live
+  RuntimeDiagnosticsCollector / RoutingEngine / LicenseManager.
+
+  LOCKED architectural rule:
+    Blazor Components consume the Management REST API only — never
+    Core/Host services directly. The assembly-load test in
+    ElpisEdgeConnect.Management.Tests enforces it.
+
+  License module: `connectivity-studio` (catalog in G.7).
+
+  Phase 4 Milestone M:
+    * M.1a (this commit) — project skeleton, security guardrails,
+      Overview page, isolation test.
+    * M.1b/c/d, M.2, M.3 — see PHASE4_EXECUTION_PLAN.md § M.
+-->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <!-- Elpis logo embedded as the Management.exe application icon (Explorer,
+         taskbar, and the installed service binary). Shared asset with the
+         installer (ARP + shortcut icon). -->
+    <ApplicationIcon>..\..\installer\elpis.ico</ApplicationIcon>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Management</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Management</AssemblyName>
+    <Description>Connectivity Studio — management API + Blazor UI for EdgeConnect</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CA1822: many Razor component methods are instance-bound by
+              framework convention even when they don't touch instance state.
+      CA1848: LoggerMessage source-gen — too much ceremony for a UI host's
+              handful of log lines.
+      CA1031: management API exception handlers catch broad to convert to
+              ProblemDetails responses.
+      CA2007: ConfigureAwait — ASP.NET Core has no SyncContext, suggestion is noisy.
+      CA1716: "Shared" is a reserved keyword in some languages — Blazor's
+              widely-adopted folder convention. Suppressed for the
+              Components/Shared/ namespace.
+    -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA2007;CA1716</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Management.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      MudBlazor — Material design component library for Blazor.
+      Apache 2.0 license; ship-safe.
+    -->
+    <PackageReference Include="MudBlazor" Version="7.15.0" />
+    <!--
+      FluentModbus — direct reference for the M.2d.2 Modbus probe service.
+      The probe issues a single FC03/FC04/FC01/FC02 read via the public
+      FluentModbus.ModbusTcpClient surface, so we don't need to cross the
+      Sources.ModbusTcp internal boundary (IModbusClient stays internal).
+      Pinned to the same 5.2.0 version Sources.ModbusTcp uses to avoid
+      runtime version-skew at composition time.
+    -->
+    <PackageReference Include="FluentModbus" Version="5.2.0" />
+    <!--
+      Enables hosting the Studio as a Windows service (builder.Host.UseWindowsService()
+      in Program.cs). No-op when launched from a console, so dev-run is unaffected.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <!--
+      Swashbuckle — serves the Swagger UI at /swagger for the management REST API
+      (the "Open API documentation" button in the top bar). API-only; the Blazor
+      surface is unaffected.
+    -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Core for diagnostics surfaces (read-only consumption only).
+      Host for SourceRegistration / SinkRegistration metadata that the API
+      surfaces — but the Blazor components MUST NOT reach into either.
+      The assembly-load test enforces it.
+    -->
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Host\ElpisEdgeConnect.Host.csproj" />
+    <!--
+      Sources.ModbusTcp — referenced so the Modbus wizard
+      (ModbusSourceWizardModel.ValidateTag) can compose with the
+      protocol's own ModbusTagValidator + ModbusTagDefinition rather
+      than duplicating the datatype/byteOrder width rules. Locked-N
+      composition discipline (M.2b.6.2 §4 Q1).
+
+      This is NOT a protocol-to-protocol reference (which Locked
+      rule #11 forbids); Management is the orchestration layer that
+      hosts protocol-specific wizards. The ManagementProjectIsolation
+      test still enforces that no Razor ComponentBase [Inject]s from
+      EdgeConnect.Sources.* — the wizard call site is a static POCO
+      method invocation, not an injected service.
+    -->
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.ModbusTcp\ElpisEdgeConnect.Sources.ModbusTcp.csproj" />
+  </ItemGroup>
+
+</Project>

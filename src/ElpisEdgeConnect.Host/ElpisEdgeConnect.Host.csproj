@@ -1,0 +1,61 @@
+<!--
+  ElpisEdgeConnect.Host — Windows service entry point and DI composition root.
+  Reference: docs/PHASE1_EXECUTION_PLAN.md Milestone D, ARCHITECTURE_BLUEPRINT.md §8
+
+  Phase 2 scope: composition root + locked startup/shutdown ordering only.
+  Mock adapters, source/sink supervisors, health endpoints, and the
+  Prometheus scrape endpoint land in subsequent D phases.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Host</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Host</AssemblyName>
+    <Description>Elpis EdgeConnect Host — Windows service entry point and DI composition root</Description>
+    <!-- Elpis logo embedded as the Host.exe application icon. Shared asset
+         with the installer (ARP + shortcut icon). -->
+    <ApplicationIcon>..\..\installer\elpis.ico</ApplicationIcon>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CA1848 (LoggerMessage delegates): the host emits a handful of one-off
+      lifecycle log lines (startup complete, shutdown beginning). Forcing
+      LoggerMessage source-gen for two log calls is more boilerplate than
+      it's worth at this scale. Revisit if log volume grows.
+    -->
+    <NoWarn>$(NoWarn);CA1822;CA1848</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Host.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.Focas2\ElpisEdgeConnect.Sources.Focas2.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.MTConnect\ElpisEdgeConnect.Sources.MTConnect.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.ModbusTcp\ElpisEdgeConnect.Sources.ModbusTcp.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.S7\ElpisEdgeConnect.Sources.S7.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.BrotherHttp\ElpisEdgeConnect.Sources.BrotherHttp.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.OpcUaClient\ElpisEdgeConnect.Sources.OpcUaClient.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.EthernetIp\ElpisEdgeConnect.Sources.EthernetIp.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sinks.Mqtt\ElpisEdgeConnect.Sinks.Mqtt.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sinks.OpcUaServer\ElpisEdgeConnect.Sinks.OpcUaServer.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.Sources.Melsec\ElpisEdgeConnect.Sources.Melsec.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <!-- HKLM access for the machine fingerprint (MachineGuid) + a registry-backed
+         copy of the gateway identity that survives deleting the ProgramData files. -->
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+  </ItemGroup>
+
+</Project>

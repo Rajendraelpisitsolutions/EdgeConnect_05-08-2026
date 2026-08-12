@@ -1,0 +1,199 @@
+@*
+    Demo-mode banner (ADR-0035). When the gateway is running WITHOUT a valid
+    license, shows a live countdown to when data collection stops; once stopped,
+    shows a persistent "data collection stopped" notice. Hidden when licensed.
+    Polls /api/license/status and counts down client-side.
+
+    Every branch below states what has happened to DATA, not just to the licence —
+    that is the only part an operator can act on. The branches are ordered by cause
+    (tamper, then version restriction, then demo exhaustion), and because the first
+    match wins, each one carries its own data-status sentence rather than relying on
+    a later branch to add it.
+*@
+@using System.Net.Http.Json
+@using System.Timers
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Suppressed on the License page itself — that page shows the same information
+   in its own cards/alerts, so the top banner would be a duplicate. *@
+@if (_status is not null && !_status.IsValid && !IsLicensePage)
+{
+    <div style="position:sticky; top:64px; z-index:1000;">
+        @if (_status.ClockTampered)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Square="true"
+                      Class="mb-0" data-testid="demo-clock-tampered-banner">
+                @* This branch is FIRST, so it swallows the DataStopped branch below:
+                   a tampered gateway that has since burned its demo budget would
+                   otherwise be told only that the clock is wrong, never that reading
+                   and publishing had stopped. The consequence is therefore spelled
+                   out here, and split on DataStopped so it stays true in both phases —
+                   data is still flowing during the demo window, and claiming it had
+                   stopped would send an operator hunting a fault that does not exist. *@
+                <MudText Typo="Typo.body2">
+                    <strong>System date/time tampering detected — running in demo mode.</strong>
+                    The clock is set earlier than a time this gateway has already seen, so the license
+                    is not honoured.
+                    @if (_status.DataStopped)
+                    {
+                        <text>
+                            <strong>Data collection has stopped</strong> — sources are no longer read and
+                            nothing is published. Correct the system clock and restart the service to
+                            resume reading and publishing data.
+                        </text>
+                    }
+                    else
+                    {
+                        <text>
+                            Data collection continues for <strong>@FormatRemaining()</strong> of demo time
+                            and then stops. Correct the system clock to restore licensed operation.
+                        </text>
+                    }
+                </MudText>
+            </MudAlert>
+        }
+        else if (_status.VersionRestricted)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Square="true"
+                      Class="mb-0" data-testid="demo-version-restricted-banner">
+                <MudText Typo="Typo.body2">
+                    <strong>Upgrade license — data collection stopped.</strong>
+                    @($"Version {_status.ProductVersion} is newer than your expired license covers.")
+                    Renew or upgrade on the
+                    <MudLink Href="/license" Style="color:inherit; text-decoration:underline;">License</MudLink>
+                    page and restart the service to resume reading and publishing data.
+                </MudText>
+            </MudAlert>
+        }
+        else if (_status.DataStopped)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Square="true"
+                      Class="mb-0" data-testid="demo-stopped-banner">
+                <MudText Typo="Typo.body2">
+                    <strong>Demo period ended — data collection stopped.</strong>
+                    This gateway is not licensed. Activate a license on the
+                    <MudLink Href="/license" Style="color:inherit; text-decoration:underline;">License</MudLink>
+                    page and restart the service to resume reading and publishing data.
+                </MudText>
+            </MudAlert>
+        }
+        else if (string.Equals(_status.Status, "Expired", StringComparison.OrdinalIgnoreCase))
+        {
+            <MudAlert Severity="@(_secondsRemaining <= 300 ? Severity.Error : Severity.Warning)"
+                      Variant="Variant.Filled" Dense="true" Square="true" Class="mb-0"
+                      data-testid="demo-expired-banner">
+                <MudText Typo="Typo.body2">
+                    <strong>The license has expired.</strong>
+                    The application will continue to run in Demo Mode until the license is renewed.
+                    @if (_secondsRemaining > 0)
+                    {
+                        <text> <strong>@FormatRemaining()</strong> of demo data-collection time remaining.</text>
+                    }
+                    <MudLink Href="/license" Style="color:inherit; text-decoration:underline;">Renew a license</MudLink>
+                    to continue.
+                </MudText>
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="@(_secondsRemaining <= 300 ? Severity.Error : Severity.Warning)"
+                      Variant="Variant.Filled" Dense="true" Square="true" Class="mb-0"
+                      data-testid="demo-countdown-banner">
+                <MudText Typo="Typo.body2">
+                    <strong>Demo mode.</strong>
+                    @if (_status.DemoCounting)
+                    {
+                        <text><strong>@FormatRemaining()</strong> of demo data-collection time remaining before it stops, without a valid license.</text>
+                    }
+                    else
+                    {
+                        <text><strong>@FormatRemaining()</strong> of demo data-collection time remaining (paused — the demo clock runs only while a source is actively collecting data).</text>
+                    }
+                    <MudLink Href="/license" Style="color:inherit; text-decoration:underline;">Activate a license</MudLink>
+                    to continue.
+                </MudText>
+            </MudAlert>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>True when the current page is the License page (banner suppressed there).</summary>
+    private bool IsLicensePage =>
+        string.Equals(
+            Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].TrimEnd('/'),
+            "license",
+            StringComparison.OrdinalIgnoreCase);
+
+    private LicenseStatusDto? _status;
+    private int _secondsRemaining;
+    private int _tick;
+    private System.Timers.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _timer = new System.Timers.Timer(1000) { AutoReset = true };
+        _timer.Elapsed += OnTick;
+        _timer.Start();
+    }
+
+    private async void OnTick(object? sender, ElapsedEventArgs e)
+    {
+        try
+        {
+            _tick++;
+            // Re-sync from the server every 5s so a clock-rollback / recovery shows
+            // up promptly (no manual refresh); decrement the countdown locally between.
+            if (_tick % 5 == 0)
+            {
+                await RefreshAsync();
+            }
+            else if (_status is { IsValid: false, DataStopped: false, DemoCounting: true } && _secondsRemaining > 0)
+            {
+                // Only tick down while the demo is actually being consumed (a
+                // source is collecting). When paused, the value holds until the
+                // next 30s server re-sync.
+                _secondsRemaining--;
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception)
+        {
+            // Never let the timer callback throw.
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _status = await HttpClient.GetFromJsonAsync<LicenseStatusDto>("/api/license/status");
+            _secondsRemaining = _status?.TrialSecondsRemaining ?? 0;
+        }
+        catch (Exception)
+        {
+            // Transient — keep the last known state.
+        }
+    }
+
+    private string FormatRemaining()
+    {
+        var t = TimeSpan.FromSeconds(Math.Max(0, _secondsRemaining));
+        return t.Hours > 0
+            ? $"{t.Hours}h {t.Minutes:00}m {t.Seconds:00}s"
+            : $"{t.Minutes:00}m {t.Seconds:00}s";
+    }
+
+    public void Dispose()
+    {
+        if (_timer is not null)
+        {
+            _timer.Elapsed -= OnTick;
+            _timer.Stop();
+            _timer.Dispose();
+        }
+    }
+}

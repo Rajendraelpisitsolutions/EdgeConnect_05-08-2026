@@ -1,0 +1,667 @@
+@*
+    AddMTConnectSource — MTConnect add/edit source wizard (M.2b.4 M3).
+
+    FOCAS2-style SEMANTIC onboarding (NOT an OPC-UA-style dataItem picker): the
+    operator never selects/renames dataItems. The adapter has a fixed canonical
+    CNC tag map; the wizard connects, calls /api/v1/sources/browse/mtconnect, and
+    shows exactly which of those fixed tags this agent exposes (greying out the
+    rest) plus the discovered axes. Mirrors AddFocas2Source's shell/save/edit
+    infrastructure.
+
+      * Add mode (@page "/sources/new/mtconnect") — POST /api/v1/config/drafts.
+      * Edit mode — rendered from SourceEditRouter with EditMode + HydratedConfig;
+        saves via PUT /api/v1/sources/{instanceId}.
+
+    Reference: docs/sessions/2026-05-31-mtconnect-source-wizard-plan-v2.md;
+               docs/sessions/2026-05-30-ux-mockups/7-mtconnect-source-wizard.html.
+*@
+@page "/sources/new/mtconnect"
+@using ElpisEdgeConnect.Sources.MTConnect
+@using System.Net
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") MTConnect source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Cable"
+             Title="@(_isEdit ? $"Edit MTConnect source — {_model.InstanceId}" : "Add MTConnect source")"
+             Subtitle="Connect an MTConnect agent. EdgeConnect maps it to the same canonical CNC tags as every other machine protocol — use Test &amp; discover to see which this agent exposes."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             Embedded="@EmbeddedMode"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Device identity">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
+                              HelperText="Operator-readable; defaults to instance id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Device name"
+                              HelperText="Display name shown in lists and tooltips."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PollIntervalMs" Label="Poll interval (ms)"
+                                 HelperText="1000 ms is typical."
+                                 Min="100" Max="60000" Step="100" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="Connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="7">
+                <MudTextField @bind-Value="_model.AgentBaseUrl"
+                              Label="Agent base URL *"
+                              HelperText="MTConnect agent root, e.g. http://agent.local:5000 — the wizard calls /probe here."
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="_model.AgentDeviceName" Label="Device name (optional)"
+                              HelperText="Blank = first device. One source per device — add others separately."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="_model.TimeoutSeconds" Label="Timeout (s)"
+                                 HelperText="Runtime poll timeout. Discover uses a fixed 10 s."
+                                 Min="1" Max="120" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced — runtime backoff">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)"
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)"
+                                         Min="1000" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.BackoffMultiplier" Label="Backoff multiplier"
+                                         Min="1.0" Max="10.0" Step="0.1" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.DegradeAfterConsecutiveFailures" Label="Degrade after N failures"
+                                         Min="1" Max="20" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="What this agent will produce">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Connect to confirm reachability and see exactly which standard CNC tags this agent exposes.
+            </MudText>
+            <MudSpacer />
+            @if (_browseResult is not null)
+            {
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="BrowseAsync" Disabled="@_browseBusy" Style="text-transform:none;">
+                    Refresh discovery
+                </MudButton>
+            }
+        </MudStack>
+
+        @if (_browseBusy)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+        }
+        else if (_browseResult is null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Click <em>Test &amp; discover</em> in the footer to probe the agent.
+            </MudText>
+        }
+        else if (_browseResult.Status is not MTConnectBrowseStatus.ReachableWithRecognisedTags
+                                       and not MTConnectBrowseStatus.ReachableNoRecognisedTags)
+        {
+            <MudAlert Severity="@StatusSeverity(_browseResult.Status)" Variant="Variant.Outlined">
+                <strong>@StatusHeadline(_browseResult.Status)</strong> @_browseResult.Message
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">status: @_browseResult.Status</MudText>
+            </MudAlert>
+        }
+        else
+        {
+            @if (_browseResult.Status == MTConnectBrowseStatus.ReachableWithRecognisedTags)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">
+                    <strong>Agent reachable.</strong>
+                    Device <strong>@(_browseResult.DeviceName ?? "(unnamed)")</strong>@(string.IsNullOrWhiteSpace(_browseResult.Manufacturer) ? "" : $" ({_browseResult.Manufacturer})") —
+                    @AvailableCount(_browseResult) of @_browseResult.Tags.Count standard tags available, @_browseResult.Axes.Count axes discovered.
+                    "Available" means the agent exposes the source dataItem in <code>/probe</code>; live values appear once the source runs.
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+                    <strong>Agent reachable, but none of the standard CNC tags are present.</strong> @_browseResult.Message
+                </MudAlert>
+            }
+
+            @if (_browseResult.AvailableDevices.Count > 1)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2" Style="display:block;">
+                    @_browseResult.AvailableDevices.Count devices in this agent's <code>/probe</code> — onboarding
+                    <strong>@(_browseResult.DeviceName ?? _browseResult.AvailableDevices[0])</strong>. Add the others as separate sources.
+                </MudText>
+            }
+
+            @if (_browseResult.Axes.Count > 0)
+            {
+                <MudText Typo="Typo.body2" Class="mb-1"><strong>Discovered axes</strong> (2 position tags each):</MudText>
+                <div class="mb-3">
+                    @foreach (var axis in _browseResult.Axes)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@axis</MudChip>
+                    }
+                </div>
+            }
+
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Standard semantic tags</strong></MudText>
+            <MudSimpleTable Dense="true" Bordered="false" Elevation="0">
+                <thead><tr><th>Canonical tag</th><th>From dataItem</th><th style="text-align:right">Status</th></tr></thead>
+                <tbody>
+                    @foreach (var t in _browseResult.Tags)
+                    {
+                        <tr style="@(t.Available ? "" : "opacity:0.55;")">
+                            <td><code>@t.CanonicalTag</code></td>
+                            <td><MudText Typo="Typo.caption" Color="Color.Secondary">@(t.SourceDataItemType ?? "—")</MudText></td>
+                            <td style="text-align:right">
+                                @if (t.Available)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Exposed by agent</MudChip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="@(t.Reason ?? "Not exposed by this agent")">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Not exposed by this agent</MudChip>
+                                    </MudTooltip>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                Conditions are handled automatically — MTConnect <code>Condition</code> items aggregate into
+                <code>alarms/count</code> and <code>alarms/first_fault</code>. There's nothing to select.
+            </MudAlert>
+
+            <MudPaper Elevation="0" Class="pa-3 mt-3" Style="border:1px solid var(--mud-palette-lines-default);">
+                <MudText Typo="Typo.body2">
+                    <strong>Total active tags: @AvailableCount(_browseResult) standard + @AxisTagCount(_browseResult) axis = @(AvailableCount(_browseResult) + AxisTagCount(_browseResult)).</strong>
+                    Tags this agent doesn't expose are shown for transparency but <strong>not activated</strong> —
+                    not collected, not part of the source's active tag set.
+                </MudText>
+            </MudPaper>
+
+            @if (_browseResult.Status == MTConnectBrowseStatus.ReachableNoRecognisedTags)
+            {
+                <MudCheckBox @bind-Value="_saveAnyway" Color="Color.Warning" Dense="true" Class="mt-2">
+                    <MudText Typo="Typo.body2">Save anyway — I understand this source will produce no data until the agent exposes recognised dataItems.</MudText>
+                </MudCheckBox>
+            }
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="4" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route).
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route links this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
+                                      Label="Route id *"
+                                      HelperText="Auto-suggested from instance id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add one first, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId" Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+    }
+
+    </ChildContent>
+    <Footer>
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="BrowseAsync"
+                           SaveLabel="Save changes"
+                           TestConnectionLabel="Test &amp; discover"
+                           CanSave="@CanSave()"
+                           Busy="@(_busy || _browseBusy)" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    private MTConnectSourceWizardModel _model = new();
+    private bool _hydrated;
+    private string? _lastNotifiedSignature;
+
+    // Routing UI state (Add mode only)
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    // Loaded context (Add mode only)
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+
+    private bool _browseBusy;
+    private MTConnectBrowseResultDto? _browseResult;
+    private bool _saveAnyway;
+
+    private bool _busy;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    private static int AvailableCount(MTConnectBrowseResultDto r) => r.Tags.Count(t => t.Available);
+    private static int AxisTagCount(MTConnectBrowseResultDto r) => r.Axes.Count * 2;
+
+    private static Severity StatusSeverity(MTConnectBrowseStatus s) => s switch
+    {
+        MTConnectBrowseStatus.Timeout => Severity.Warning,
+        MTConnectBrowseStatus.UnsupportedAgent => Severity.Info,
+        _ => Severity.Error,
+    };
+
+    private static string StatusHeadline(MTConnectBrowseStatus s) => s switch
+    {
+        MTConnectBrowseStatus.Unreachable => "Couldn't reach the agent.",
+        MTConnectBrowseStatus.Timeout => "No response in time.",
+        MTConnectBrowseStatus.Unauthorized => "Authentication required.",
+        MTConnectBrowseStatus.InvalidProbeDocument => "Not a valid MTConnect /probe.",
+        MTConnectBrowseStatus.UnsupportedAgent => "No devices found.",
+        MTConnectBrowseStatus.LicenseDisabled => "Not licensed.",
+        _ => string.Empty,
+    };
+
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "mtconnect.instance-id.duplicate", "InstanceId", _instanceIdError, "#field-instance-id"));
+        }
+        return messages;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = MTConnectSourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        _instanceIdError = null;
+        if (!_isEdit && !string.IsNullOrWhiteSpace(_model.InstanceId)
+            && _existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"A source named '{_model.InstanceId}' already exists.";
+        }
+        if (!_isEdit && !_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private async Task BrowseAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.AgentBaseUrl)) return;
+        _browseBusy = true;
+        _browseResult = null;
+        _saveAnyway = false;
+        try
+        {
+            var request = new MTConnectBrowseRequest(
+                _model.AgentBaseUrl,
+                string.IsNullOrWhiteSpace(_model.AgentDeviceName) ? null : _model.AgentDeviceName);
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/mtconnect", request);
+            try { _browseResult = await resp.Content.ReadFromJsonAsync<MTConnectBrowseResultDto>(); }
+            catch { _browseResult = null; }
+
+            if (_browseResult is null && !EmbeddedMode)
+            {
+                Snackbar.Add("Discover failed: could not read the agent response.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Discover failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _browseBusy = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (string.IsNullOrWhiteSpace(_model.AgentBaseUrl)) return false;
+        // Same normaliser the adapter, the browse probe and the CSV import use, so
+        // the button agrees with what a save will actually accept. Raw
+        // Uri.TryCreate was wrong both ways: it rejected "192.168.10.51:5000",
+        // leaving Save stuck disabled on a perfectly good address, and it accepted
+        // "agent.local:5000" as an absolute URI whose scheme is "agent.local",
+        // enabling Save on something the apply then refused.
+        if (MTConnectSourceConfiguration.TryNormalizeAgentBaseUrl(_model.AgentBaseUrl) is null) return false;
+        // Save-gating: a reachable agent that exposes none of the standard tags
+        // would produce no data — block unless the operator explicitly opts in.
+        if (_browseResult?.Status == MTConnectBrowseStatus.ReachableNoRecognisedTags && !_saveAnyway)
+        {
+            return false;
+        }
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return true;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; }
+        }
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String && ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Save failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status ? $" (reload: {status})" : string.Empty;
+            Snackbar.Add($"Source '{updatedSource.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

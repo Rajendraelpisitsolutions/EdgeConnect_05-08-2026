@@ -1,0 +1,45 @@
+<!--
+  ElpisEdgeConnect.Sinks.SparkplugB.Tests: unit + golden wire-conformance tests
+  for the Sparkplug B sink (K2). Byte-level golden tests use an independent
+  test-side proto2 decoder (slice 2), never only the generated classes.
+
+  Reference: docs/decisions/0035-sparkplug-b-northbound-standard.md Rule 2,
+  docs/sessions/2026-07-19-sparkplug-b-k2-wire-payload-plan-v3.md (frozen).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sinks.SparkplugB.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sinks.SparkplugB\ElpisEdgeConnect.Sinks.SparkplugB.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The pinned schema and vendored generated file are copied to output so the
+      provenance tests can hash them. CopyToOutputDirectory="Always" (not
+      PreserveNewest): the hash gate must never inspect a stale output copy.
+    -->
+    <None Include="..\..\src\ElpisEdgeConnect.Sinks.SparkplugB\Protos\sparkplug_b.proto" Link="Protos\sparkplug_b.proto" CopyToOutputDirectory="Always" />
+    <None Include="..\..\src\ElpisEdgeConnect.Sinks.SparkplugB\Protobuf\SparkplugB.g.cs" Link="Protobuf\SparkplugB.g.cs" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+</Project>

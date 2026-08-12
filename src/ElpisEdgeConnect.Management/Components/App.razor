@@ -1,0 +1,101 @@
+@*
+    Blazor root component. Houses the HTML document, links the static
+    assets (MudBlazor CSS / Material icons font), and hosts the Router.
+
+    Locked: this is the ONLY place HTML <head>/<body> live. Pages
+    render through MainLayout → MudLayout → page content.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a
+*@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1976D2" />
+    <base href="/" />
+    <title>Connectivity Studio — Elpis EdgeConnect</title>
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    @* Cache-buster (§12): the token is the assembly informational version, so a
+       shipped CSS change is never masked by a stale cached stylesheet. *@
+    <link rel="stylesheet" href="css/site.css?v=@_cacheToken" />
+    @* Browser-tab favicon: the Elpis mark (same .ico used for the exe and
+       shortcuts). Cache-busted because browsers cache favicons aggressively. *@
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=@_cacheToken" />
+    <HeadOutlet />
+</head>
+<body>
+    @* InteractiveServer rendermode — every routed page gets a Blazor
+       Server circuit, not just a one-shot static-SSR render. Critical
+       for the live-polling pages (Overview, StatusFooter) that would
+       otherwise crash with ObjectDisposedException when their timers
+       fire after the static-render scope is disposed. *@
+    <Routes @rendermode="@RenderMode.InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    @* Must stay directly after MudBlazor.min.js: it patches
+       MudKeyInterceptor.prototype, and already-attached listeners hold the
+       original function reference. See mudKeyInterceptorGuard.js. *@
+    <script src="js/mudKeyInterceptorGuard.js"></script>
+    <script src="js/wizardValidation.js"></script>
+    <script src="js/bundleDownload.js"></script>
+    <script src="js/licenseMail.js"></script>
+</body>
+</html>
+
+@code {
+    // Deterministic per-build cache-buster token for css/site.css (§12). The
+    // assembly informational version (stamped from Directory.Build.props) is
+    // stripped of any "+gitHash" suffix; it changes exactly when the app is
+    // rebuilt for a release, so returning operators pick up CSS changes while
+    // the stylesheet still caches within a build.
+    private static readonly string _cacheToken = BuildCacheToken();
+
+    /// <summary>
+    /// Version alone was not enough. It moves only when Directory.Build.props is
+    /// bumped, so every rebuild in between served the byte-identical URL
+    /// <c>css/site.css?v=2.1.0.1</c> — and the browser, correctly, kept its
+    /// cached copy. A styling change could be built, deployed and running and
+    /// still be invisible until someone happened to hard-reload, which makes a
+    /// CSS edit look like it simply did not work. That is exactly how it
+    /// presented: a fix was shipped, served and inspected on the wire, and the
+    /// screen still showed the old rule.
+    ///
+    /// Folding the assembly's build stamp into the token gives what the original
+    /// comment intended: the stylesheet still caches within a build, and the
+    /// token changes the moment the app is rebuilt.
+    /// </summary>
+    private static string BuildCacheToken()
+    {
+        var assembly = typeof(App).Assembly;
+
+        var version = System.Reflection.CustomAttributeExtensions
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(assembly)
+                ?.InformationalVersion?.Split('+')[0]
+            ?? assembly.GetName().Version?.ToString(4)
+            ?? "dev";
+
+        try
+        {
+            // Empty under single-file publish, where there is no on-disk
+            // assembly to stat — fall back to the version on its own.
+            var location = assembly.Location;
+            if (!string.IsNullOrEmpty(location) && System.IO.File.Exists(location))
+            {
+                var stamp = System.IO.File.GetLastWriteTimeUtc(location).Ticks;
+                return string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"{version}-{stamp:x}");
+            }
+        }
+        catch (System.IO.IOException)
+        {
+            // Stat failed — the version alone is still a correct, if coarser, token.
+        }
+        catch (System.UnauthorizedAccessException)
+        {
+        }
+
+        return version;
+    }
+}

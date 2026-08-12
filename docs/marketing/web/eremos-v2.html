@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/eremos-v2.html
+  Purpose:     Static HTML mockup of the /eremos-v2 PRODUCT page — the second
+               software product page, INHERITING the LOCKED §18 ProductDetail
+               shape proven by /edgeconnect. Visual reference for the locked
+               spec (page-product-eremos-v2-spec-v1.md). Derived from
+               edgeconnect.html (same shape + styles.css + scoped layout).
+  Companion:   ./styles.css ; ./edgeconnect.html (sibling ProductDetail mockup)
+               ../page-product-eremos-v2-spec-v1.md (LOCKED — copy ground truth)
+               ../design-system-productdetail-addendum-v1.md §18 (LOCKED shape)
+               ../elpis-industrial-intelligence-platform-v5.md (product facts)
+  Honesty locks (per the locked spec): E-IDOS -> EREMOS V2 streaming = Roadmap;
+               AI operations agents = Roadmap (decision-support, human-confirmed,
+               never autonomous); tenant isolation phrased as "tenant-scoped data
+               boundaries / no cross-tenant blending by design" (mechanism, not
+               an absolute "no data leakage"); editions = mechanics, not pricing.
+  Version:     v1 (mockup, derived post-spec-lock)
+  Date:        2026-06-04
+  NOTE: visual reference. Copy lifted from the LOCKED spec §3.x.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EREMOS V2 — Multi-tenant operational intelligence · Elpis</title>
+  <meta name="description" content="EREMOS V2 turns canonical machine signals into auditable OEE, persistent alarms and incidents, alerts, and reports — multi-tenant, offline-capable, customer-controlled.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/eremos-v2">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="EREMOS V2">
+  <meta property="og:description" content="EREMOS V2 turns canonical machine signals into auditable OEE, persistent alarms and incidents, alerts, and reports — multi-tenant, offline-capable, customer-controlled.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/eremos-v2">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="EREMOS V2">
+  <meta name="twitter:description" content="EREMOS V2 turns canonical machine signals into auditable OEE, persistent alarms and incidents, alerts, and reports — multi-tenant, offline-capable, customer-controlled.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Inter via Google Fonts for this static preview only. Production / the Angular
+       implementation uses bundled Inter (the repo's brand font-loading pattern), not a CDN. -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=8">
+
+  <!-- ProductDetail-specific layout (§18 / §18.A). Token-only; no new colors.
+       Shared with edgeconnect.html; scoped here so the mockup is self-contained. -->
+  <style>
+    .prose { max-width: 68ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display: block; margin-bottom: var(--space-3); }
+    .section-title {
+      font-size: var(--size-xl); font-weight: var(--weight-semibold);
+      line-height: var(--line-snug); letter-spacing: var(--tracking-tight);
+    }
+
+    /* §3 feature grid */
+    .feature-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-5); margin-top: var(--space-8);
+    }
+    .feature-card {
+      border: 1px solid var(--color-border-subtle); border-radius: 10px;
+      padding: var(--space-6); background: var(--color-bg-raised);
+    }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .accent { display:block; width:28px; height:3px; background:var(--color-brand-teal); margin-bottom:var(--space-4); }
+
+    /* §18.A spec-table */
+    .spec-table { width: 100%; border-collapse: collapse; margin-top: var(--space-6); font-size: var(--size-sm); }
+    .spec-table caption { text-align: left; color: var(--color-text-muted-light); font-size: var(--size-sm); margin-bottom: var(--space-3); }
+    .spec-table th, .spec-table td {
+      text-align: left; padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border-light-subtle); vertical-align: top;
+    }
+    .spec-table thead th {
+      border-bottom: 2px solid var(--color-brand-teal); color: var(--color-text-heading-light);
+      font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose);
+      text-transform: uppercase; font-size: var(--size-xs);
+    }
+    .spec-table tbody tr:nth-child(even) td { background: var(--color-surface-light-secondary); }
+    .spec-table .proto { font-weight: var(--weight-semibold); color: var(--color-text-heading-light); white-space: nowrap; }
+    .badge { display:inline-block; padding: 2px var(--space-3); border-radius: 999px; font-size: var(--size-xs); font-weight: var(--weight-semibold); white-space: nowrap; }
+    .badge--available { background: rgba(0,160,224,0.14); color: var(--color-brand-teal-light); border: 1px solid rgba(0,160,224,0.4); }
+    .badge--roadmap { background: transparent; color: var(--color-text-muted-light); border: 1px dashed var(--color-border-light-strong); }
+    .callout {
+      border-left: 2px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5);
+      margin-top: var(--space-6); background: var(--color-surface-light-secondary);
+      border-radius: 0 8px 8px 0; max-width: 76ch;
+    }
+    .callout strong { color: var(--color-text-heading-light); }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin: 0; }
+
+    /* §7 editions */
+    .editions-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: var(--space-5); margin-top: var(--space-8); }
+    .edition-card { border:1px solid var(--color-border-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-bg-raised); }
+    .edition-card h3 { font-size: var(--size-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); }
+    .edition-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §8 trust cue */
+    .trust-cue { border-left: 2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 70ch; }
+    .trust-cue h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §9 FAQ */
+    .faq { margin-top: var(--space-8); max-width: 76ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom: 1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+
+    /* §10 cross-lens */
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style: italic; max-width: 76ch; }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration: none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner {
+      background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center;
+      font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2);
+    }
+    /* polish: un-cramp the §6 architecture diagram (was capped by .prose ~68ch) + lift sub-text contrast */
+    #architecture .prose { max-width: 100%; }
+    #architecture text[fill="#5E6B78"] { fill: #2C3540; }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <!-- NAV (reused from homepage reference) -->
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <div class="hero__inner">
+          <div class="hero__copy">
+          <span class="eyebrow eyebrow--teal">PRODUCT · OPERATIONAL INTELLIGENCE</span>
+          <h1 id="hero-heading" class="hero__headline">EREMOS V2</h1>
+          <p class="hero__subhead">
+            The multi-tenant operational-intelligence platform at the top of the Elpis stack. EREMOS V2 consumes the canonical signal stream, computes OEE you can audit, tracks every alarm as a persistent incident, and produces the reports and alerts your operations team runs on — across many sites, with per-tenant isolation.
+          </p>
+          <div class="cta-group">
+            <a href="#cta" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+            <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+          </div>
+          <p class="trust-strip">
+            Multi-tenant · tenant-scoped data boundaries · OEE on canonical signals · customer-controlled cloud (opt-in) · offline-capable · per-tag quality codes end to end.
+          </p>
+          </div><!-- /hero__copy -->
+
+          <div class="hero__composite" aria-hidden="true">
+            <div class="hero__composite-dashboard">
+              <svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EREMOS V2 operational-intelligence dashboard: OEE, active alarms, plants online, and a production-signal sparkline">
+                <defs>
+                  <linearGradient id="ev2DashBg" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#1E2937" stop-opacity="0.96"/>
+                    <stop offset="100%" stop-color="#151B23" stop-opacity="0.96"/>
+                  </linearGradient>
+                  <linearGradient id="ev2DashSpark" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#00A0E0" stop-opacity="0.45"/>
+                    <stop offset="100%" stop-color="#00A0E0" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <rect x="1" y="1" width="398" height="258" rx="10" fill="url(#ev2DashBg)" stroke="#00A0E0" stroke-width="1"/>
+                <line x1="12" y1="2" x2="388" y2="2" stroke="#00A0E0" stroke-width="0.5" opacity="0.4"/>
+                <rect x="20" y="22" width="32" height="3" fill="#00A0E0"/>
+                <text x="20" y="44" font-size="9" font-weight="600" fill="#00A0E0" letter-spacing="2.5" font-family="Inter, sans-serif">EREMOS V2 — OPERATIONAL INTELLIGENCE</text>
+                <!-- KPI: OEE -->
+                <g transform="translate(20 60)">
+                  <rect x="0" y="0" width="115" height="74" rx="4" fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600" fill="#A8B3BD" letter-spacing="1.5" font-family="Inter, sans-serif">OEE — PLANT 03</text>
+                  <text x="10" y="48" font-size="26" font-weight="700" fill="#FFFFFF" font-family="Inter, sans-serif">87.2%</text>
+                  <text x="10" y="65" font-size="8" font-weight="600" fill="#4FBBC9" font-family="Inter, sans-serif">▲ 2.3 vs last shift</text>
+                </g>
+                <!-- KPI: Alarms -->
+                <g transform="translate(145 60)">
+                  <rect x="0" y="0" width="115" height="74" rx="4" fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600" fill="#A8B3BD" letter-spacing="1.5" font-family="Inter, sans-serif">ACTIVE ALARMS</text>
+                  <text x="10" y="48" font-size="26" font-weight="700" fill="#FFFFFF" font-family="Inter, sans-serif">4</text>
+                  <text x="10" y="65" font-size="8" font-weight="600" fill="#A8B3BD" font-family="Inter, sans-serif">2 acknowledged</text>
+                </g>
+                <!-- KPI: Plants -->
+                <g transform="translate(270 60)">
+                  <rect x="0" y="0" width="110" height="74" rx="4" fill="#252D36" stroke="#3A4049" stroke-width="0.8"/>
+                  <text x="10" y="18" font-size="8" font-weight="600" fill="#A8B3BD" letter-spacing="1.5" font-family="Inter, sans-serif">PLANTS ONLINE</text>
+                  <text x="10" y="48" font-size="26" font-weight="700" fill="#FFFFFF" font-family="Inter, sans-serif">12<tspan font-size="14" fill="#A8B3BD"> / 12</tspan></text>
+                  <text x="10" y="65" font-size="8" font-weight="600" fill="#4FBBC9" font-family="Inter, sans-serif">all healthy</text>
+                </g>
+                <text x="20" y="160" font-size="8" font-weight="600" fill="#A8B3BD" letter-spacing="1.5" font-family="Inter, sans-serif">PRODUCTION SIGNAL — LAST 24 HOURS</text>
+                <rect x="20" y="170" width="360" height="68" fill="none" stroke="#3A4049" stroke-width="0.5" stroke-dasharray="2 2"/>
+                <polygon points="20,238 50,232 80,220 110,225 140,210 170,205 200,195 230,200 260,182 290,175 320,165 350,155 380,148 380,238" fill="url(#ev2DashSpark)"/>
+                <polyline points="20,238 50,232 80,220 110,225 140,210 170,205 200,195 230,200 260,182 290,175 320,165 350,155 380,148" fill="none" stroke="#00A0E0" stroke-width="1.8" stroke-linejoin="round"/>
+                <circle cx="380" cy="148" r="3" fill="#00A0E0"/>
+              </svg>
+            </div>
+            <p class="hero__composite-caption" style="text-align:center; color: var(--color-text-muted-dark); font-size: var(--size-xs); margin-top: var(--space-3);">Illustrative dashboard — representative chrome, not live data.</p>
+          </div>
+        </div><!-- /hero__inner -->
+      </div>
+    </section>
+
+    <!-- §2 WHAT IT IS -->
+    <section class="section" data-mode="light" aria-labelledby="what-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHAT IT IS</span>
+          <h2 id="what-heading" class="section-title">Canonical signals in. Operational decisions out.</h2>
+        </div>
+        <p style="font-size: var(--size-md); line-height: var(--line-body);">
+          EREMOS V2 is a multi-tenant analytics platform that turns the canonical signal stream — the normalized output of EdgeConnect and the acquisition pillars — into the things operations runs on: OEE Segments, persistent alarms and incident workflows, alerts on your channels, and reports your team will actually read. It models your plant as a real industrial hierarchy and computes against the same canonical vocabulary every source already speaks.
+        </p>
+        <p style="margin-top: var(--space-5); color: var(--color-text-muted-light); line-height: var(--line-body);">
+          It is the <strong>Operational Intelligence</strong> pillar of the Industrial Intelligence Ecosystem. For the capability story, see <a class="pillar-link" href="capabilities-operational-intelligence">the Operational Intelligence capability</a>. This page is the product detail — the integration model, asset model + OEE math, multi-tenancy, deployment, and licensing.
+        </p>
+      </div>
+    </section>
+
+    <!-- §3 CAPABILITIES -->
+    <section class="section" data-mode="dark" aria-labelledby="cap-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">CAPABILITIES</span>
+          <h2 id="cap-heading" class="section-title">What the platform does.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><span class="accent"></span><h3>A real industrial asset model</h3><p>PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT, with first-class Devices and Tags, units, engineering ranges, and quality codes.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>OEE you can audit</h3><p>Availability × Performance × Quality, computed from time-bounded Segments on edge-collected signals. The OEE definition stays yours — segments, shift schedule, and targets are configured to how your plant already defines OEE.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Persistent alarms + incidents</h3><p>Inbound alarms become tracked records with open/close state and incident grouping — triage, assignment, resolution, closure, with operator notes at each step.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Alerts on your channels</h3><p>Notifications routed to email, chat, and ticketing webhooks your operations team already uses.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Reports the team will read</h3><p>Shift reports, OEE summaries, downtime breakdowns, tool-life trends — PDF and Excel export.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Tool-life tracking</h3><p>Dedicated ingestion for tool-wear and remaining-life telemetry, so maintenance happens before failures.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Multi-tenant by design</h3><p>One deployment serves many sites or business units with per-tenant isolation — tenant data is isolated by tenant boundary; no cross-tenant blending by design.</p></div>
+          <div class="feature-card"><span class="accent"></span><h3>Dashboards for mixed fleets</h3><p>Panes split automatically by device class — CNC, PLC, DAQ, asset tracker, meter.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 INTEGRATION + DATA MODEL (§18.A) -->
+    <section class="section" data-mode="light" aria-labelledby="int-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">INTEGRATION &amp; DATA MODEL</span>
+          <h2 id="int-heading" class="section-title">What it consumes, what it exposes.</h2>
+        </div>
+        <table class="spec-table">
+          <caption>Inbound (ingestion) and outbound (delivery). Status reflects current availability.</caption>
+          <thead>
+            <tr><th scope="col">Interface</th><th scope="col">Direction</th><th scope="col">Status</th><th scope="col">What</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="proto">Canonical MQTT stream</td><td>Inbound</td><td><span class="badge badge--available">Available</span></td><td>The normalized stream from EdgeConnect (+ mDAQ, mTracker, VAS) per the canonical per-tag MQTT contract. Per-tag quality codes (Good / Uncertain / Bad / Stale) carried end to end.</td></tr>
+            <tr><td class="proto">Tool-life ingestion</td><td>Inbound</td><td><span class="badge badge--available">Available</span></td><td>Dedicated path for tool-wear / remaining-life telemetry.</td></tr>
+            <tr><td class="proto">E-IDOS streaming</td><td>Inbound</td><td><span class="badge badge--roadmap">Roadmap</span></td><td>Oil-health alarms / dashboards / incidents into the same stack. Near-term roadmap; until it ships, E-IDOS is a standalone instrument.</td></tr>
+            <tr><td class="proto">REST API</td><td>Outbound</td><td><span class="badge badge--available">Available</span></td><td>OEE rollups + incident records for MES / ERP / BI consumers.</td></tr>
+            <tr><td class="proto">Alert webhooks</td><td>Outbound</td><td><span class="badge badge--available">Available</span></td><td>Email, chat, and ticketing webhooks.</td></tr>
+            <tr><td class="proto">Report export</td><td>Outbound</td><td><span class="badge badge--available">Available</span></td><td>Shift / OEE / downtime / tool-life reports — PDF and Excel.</td></tr>
+          </tbody>
+        </table>
+
+        <p class="deploy-note" style="font-style:normal;">
+          <strong>Asset model:</strong> PLANT → AREA → LINE → EQUIPMENT → SUB_EQUIPMENT, with Devices + Tags (units, engineering ranges, quality codes). <strong>OEE Segments:</strong> RUNNING, PLANNED_STOP, UNPLANNED_STOP, IDLE, SETUP — time-bounded, computed from cycle-time + parts-count signals. <strong>Quality inputs</strong> — good count, reject count, scrap reason, or a customer-approved quality source — are configured per deployment; when Quality data isn't available directly from the controller, the customer-approved source is mapped during architecture review.
+        </p>
+
+        <div class="callout">
+          <p><strong>Roadmap — decision-support layer.</strong> Diagnostic, Configuration, Tag Mapping, and Intelligent Alerting agents (Phase 4.5). Decision-support only — they propose actions for a human to confirm, never autonomously change state; local-LLM support is mandatory, cloud LLMs optional. (Not an inbound/outbound interface — kept out of the matrix above.)</p>
+        </div>
+
+        <p class="deploy-note">This page carries the product-level integration model. Deployment-specific schemas, integration-contract versioning, retention, and API detail are confirmed during the architecture review.</p>
+      </div>
+    </section>
+
+    <!-- §5 DEPLOYMENT + SYSTEM REQUIREMENTS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="deploy-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">DEPLOYMENT &amp; REQUIREMENTS</span>
+          <h2 id="deploy-heading" class="section-title">How it runs.</h2>
+        </div>
+        <table class="spec-table">
+          <tbody>
+            <tr><td class="proto">Deployment</td><td>In your data center, a private cloud, or as a managed service. Multi-tenant by design — one deployment, many sites / business units.</td></tr>
+            <tr><td class="proto">Connectivity</td><td>Consumes the canonical stream over standard MQTT (any compliant broker); the platform does not require Elpis to provide the broker. Cloud connectivity is opt-in, not required.</td></tr>
+            <tr><td class="proto">Tenancy + isolation</td><td>Per-tenant data isolation — tenant-scoped data boundaries; no cross-tenant blending by design.</td></tr>
+            <tr><td class="proto">Identity + access</td><td>RBAC, SSO / identity integration, user roles, tenant boundaries, incident ownership, and service-account responsibilities are confirmed during architecture review.</td></tr>
+            <tr><td class="proto">Network + host</td><td>Host / runtime class, database + storage sizing, broker endpoints, and certificate handling are confirmed during architecture review against tenant count, site count, and tag volume. No fixed figures published.</td></tr>
+            <tr><td class="proto">Data retention + backup</td><td>Retention windows for operational, report, and alarm + incident history, plus backup / restore and disaster-recovery expectations, are scoped during architecture review against site count, tag volume, and customer policy.</td></tr>
+            <tr><td class="proto">API + webhook security</td><td>API authentication, the webhook security model (delivery / retry behavior), payload-schema + integration-contract versioning, and integration ownership are confirmed during architecture review.</td></tr>
+            <tr><td class="proto">Versioning + support</td><td>Released as a versioned platform; configuration changes are audited. Support boundary spans EREMOS V2, its ingestion of the canonical stream, and the EdgeConnect integration.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- §6 ARCHITECTURE -->
+    <section class="section" data-mode="light" id="architecture" aria-labelledby="arch-heading">
+      <div class="container prose">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="arch-heading" class="section-title">EREMOS V2 in the stack.</h2>
+        </div>
+        <figure class="arch-figure" style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 200" width="100%" role="img"
+               aria-label="EREMOS V2 in the stack: EdgeConnect and the acquisition pillars feed a canonical MQTT stream into EREMOS V2 (multi-tenant), which exposes OEE rollups and incidents to operations and to MES / ERP / BI via REST API and webhooks — beside, not replacing.">
+            <defs>
+              <marker id="ev-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/>
+              </marker>
+            </defs>
+            <!-- Source -->
+            <rect x="8" y="55" width="230" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="123" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">EdgeConnect + acquisition pillars</text>
+            <text x="123" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">canonical signals</text>
+            <text x="268" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#5E6B78">MQTT</text>
+            <line x1="240" y1="105" x2="298" y2="105" stroke="#5E6B78" stroke-width="2" marker-end="url(#ev-arrow)"/>
+            <!-- EREMOS V2 (highlighted) -->
+            <rect x="302" y="42" width="300" height="120" rx="12" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="452" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="16" fill="#0F1419">EREMOS V2</text>
+            <text x="452" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">OEE · alarms · incidents · reports · tool-life</text>
+            <text x="452" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">computed on canonical signals</text>
+            <text x="452" y="146" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" font-weight="600">multi-tenant · tenant-scoped boundaries</text>
+            <text x="632" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#5E6B78">API · webhooks</text>
+            <line x1="606" y1="105" x2="662" y2="105" stroke="#5E6B78" stroke-width="2" marker-end="url(#ev-arrow)"/>
+            <!-- Consumers -->
+            <rect x="666" y="55" width="286" height="100" rx="10" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="809" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Operations + MES / ERP / BI</text>
+            <text x="809" y="113" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">dashboards · alerts · reports</text>
+            <text x="809" y="135" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#00A0E0" font-weight="600">beside, not replacing</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">
+            Static product-annotated subset. The final page uses the design-system §5.A <code>ArchitecturePanel.interactive</code> variant.
+          </figcaption>
+        </figure>
+        <p class="deploy-note">EREMOS V2 aggregates across per-plant EdgeConnect runtimes; multi-site visibility comes from the platform, not from one runtime spanning plants. See the full cross-pillar story → <a class="pillar-link" href="architecture">/architecture</a>.</p>
+      </div>
+    </section>
+
+    <!-- §7 EDITIONS + LICENSING -->
+    <section class="section" data-mode="dark" aria-labelledby="ed-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">EDITIONS &amp; LICENSING</span>
+          <h2 id="ed-heading" class="section-title">License the tenants, sites, and capabilities you operate.</h2>
+        </div>
+        <p style="color: var(--color-text-muted-dark); font-size: var(--size-sm); max-width: 72ch; margin-bottom: var(--space-2);"><em>Edition labels are illustrative until commercial packaging is approved; this section describes packaging + licensing mechanics, not pricing.</em></p>
+        <div class="editions-grid">
+          <div class="edition-card"><h3>Starter</h3><p>Single-tenant, single-site operational intelligence.</p></div>
+          <div class="edition-card"><h3>Professional</h3><p>Multi-tenant analytics for a plant or a small fleet.</p></div>
+          <div class="edition-card"><h3>Enterprise</h3><p>Fleet-scale multi-tenant operations across many sites + business units.</p></div>
+        </div>
+        <p style="margin-top: var(--space-8); color: var(--color-text-muted-dark); line-height: var(--line-body); max-width: 72ch;">
+          EREMOS V2 deploys in your data center, a private cloud, or as a managed service. Tenancy and site scale are licensed per edition. Contact Elpis for edition feature lists and deployment-scale scoping; detailed pricing is scoped after architecture review.
+        </p>
+      </div>
+    </section>
+
+    <!-- §8 TRUST + SECURITY -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">TRUST POSTURE</span>
+          <h2 id="trust-heading" class="section-title">Built for OT review.</h2>
+        </div>
+        <div class="trust-cue">
+          <h3>Multi-tenant isolation, customer-controlled data</h3>
+          <p>One deployment serves many tenants with tenant-scoped data boundaries, role separation, and customer-controlled routing — no cross-tenant blending by design. Cloud connectivity is opt-in, not required; sensitive plant data stays where you choose.</p>
+        </div>
+        <div class="trust-cue">
+          <h3>Auditable + role-separated</h3>
+          <p>Configuration changes are audited; role separation is supported. AI features, when they ship, propose actions for humans to confirm — they never autonomously alter the data path (local-LLM-capable; cloud LLMs optional).</p>
+        </div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a>.</p>
+      </div>
+    </section>
+
+    <!-- §9 FAQ -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">COMMON QUESTIONS</span>
+          <h2 id="faq-heading" class="section-title">What technical evaluators ask.</h2>
+        </div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">What does EREMOS V2 consume, and from where?</p><p class="faq__a">The canonical MQTT signal stream — the normalized output of EdgeConnect and the acquisition pillars (mDAQ, mTracker, VAS) — per the canonical per-tag MQTT contract, with per-tag quality codes carried end to end. E-IDOS streaming into EREMOS V2 is near-term roadmap; until it ships, E-IDOS is a standalone oil-health instrument.</p></div>
+          <div class="faq__item"><p class="faq__q">How is OEE computed, and can we defend it?</p><p class="faq__a">OEE Segments (RUNNING, PLANNED_STOP, UNPLANNED_STOP, IDLE, SETUP) are computed from edge-collected cycle-time and parts-count signals, timestamped at the edge and retained. The OEE definition stays yours — segment classification, shift schedule, and targets are configured to how your plant already defines OEE; the platform computes against your definition, not one of ours.</p></div>
+          <div class="faq__item"><p class="faq__q">How does multi-tenancy isolate our data?</p><p class="faq__a">One deployment serves many sites or business units with per-tenant data isolation — tenant-scoped data boundaries; no cross-tenant blending by design. Role separation is supported. Tenant and site scale are confirmed during architecture review.</p></div>
+          <div class="faq__item"><p class="faq__q">Can we run it on-prem / air-gapped, or must it be cloud?</p><p class="faq__a">EREMOS V2 deploys in your data center, a private cloud, or as a managed service. Cloud connectivity is opt-in, not required — sensitive plant data stays on premise; filtered rollups flow out only on your terms.</p></div>
+          <div class="faq__item"><p class="faq__q">How do downstream systems (MES / ERP / BI) consume it?</p><p class="faq__a">Via the REST API (OEE rollups + incident records) and alert webhooks (email / chat / ticketing). Reports export to PDF and Excel. EREMOS V2 sits beside your existing systems — they consume its rollups, it doesn't replace them.</p></div>
+          <div class="faq__item"><p class="faq__q">What AI is in it, and does it change anything automatically?</p><p class="faq__a">AI operations agents (Diagnostic, Configuration, Tag Mapping, Intelligent Alerting) are on the roadmap (Phase 4.5). They are decision-support: they propose actions for a human to confirm and never autonomously alter the data path. Local-LLM support is mandatory; cloud LLMs are optional.</p></div>
+          <div class="faq__item"><p class="faq__q">How is EREMOS V2 sized for sites and tag volume?</p><p class="faq__a">Sizing depends on tenant count, site count, tag volume, publish frequency, and retention window. The architecture review scopes the host, database, and storage requirements against your real fleet; no fixed figures are published.</p></div>
+          <div class="faq__item"><p class="faq__q">How long is operational history retained?</p><p class="faq__a">Retention depends on tenant count, site count, tag volume, report history, and customer policy. Retention windows and archive / export requirements are scoped during architecture review.</p></div>
+          <div class="faq__item"><p class="faq__q">How are roles and approvals handled?</p><p class="faq__a">RBAC with tenant admins, incident ownership, and audit permissions; SSO / identity integration is confirmed during architecture review. Role separation is supported, and configuration changes are audited.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 RELATED (cross-lens §18.3) -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">RELATED</span>
+          <h2 id="rel-heading" class="section-title">Looking at this from another angle?</h2>
+        </div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="index.html#capabilities-heading"><span class="eyebrow">CAPABILITY · OPERATIONAL INTELLIGENCE</span><span class="cl-desc">The Pillar 5 capability story.</span></a>
+          <a class="crosslens-card" href="/"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">The fleet-scale OEE outcome built on EREMOS V2.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §11 CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size: var(--size-2xl); margin-top: var(--space-3);">Bring us your fleet and your OEE definition.</h2>
+        <p class="hero__subhead" style="margin-left:auto; margin-right:auto;">
+          A site list, a tenancy model, the canonical stream from your floor, and the OEE definition you already run — that's what we scope an architecture review against. Demos run on real signals, not slideware.
+        </p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="/contact" class="btn btn--primary btn--lg">Request an architecture review <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="assets/datasheet-v3-a4.pdf" class="btn btn--secondary btn--lg">Download the datasheet</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER (reused from homepage reference) -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.ModbusTcp.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!-- Property-based tests for scan-group planner FC-size safety
+         (PHASE3_EXECUTION_PLAN.md §11 Definition of Done). 2.16.x is the
+         stable line that targets xUnit 2.9. -->
+    <PackageReference Include="FsCheck.Xunit" Version="2.16.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sources.ModbusTcp\ElpisEdgeConnect.Sources.ModbusTcp.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <!-- Build-order only: the RTU-over-TCP simulator exe is launched as a
+         separate process by ModbusRtuOverTcpIntegrationTests. -->
+    <ProjectReference Include="..\..\tools\ModbusRtuSimulator\ModbusRtuSimulator.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

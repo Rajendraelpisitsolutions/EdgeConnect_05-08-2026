@@ -1,0 +1,10 @@
+# Per-gateway sidecar for sample-mtconnect.csv (Pester round-trip fixture).
+gatewayId: "00000000-0000-0000-0000-000000000004"
+gatewayName: "edge-acme-site-d"
+gatewayProvisioningId: "44444444-4444-4444-4444-444444444444"
+fleetId: "fleet-acme"
+site: "site-d"
+mqttHost: "127.0.0.1"
+mqttPort: 1883
+mqttQos: 1
+mqttClientIdPrefix: "edge-acme-d"

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MELSEC A-2O — profile selector mockup (plan v2)</title>
+<style>
+  :root{
+    --primary:#1976d2; --primary-bg:#e8f1fb; --line:#e0e0e0; --text:#1f2933;
+    --muted:#6b7280; --ok:#2e7d32; --err:#c62828; --warn:#ef6c00; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#f4f6f8;color:var(--text);margin:0;padding:24px;}
+  .page{max-width:980px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin-bottom:16px;}
+  .sec-title{font-weight:600;font-size:15px;margin-bottom:10px}
+  .banner{border:1px solid #90caf9;background:var(--primary-bg);border-radius:6px;padding:10px 14px;font-size:13.5px;margin-bottom:14px}
+  .banner b{color:#0d47a1}
+  /* profile tiles */
+  .tiles{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .tile{flex:1 1 300px;border:2px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;background:#fff;transition:border-color .12s}
+  .tile input{margin-right:8px;accent-color:var(--primary)}
+  .tile.sel{border-color:var(--primary);background:var(--primary-bg)}
+  .tile .t-name{font-weight:600;font-size:14px}
+  .tile .t-copy{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+  .helper{border-left:3px solid var(--primary);background:#f8fafc;padding:8px 12px;font-size:12.5px;color:#374151;border-radius:0 6px 6px 0;margin-bottom:6px}
+  /* tag table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--line);padding:6px 8px;font-size:12px}
+  td{border-bottom:1px solid #f0f0f0;padding:8px}
+  .mono{font-family:Consolas,monospace}
+  .chip{display:inline-block;border-radius:10px;padding:1px 10px;font-size:11.5px;font-weight:600}
+  .chip.ok{background:#e8f5e9;color:var(--ok)} .chip.err{background:#fdecea;color:var(--err)}
+  .note{font-size:11.5px;color:var(--muted)} .note.err{color:var(--err)}
+  /* diagnostics */
+  .diag-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .diag-title{font-weight:600;font-size:15px}
+  .pill{border:1px solid var(--line);border-radius:12px;padding:2px 10px;font-size:11.5px;color:#374151;background:#fafafa}
+  .pill.blue{border-color:#90caf9;background:var(--primary-bg);color:#0d47a1;font-weight:600}
+  .pending{font-size:12px;color:var(--muted);margin-top:8px}
+  footer{color:var(--muted);font-size:12px;margin-top:22px;text-align:center}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Add Mitsubishi MELSEC source — profile selector (A-2O mockup)</h1>
+  <div class="sub">Wizard §2 "PLC connection" + SourceDetail diagnostics header · toggle the tiles to preview both states</div>
+
+  <div class="card">
+    <div class="sec-title">2. PLC connection</div>
+    <div class="banner"><b>MC 3E binary over TCP, read-only.</b>
+      This release speaks a single, fixed protocol mode — there are no protocol, frame, or transport options to choose.</div>
+
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">PLC family profile</div>
+    <div class="tiles">
+      <label class="tile sel" id="tile-modern" onclick="setProfile('modern')">
+        <input type="radio" name="prof" id="r-modern" checked><span class="t-name">Modern iQ-R/Q/L</span>
+        <div class="t-copy">For iQ-R, Q, and L series using MC 3E binary over TCP.
+          X/Y/W/B/ZR addresses use hexadecimal notation.</div>
+      </label>
+      <label class="tile" id="tile-iqf" onclick="setProfile('iqf')">
+        <input type="radio" name="prof" id="r-iqf"><span class="t-name">iQ-F / FX5</span>
+        <div class="t-copy">For FX5 CPU built-in Ethernet using MC 3E binary over TCP.
+          Enter X/Y addresses as FX5 / GX Works3 notation, for example X10. X/Y digits must be
+          octal-style 0–7; EdgeConnect converts to the binary head device number.
+          ZR is not available on the FX5 CPU profile.</div>
+      </label>
+    </div>
+    <div class="helper" id="helper"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">3. Tags (4) — validation follows the selected profile</div>
+    <table>
+      <thead><tr><th>Name</th><th>Address</th><th>Datatype</th><th>Scan (ms)</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>cycles</td><td class="mono">D100</td><td>Int16</td><td>1000</td>
+            <td><span class="chip ok">✓ Valid</span></td><td class="note">decimal — identical on both profiles</td></tr>
+        <tr><td>recipe</td><td class="mono">ZR16384</td><td>Int16</td><td>1000</td>
+            <td id="zr-chip"><span class="chip ok">✓ Valid</span></td>
+            <td class="note" id="zr-note">hex device number (0x4000)</td></tr>
+        <tr><td>input_a</td><td class="mono">X10</td><td>Bool</td><td>500</td>
+            <td><span class="chip ok">✓ Valid</span></td>
+            <td class="note" id="x10-note">hexadecimal → point 16 (0x10)</td></tr>
+        <tr><td>input_b</td><td class="mono">X18</td><td>Bool</td><td>500</td>
+            <td id="x18-chip"><span class="chip ok">✓ Valid</span></td>
+            <td class="note" id="x18-note">hexadecimal → point 24 (0x18)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">SourceDetail — MELSEC diagnostics (header with profile context)</div>
+    <div class="diag-head">
+      <span class="diag-title">MELSEC diagnostics</span>
+      <span class="pill blue" id="diag-profile">Modern iQ-R/Q/L</span>
+      <span class="pill">MC 3E binary · TCP</span>
+      <span class="pill">read-only</span>
+    </div>
+    <div class="pending">Hardware field qualification pending.</div>
+  </div>
+
+  <footer>A-2O approved mockup (plan v2) — approved for implementation. No frame/transport dropdowns by design; the profile radio tiles are the only new control.</footer>
+</div>
+
+<script>
+function setProfile(p){
+  var iqf = (p === 'iqf');
+  document.getElementById('tile-modern').className = 'tile' + (iqf ? '' : ' sel');
+  document.getElementById('tile-iqf').className = 'tile' + (iqf ? ' sel' : '');
+  document.getElementById('r-modern').checked = !iqf;
+  document.getElementById('r-iqf').checked = iqf;
+  document.getElementById('helper').innerHTML = iqf
+    ? '<b>iQ-F / FX5 selected.</b> X/Y example: <span class="mono">X10</span> is the FX5 label for input point 8 ' +
+      '(octal-style digits 0–7). <span class="mono">ZR</span> tags are not available on this profile — use ' +
+      '<span class="mono">R</span> file registers instead. Devices: D, W, R, M, X, Y, B. Max 960 words per read.'
+    : '<b>Modern iQ-R/Q/L selected.</b> X/Y/W/B/ZR device numbers are hexadecimal (e.g. <span class="mono">X1F</span>). ' +
+      'Devices: D, W, R, ZR, M, X, Y, B. Max 960 words per read.';
+  // ZR row
+  document.getElementById('zr-chip').innerHTML = iqf
+    ? '<span class="chip err">✗ Error</span>' : '<span class="chip ok">✓ Valid</span>';
+  var zrNote = document.getElementById('zr-note');
+  zrNote.className = 'note' + (iqf ? ' err' : '');
+  zrNote.textContent = iqf
+    ? "device 'ZR' is recognized but not supported in this release (supported: D, W, R, M, X, Y, B)"
+    : 'hex device number (0x4000)';
+  // X10 row
+  document.getElementById('x10-note').textContent = iqf
+    ? 'octal label → point 8 (head 08 00 00)' : 'hexadecimal → point 16 (0x10)';
+  // X18 row
+  document.getElementById('x18-chip').innerHTML = iqf
+    ? '<span class="chip err">✗ Error</span>' : '<span class="chip ok">✓ Valid</span>';
+  var x18 = document.getElementById('x18-note');
+  x18.className = 'note' + (iqf ? ' err' : '');
+  x18.textContent = iqf
+    ? "address 'X18' has an invalid octal device number '18' (digits must be 0–7)"
+    : 'hexadecimal → point 24 (0x18)';
+  // diagnostics header
+  document.getElementById('diag-profile').textContent = iqf ? 'iQ-F / FX5' : 'Modern iQ-R/Q/L';
+}
+setProfile('modern');
+</script>
+</body>
+</html>

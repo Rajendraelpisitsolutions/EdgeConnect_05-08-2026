@@ -1,0 +1,67 @@
+<!--
+  ElpisEdgeConnect.Sources.Focas2: FOCAS2 source adapter implementing ISourceAdapter.
+  Provides direct Ethernet communication to Fanuc CNC controllers via the
+  FOCAS2 native library (P/Invoke). Supports polling-mode data collection
+  of status, axes, spindle, alarms, tools, production, and MT-LINKi diagnostics.
+
+  Reference: PHASE2_ENTRY.md, ARCHITECTURE_BLUEPRINT.md Section 4.2
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.Focas2</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.Focas2</AssemblyName>
+    <Description>FOCAS2 source adapter for Elpis EdgeConnect — Fanuc CNC data collection via Ethernet</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA2101</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.Focas2.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <!--
+    FANUC FOCAS2 native libraries, copied next to whatever executable is being
+    built or run.
+
+    Focas2Interop's DllImportResolver loads "Fwlib64.dll" BY NAME, so the OS
+    loader searches the APPLICATION directory. Packaging the DLLs in the MSI
+    therefore only helps an installed gateway — running from source (dotnet run,
+    F5, or the Studio out of bin\Debug) found nothing beside the executable and
+    every FOCAS2 source failed to initialise until someone copied the files in
+    by hand. This item group makes the build do it.
+
+    Content, not None, on purpose: Content flows through ProjectReference into
+    the referencing project's output, so ElpisEdgeConnect.Host,
+    ElpisEdgeConnect.Management and the test projects all get the libraries
+    without each repeating this block. Link flattens them into the output root
+    rather than a fwlib0iD64\ subfolder, which is where the loader looks.
+
+    Guarded on the folder existing: these are licensed per customer, so a clone
+    without them must still build — the FOCAS2 adapter then fails at connect
+    time with a clear native-load error rather than failing everyone's build.
+  -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\fwlib0iD64')">
+    <Content Include="$(MSBuildThisFileDirectory)..\..\fwlib0iD64\*.dll">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+</Project>

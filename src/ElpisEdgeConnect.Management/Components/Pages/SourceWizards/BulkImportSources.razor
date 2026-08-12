@@ -1,0 +1,431 @@
+@*
+    BulkImportSources — bulk-source-merge wizard (PR I-2 of Phase 1).
+
+    Five-step state machine: Gateway context → Protocol → Upload CSV →
+    Preview → Submit confirmation. POCO state lives in
+    BulkImportSourcesWizardModel; this razor is the thin shell that binds
+    to it and routes user input through advance / back / submit methods.
+
+    HTTP calls go through IBulkSourceMergeClient (HttpBulkSourceMergeClient
+    is the wired implementation; the wizard model is testable against a
+    fake).
+
+    Reference: docs/mockups/bulk-provision-ui-phase1/index.html
+               docs/sessions/2026-06-14-bulk-provision-ui-phase1-v3.1-addendum.md
+*@
+@page "/sources/bulk-import"
+@using System.Net.Http.Json
+@using ElpisEdgeConnect.Core.Configuration
+@using ElpisEdgeConnect.Management.Contracts.BulkSourceMerge
+@using ElpisEdgeConnect.Management.Wizards
+@inject IBulkSourceMergeClient BulkClient
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Bulk import sources · Connectivity Studio</PageTitle>
+
+@if (_model is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <WizardShell Icon="@Icons.Material.Filled.Upload"
+                 Title="Bulk import sources"
+                 Subtitle="Upload a CSV of devices. Each row becomes a Source + Route on this gateway."
+                 BackHref="/sources">
+        <HeaderMeta>
+            @* The step counter used to sit in an outlined card above the content,
+               where it read as the first thing to do rather than a label for where
+               you already are. It belongs next to the title that names the wizard —
+               a pill, not a panel. *@
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text"
+                     Style="text-transform:none;" Class="ma-0">
+                Step @((int)_model.CurrentStep) of 5 — @StepLabel(_model.CurrentStep)
+            </MudChip>
+        </HeaderMeta>
+        <ChildContent>
+            @switch (_model.CurrentStep)
+            {
+                case BulkImportWizardStep.GatewayContext:
+                    @RenderStepGatewayContext()
+                    break;
+                case BulkImportWizardStep.ProtocolPicker:
+                    @RenderStepProtocol()
+                    break;
+                case BulkImportWizardStep.CsvUpload:
+                    @RenderStepUpload()
+                    break;
+                case BulkImportWizardStep.Preview:
+                    @RenderStepPreview()
+                    break;
+                case BulkImportWizardStep.Confirmation:
+                    @RenderStepConfirmation()
+                    break;
+            }
+
+            @if (!string.IsNullOrEmpty(_model.LastError))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">
+                    Unexpected error: @_model.LastError
+                </MudAlert>
+            }
+        </ChildContent>
+    </WizardShell>
+}
+
+@code {
+    private BulkImportSourcesWizardModel? _model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Razor↔Core isolation: components consume the management REST API
+        // only. GET /api/v1/config returns the current GatewayConfiguration
+        // exactly as IConfigurationManager.GetCurrentAsync would on the
+        // server side — we deserialize the JSON and read Sinks.
+        var current = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config/");
+        var enabledMqttSinks = (current?.Sinks ?? Array.Empty<SinkInstanceConfig>())
+            .Where(s => string.Equals(s.ProtocolName, "mqtt", StringComparison.Ordinal) && s.Enabled)
+            .Select(s => s.InstanceId)
+            .ToList();
+        _model = new BulkImportSourcesWizardModel(BulkClient)
+        {
+            EnabledMqttSinkCount = enabledMqttSinks.Count,
+            AvailableMqttSinks = enabledMqttSinks,
+        };
+    }
+
+    private static string StepLabel(BulkImportWizardStep step) => step switch
+    {
+        BulkImportWizardStep.GatewayContext => "Gateway context",
+        BulkImportWizardStep.ProtocolPicker => "Pick protocol",
+        BulkImportWizardStep.CsvUpload => "Upload CSV",
+        BulkImportWizardStep.Preview => "Review preview",
+        BulkImportWizardStep.Confirmation => "Confirmation",
+        _ => string.Empty,
+    };
+
+    private RenderFragment RenderStepGatewayContext() => @<text>
+        <WizardSection Index="1" Title="Gateway context">
+            <MudText Typo="Typo.body2">This gateway has <strong>@_model!.EnabledMqttSinkCount</strong> enabled MQTT destination(s).</MudText>
+            @if (_model!.EnabledMqttSinkCount == 0)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-2">
+                    Bulk import requires at least one enabled MQTT destination. Add one from the Destinations page first.
+                </MudAlert>
+                <MudButton Class="mt-3" Href="/sinks/new/mqtt" Variant="Variant.Filled" Color="Color.Primary">
+                    Add MQTT destination
+                </MudButton>
+            }
+            else
+            {
+                <MudList T="string" Class="mt-2">
+                    @foreach (var s in _model.AvailableMqttSinks)
+                    {
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Bolt" Text="@s" />
+                    }
+                </MudList>
+                <MudButton Class="mt-3" OnClick="OnAdvanceFromGatewayContext" Variant="Variant.Filled" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.ArrowForward">
+                    Continue to protocol picker
+                </MudButton>
+            }
+        </WizardSection>
+    </text>;
+
+    private RenderFragment RenderStepProtocol() => @<text>
+        <WizardSection Index="2" Title="Pick protocol">
+            <MudGrid Spacing="2">
+                @foreach (var proto in new[] {
+                    (BulkSourceMergeProtocol.Focas2, "FANUC FOCAS2"),
+                    (BulkSourceMergeProtocol.BrotherHttp, "Brother HTTP"),
+                    (BulkSourceMergeProtocol.ModbusTcp, "Modbus TCP"),
+                    (BulkSourceMergeProtocol.Mtconnect, "MTConnect"),
+                })
+                {
+                    var selected = _model!.SelectedProtocol == proto.Item1;
+                    var protoValue = proto.Item1;
+                    <MudItem xs="12" md="6">
+                        <MudButton FullWidth="true" Variant="@(selected ? Variant.Filled : Variant.Outlined)"
+                                   Color="Color.Primary"
+                                   StartIcon="@(selected ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.RadioButtonUnchecked)"
+                                   OnClick="@(() => _model!.SelectedProtocol = protoValue)">
+                            @proto.Item2
+                        </MudButton>
+                    </MudItem>
+                }
+            </MudGrid>
+            <MudStack Row="true" Class="mt-3" Spacing="2">
+                <MudButton OnClick="OnGoBack" Variant="Variant.Outlined">Back</MudButton>
+                <MudButton OnClick="OnAdvanceFromProtocol" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(!_model!.CanAdvanceFromProtocol)"
+                           EndIcon="@Icons.Material.Filled.ArrowForward">
+                    Continue to upload
+                </MudButton>
+            </MudStack>
+        </WizardSection>
+    </text>;
+
+    private RenderFragment RenderStepUpload() => @<text>
+        <WizardSection Index="3" Title="Upload CSV">
+            @* The two CSV actions are opposite ends of the same decision — "I have
+               a file" vs "I need the format first" — so they share one row with
+               the sample pushed to the far right, instead of stacking the escape
+               hatch underneath the primary action where it read as a second step.
+               Wraps on a narrow viewport rather than crushing either button. *@
+            <MudStack Row="true" Spacing="4" Wrap="Wrap.Wrap"
+                      AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudFileUpload T="IBrowserFile" FilesChanged="OnCsvSelected" Accept=".csv">
+                    <ActivatorContent>
+                        <MudButton HtmlTag="label" Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload">
+                            Choose CSV file
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+                @* Not sure of the format? Download a ready-to-edit sample CSV with the
+                   exact columns this protocol expects, pre-filled with example rows. *@
+                <MudButton Variant="Variant.Text" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="DownloadSampleCsvAsync"
+                           data-testid="btn-sample-csv">
+                    Download sample CSV
+                </MudButton>
+            </MudStack>
+            @* Make the required shape unmistakable so a data/tag export is never
+               uploaded here by mistake — this importer takes a DEVICE list. *@
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                <MudText Typo="Typo.body2">
+                    This is a <strong>device list</strong> — one row per machine. The CSV must have
+                    <strong>exactly</strong> these columns (extra columns are rejected):
+                </MudText>
+                <pre style="margin:6px 0; white-space:pre-wrap; font-size:12px;"><code>@SampleHeaderLine()
+@SampleExampleLine()</code></pre>
+                <MudText Typo="Typo.caption">
+                    Columns like <code>Value</code>, <code>Quality</code>, <code>TimestampUtc</code> are tag DATA, not devices — those don't belong here.
+                </MudText>
+            </MudAlert>
+            @if (!string.IsNullOrEmpty(_model!.CsvFileName))
+            {
+                <MudText Class="mt-2" Typo="Typo.body2">Selected: @_model.CsvFileName (@_model.CsvBytes?.Length bytes)</MudText>
+            }
+            <MudTextField Class="mt-3" @bind-Value="_model.ImportLabel" Label="Import label (optional)" />
+
+            @if (_model.EnabledMqttSinkCount > 1)
+            {
+                <MudSelect T="string" @bind-Value="_model.SelectedSinkInstanceId" Label="MQTT destination *" Class="mt-3">
+                    @foreach (var s in _model.AvailableMqttSinks)
+                    {
+                        <MudSelectItem Value="@s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            <MudStack Row="true" Class="mt-3" Spacing="2">
+                <MudButton OnClick="OnGoBack" Variant="Variant.Outlined">Back</MudButton>
+                <MudButton OnClick="OnAdvanceFromUploadAsync" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(!_model.CanAdvanceFromUpload || _model.IsBusy)"
+                           EndIcon="@Icons.Material.Filled.ArrowForward">
+                    @(_model.IsBusy ? "Previewing..." : "Continue to preview")
+                </MudButton>
+            </MudStack>
+        </WizardSection>
+    </text>;
+
+    // ── Sample CSV download ──────────────────────────────────────────────────
+    // Generates a protocol-specific sample from the SAME TemplateRegistry the
+    // parser validates against, so the columns always match — then hands it to
+    // the shared bundleDownload.saveBase64 JS helper for a browser "save as".
+
+    private string SampleHeaderLine() =>
+        _model?.SelectedProtocol is { } p
+            ? string.Join(",", ElpisEdgeConnect.Management.Api.BulkSourceMerge.TemplateRegistry.Get(p).RequiredCsvColumns)
+            : string.Empty;
+
+    private string SampleExampleLine()
+    {
+        if (_model?.SelectedProtocol is not { } p)
+        {
+            return string.Empty;
+        }
+        var lines = BuildSampleCsv(p).Split('\n');
+        return lines.Length > 1 ? lines[1] : string.Empty;
+    }
+
+    private async Task DownloadSampleCsvAsync()
+    {
+        if (_model?.SelectedProtocol is not { } protocol)
+        {
+            return;
+        }
+        var csv = BuildSampleCsv(protocol);
+        var b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(csv));
+        var fileName = $"sample-{protocol.ToString().ToLowerInvariant()}.csv";
+        await JS.InvokeVoidAsync("bundleDownload.saveBase64", fileName, b64, "text/csv");
+    }
+
+    private static string BuildSampleCsv(BulkSourceMergeProtocol protocol)
+    {
+        var columns = ElpisEdgeConnect.Management.Api.BulkSourceMerge.TemplateRegistry
+            .Get(protocol).RequiredCsvColumns;
+
+        // Three illustrative rows; each column filled by name so the sample fits
+        // whatever the registry declares (host-based vs MTConnect baseUrl, etc.).
+        var examples = new[]
+        {
+            (id: "cnc-001", name: "Lathe-A1",   host: "192.168.10.21", enabled: "true"),
+            (id: "cnc-002", name: "Mill-B1",    host: "192.168.10.22", enabled: "true"),
+            (id: "cnc-003", name: "Grinder-C1", host: "192.168.10.23", enabled: "false"),
+        };
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(string.Join(",", columns)).Append('\n');
+        foreach (var r in examples)
+        {
+            var cells = columns.Select(c => c switch
+            {
+                "deviceId"   => r.id,
+                "deviceName" => r.name,
+                "host"       => r.host,
+                "baseUrl"    => $"http://{r.host}:5000",
+                "enabled"    => r.enabled,
+                _            => string.Empty,
+            });
+            sb.Append(string.Join(",", cells)).Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    private RenderFragment RenderStepPreview() => @<text>
+        <WizardSection Index="4" Title="Review preview">
+            @if (_model!.PreviewResult is not null)
+            {
+                <MudText>Parsed <strong>@_model.PreviewResult.ParsedRowCount</strong> row(s). Destination: <strong>@_model.PreviewResult.ChosenSinkInstanceId</strong>.</MudText>
+
+                @if (_model.Blockers.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-2">
+                        @_model.Blockers.Count blocker(s) — fix and re-upload before submitting.
+                    </MudAlert>
+                    @RenderFindingTable(_model.Blockers, Severity.Error)
+                }
+
+                @if (_model.Warnings.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mt-2">
+                        @_model.Warnings.Count warning(s) — informational, will not block submit.
+                    </MudAlert>
+                    @RenderFindingTable(_model.Warnings, Severity.Warning)
+                }
+
+                @if (_model.PreviewResult.CanSubmit)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        Tag availability is not verified in Phase 1. Some devices may not expose every tag in the protocol baseline (e.g. a lathe without a spindle); missing tags will not publish, the rest continue normally. Check the Sources page for per-tag read errors via 3-way diagnostics after applying the draft.
+                    </MudAlert>
+                }
+            }
+
+            <MudStack Row="true" Class="mt-3" Spacing="2">
+                <MudButton OnClick="OnGoBack" Variant="Variant.Outlined">Back to upload</MudButton>
+                <MudButton OnClick="OnAdvanceFromPreviewAsync" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(!_model.CanSubmit || _model.IsBusy)"
+                           EndIcon="@Icons.Material.Filled.PlaylistAddCheck">
+                    @(_model.IsBusy ? "Submitting..." : "Submit and create draft")
+                </MudButton>
+                <MudButton OnClick="OnCancel" Variant="Variant.Text" Color="Color.Default">Cancel</MudButton>
+            </MudStack>
+        </WizardSection>
+    </text>;
+
+    private RenderFragment RenderStepConfirmation() => @<text>
+        <WizardSection Index="5" Title="Confirmation">
+            @if (_model!.SubmitSucceeded)
+            {
+                <MudAlert Severity="Severity.Success">
+                    Draft created: <strong>@_model.SubmitResult!.DraftId</strong>.
+                    Review and apply it from the Configuration → Drafts page when ready.
+                </MudAlert>
+                <MudStack Row="true" Class="mt-3" Spacing="2">
+                    <MudButton OnClick="OnImportMore" Variant="Variant.Outlined">Import more</MudButton>
+                    <MudButton Href="/config" Variant="Variant.Filled" Color="Color.Primary">Go to drafts</MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Error">
+                    Submit failed. See findings below.
+                </MudAlert>
+                @if (_model.SubmitResult is { Findings.Count: > 0 })
+                {
+                    @RenderFindingTable(_model.SubmitResult.Findings, Severity.Error)
+                }
+                <MudStack Row="true" Class="mt-3" Spacing="2">
+                    <MudButton OnClick="OnImportMore" Variant="Variant.Outlined">Start over</MudButton>
+                </MudStack>
+            }
+        </WizardSection>
+    </text>;
+
+    private RenderFragment RenderFindingTable(IReadOnlyList<BulkSourceMergeFinding> findings, Severity severity) => @<text>
+        <MudTable Items="@findings" Hover="true" Dense="true" Class="mt-2">
+            <HeaderContent>
+                <MudTh>Row</MudTh>
+                <MudTh>Code</MudTh>
+                <MudTh>Subject</MudTh>
+                <MudTh>Message</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@(context.CsvRow?.ToString() ?? "—")</MudTd>
+                <MudTd>@context.Code</MudTd>
+                <MudTd>@context.Subject</MudTd>
+                <MudTd>@context.Message</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </text>;
+
+    private async Task OnCsvSelected(IBrowserFile? file)
+    {
+        if (file is null || _model is null) return;
+        _model.CsvFileName = file.Name;
+        await using var stream = file.OpenReadStream(maxAllowedSize: 1 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _model.CsvBytes = ms.ToArray();
+    }
+
+    private void OnAdvanceFromGatewayContext() => _model?.AdvanceFromGatewayContext();
+    private void OnAdvanceFromProtocol() => _model?.AdvanceFromProtocol();
+
+    private async Task OnAdvanceFromUploadAsync()
+    {
+        if (_model is null) return;
+        await _model.AdvanceFromUploadAsync(CancellationToken.None);
+        if (!string.IsNullOrEmpty(_model.LastError))
+        {
+            Snackbar.Add(_model.LastError, MudBlazor.Severity.Error);
+        }
+    }
+
+    private async Task OnAdvanceFromPreviewAsync()
+    {
+        if (_model is null) return;
+        await _model.AdvanceFromPreviewAsync(CancellationToken.None);
+        if (!string.IsNullOrEmpty(_model.LastError))
+        {
+            Snackbar.Add(_model.LastError, MudBlazor.Severity.Error);
+        }
+    }
+
+    private void OnGoBack() => _model?.GoBack();
+
+    private void OnCancel()
+    {
+        _model?.ResetAll();
+        Nav.NavigateTo("/sources");
+    }
+
+    private void OnImportMore() => _model?.ResetAll();
+}

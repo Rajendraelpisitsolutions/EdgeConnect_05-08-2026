@@ -1,0 +1,1116 @@
+@*
+    Add / Edit Modbus TCP source wizard (M.2b.1 + M.2d.2 step 10).
+
+    Two modes:
+      * Add  — @page "/sources/new/modbus" entry. BuildNewSourceDraft + drafts API.
+      * Edit — rendered from SourceEditRouter. PUT /api/v1/sources/{instanceId}.
+        Per-tag list survival on hydrate (the trickiest case — tested in Step 7).
+
+    Modbus-specific concerns:
+
+      1. PER-TAG list — Modbus has no discovery, so the operator declares
+         tags by hand (or via M.2c's CSV import in a future milestone).
+         Tag order survives hydrate per ModbusSourceWizardModel
+         round-trip tests; the "stringN" wire form splits back into
+         the wizard's Datatype="string" + StringLength=N pair.
+
+      2. TEST CONNECTION + transient probe overrides — the Test
+         Connection button runs /api/v1/sources/browse/modbus through
+         the ladder (TcpConnect → FirstConfiguredTag → FallbackTestAddress
+         per v2 §4.3). Operators can override the fallback FC / address /
+         quantity via a disclosure panel — wizard-local state, dropped
+         on save.
+
+      3. WIRING + draft summary sections — Add mode only; Edit never
+         mutates routes per §5.5.
+
+    Reference: docs/sessions/2026-05-22-m2d2-steps-8-10-plan-v2.md §3.3
+*@
+@page "/sources/new/modbus"
+@page "/sources/new/modbus-rtu"
+@using System.Linq
+@using System.Net
+@using ElpisEdgeConnect.Core.Adapters
+@using ElpisEdgeConnect.Sources.ModbusTcp
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") Modbus source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Memory"
+             Title="@(_isEdit ? $"Edit {_protocolLabel} source — {_model.InstanceId}" : $"Add {_protocolLabel} source")"
+             Subtitle="Set up a Modbus device — PLC, drive, power meter or sensor — and list the registers to read from it. You will need its network address (or serial port) and its unit/slave id."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             Embedded="@EmbeddedMode"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    @* M.2d.4 / ADR-0015 Rule 5 — cumulative validation surface.
+       Includes per-tag-row errors (Modbus is the only source wizard
+       with a per-instance items collection). *@
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Device identity">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
+                              HelperText="Operator-readable; defaults to instance id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Device name"
+                              HelperText="Display name shown in lists and tooltips."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("plc")">plc</MudSelectItem>
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("meter")">meter</MudSelectItem>
+                    <MudSelectItem Value="@("rtu")">rtu</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PollIntervalMs" Label="Poll interval (ms)"
+                                 Min="50" Max="60000" Step="50" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="Connection">
+        <MudGrid Spacing="2">
+            @* ADR-0033: native TCP has no transport selector (always Tcp). The
+               RTU wizard chooses between serial and RTU-over-TCP. *@
+            @if (_isRtu)
+            {
+                <MudItem xs="12" md="3">
+                    <MudSelect @bind-Value="_model.Encapsulation" Label="Transport" Variant="Variant.Outlined"
+                               data-testid="modbus-encapsulation">
+                        <MudSelectItem Value="@("SerialRtu")">Serial RTU (RS-485 / RS-232)</MudSelectItem>
+                        <MudSelectItem Value="@("RtuOverTcp")">RTU over TCP (gateway)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            }
+
+            @if (_isRtu && _model.Encapsulation == "SerialRtu")
+            {
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_model.SerialPort" Label="Serial port *"
+                                  HelperText="COM3 (Windows) or /dev/ttyUSB0 (Linux). On Linux the service user must be in the 'dialout' group."
+                                  Variant="Variant.Outlined" Immediate="true" data-testid="modbus-serial-port" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField @bind-Value="_model.BaudRate" Label="Baud rate" Min="300" Max="921600"
+                                     HelperText="e.g. 9600, 19200, 38400"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField @bind-Value="_model.DefaultUnitId" Label="Slave id"
+                                     HelperText="RS-485 bus address (0..247)"
+                                     Min="0" Max="247" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="4" md="3">
+                    <MudSelect @bind-Value="_model.Parity" Label="Parity" Variant="Variant.Outlined">
+                        @foreach (var p in ModbusSourceWizardModel.Parities)
+                        {
+                            <MudSelectItem Value="@p">@p</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4" md="3">
+                    <MudSelect @bind-Value="_model.StopBits" Label="Stop bits" Variant="Variant.Outlined">
+                        @foreach (var s in ModbusSourceWizardModel.StopBitsOptions)
+                        {
+                            <MudSelectItem Value="@s">@s</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="4" md="3">
+                    <MudSelect @bind-Value="_model.Handshake" Label="Flow control" Variant="Variant.Outlined">
+                        @foreach (var h in ModbusSourceWizardModel.Handshakes)
+                        {
+                            <MudSelectItem Value="@h">@h</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            else
+            {
+                @* Widths sum to 12 so the row fills the panel instead of leaving a
+                   dead sixth on the right. Port was md="2" carrying a 100-character
+                   helper, which wrapped to five lines and stretched the whole row;
+                   it gets the same width as the unit id, and the helper says the
+                   two numbers that matter rather than a sentence about them. *@
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_model.Host" Label="Host *"
+                                  HelperText="IP address or hostname (e.g. 192.168.1.42)"
+                                  Variant="Variant.Outlined" Immediate="true" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField @bind-Value="_model.Port" Label="Port" Min="1" Max="65535"
+                                     HelperText="502 for a device, 5020 for a local simulator."
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField @bind-Value="_model.DefaultUnitId" Label="Default unit id"
+                                     HelperText="Modbus slave address (0–247)."
+                                     Min="0" Max="247" Variant="Variant.Outlined" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (_probeResult is not null)
+        {
+            <MudAlert Severity="@(_probeResult.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      data-testid="modbus-probe-result">
+                @if (_probeResult.Success)
+                {
+                    <strong>Probe succeeded.</strong>
+                    <MudText Typo="Typo.body2">
+                        @if (_probeResult.ProbeStepReached is { } step) { <text>Reached: <code>@step</code>. </text> }
+                        @if (_probeResult.FunctionCodeUsed is { } fc) { <text>FC@fc</text> }
+                        @if (_probeResult.AddressTested is { } addr) { <text> @@ @addr</text> }
+                        @if (_probeResult.UnitIdTested is { } uid) { <text> · unit @uid</text> }
+                        in @_probeResult.ElapsedMs ms.
+                    </MudText>
+                }
+                else
+                {
+                    <strong>Probe failed (@_probeResult.ErrorCode).</strong>
+                    <MudText Typo="Typo.body2">@_probeResult.ErrorMessage</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Reached: <code>@_probeResult.ProbeStepReached</code> · ProbeId: <code>@_probeResult.ProbeId</code>
+                    </MudText>
+                }
+            </MudAlert>
+        }
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced options">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    Defaults are production-safe. Adjust only if your PLC documentation calls for non-standard values.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.ConnectTimeoutMs" Label="Connect timeout (ms)"
+                                         HelperText="How long to wait for the TCP handshake."
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.RequestTimeoutMs" Label="Request timeout (ms)"
+                                         HelperText="Per Modbus read/write transaction."
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudSwitch @bind-Value="_model.KeepAlive" Label="Keep TCP alive"
+                                   Color="Color.Primary" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                            On = one socket reused across polls (recommended). Off = reconnect every poll.
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxTransactionRetries" Label="Max retries"
+                                         HelperText="Retries per failed transaction before raising an error."
+                                         Min="0" Max="10" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)"
+                                         HelperText="Wait before the first reconnect after a failure."
+                                         Min="0" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)"
+                                         HelperText="Cap on exponential reconnect backoff."
+                                         Min="0" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.CircuitBreakerThreshold" Label="Breaker threshold"
+                                         HelperText="Consecutive failures that pause reconnect attempts."
+                                         Min="1" Max="50" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxGapRegisters" Label="Max gap registers"
+                                         HelperText="Coalesce adjacent reads. 0 disables coalescing."
+                                         Min="0" Max="128" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Text="Test Connection — fallback overrides (transient, not saved)"
+                               data-testid="modbus-probe-overrides">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    These values are used by the Test Connection probe only when no tag is configured to derive a read target from. They are NOT persisted to the source configuration.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="byte?" @bind-Value="_probeOverrideFc" Label="Function code"
+                                         HelperText="01/02/03/04 (default 03)"
+                                         Min="1" Max="4" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="ushort?" @bind-Value="_probeOverrideAddress" Label="Address"
+                                         HelperText="Default 1 (NOT 0 — vendors often reject)"
+                                         Min="0" Max="65535" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="ushort?" @bind-Value="_probeOverrideQuantity" Label="Quantity"
+                                         HelperText="Default 1"
+                                         Min="1" Max="125" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="@($"Tag definitions ({_model.Tags.Count})")">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddTag" Style="text-transform:none;">
+                Add tag
+            </MudButton>
+        </MudStack>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+            <strong>Tags are entered manually.</strong> Modbus has no discovery mechanism —
+            the slave doesn't know the names, datatypes, or units of its own registers.
+            Reference your PLC vendor's memory map document. CSV import + template libraries
+            for common PLC families land in <strong>M.2c</strong>.
+        </MudAlert>
+
+        @* Addressing notation. PLC manuals normally print the Modicon "4xxxx"
+           form while EdgeConnect speaks zero-based logical addresses; declaring
+           the notation here converts on apply instead of silently reading the
+           wrong register. See docs/modbus-address-base-design.md. *@
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="my-2">
+            <MudSelect T="ModbusAddressBase" @bind-Value="_model.AddressBase"
+                       Label="Address base" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="max-width:280px;" data-testid="modbus-address-base">
+                <MudSelectItem Value="@ModbusAddressBase.ZeroBased">Zero-based (40001 → enter 0)</MudSelectItem>
+                <MudSelectItem Value="@ModbusAddressBase.OneBased">One-based (40001 → enter 1)</MudSelectItem>
+                <MudSelectItem Value="@ModbusAddressBase.Modicon">Modicon 4xxxx (enter 40001 as printed)</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                How the addresses below are written. The <em>Wire addr</em> column shows what
+                EdgeConnect will actually read.
+            </MudText>
+        </MudStack>
+
+        @if (_model.Tags.Count == 0)
+        {
+            @* Operator-feedback bug 2026-05-28 — the gray secondary text version
+               of this warning was easy to overlook; operators clicked through
+               with empty tag lists and then wondered why no data flowed. Made
+               it a prominent Warning alert with an icon so it can't be missed. *@
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined"
+                      Icon="@Icons.Material.Filled.WarningAmber"
+                      Class="my-2"
+                      data-testid="modbus-no-tags-warning">
+                <strong>No tags configured.</strong>
+                This Modbus source won't produce any data until you add at least one tag below.
+                Empty tag lists are allowed (e.g. for staging) — but the route, sink, and any
+                downstream subscribers will see zero messages.
+            </MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="false" Bordered="false" Style="overflow:auto;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Register class</th>
+                        <th>Address</th>
+                        <th>Wire addr</th>
+                        <th>Datatype</th>
+                        <th>String length</th>
+                        <th>Byte order</th>
+                        <th>Scan (ms)</th>
+                        <th>Unit</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < _model.Tags.Count; i++)
+                {
+                    var idx = i;
+                    var tag = _model.Tags[idx];
+                    var rowIssues = ModbusSourceWizardModel.ValidateTag(tag, _model.AddressBase);
+                    var datatypeError = rowIssues.FirstOrDefault(iss => iss.Path == "Datatype");
+                    var byteOrderError = rowIssues.FirstOrDefault(iss => iss.Path == "ByteOrder");
+                    var stringLengthError = rowIssues.FirstOrDefault(iss => iss.Path == "StringLength");
+                    var isString = string.Equals(tag.Datatype, "string", StringComparison.OrdinalIgnoreCase);
+                    <tr @key="tag">
+                        <td><MudTextField @bind-Value="tag.Name" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td>
+                            @* The register class decides the width: coils and
+                               discrete inputs are single bits, holding and input
+                               registers are 16-bit words. Re-suggest the datatype
+                               so a bit-class tag doesn't sit there showing uint16
+                               — a value the validator rejects anyway. Suggestion
+                               only: OnRegisterClassChanged leaves an
+                               operator-chosen (or hydrated) datatype alone. *@
+                            <MudSelect T="string" @bind-Value="tag.RegisterClass" @bind-Value:after="@(() => OnRegisterClassChanged(idx))"
+                                       Variant="Variant.Text" Margin="Margin.Dense">
+                                @foreach (var rc in ModbusSourceWizardModel.RegisterClasses)
+                                {
+                                    <MudSelectItem Value="@rc">@rc</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        @* Address binds two-way to the string-backed AddressText,
+                           exactly like the Name cell above. MudNumericField failed
+                           to propagate the typed value into the model under Blazor
+                           Server; MudTextField + @bind-Value is the proven pattern.
+                           Commits on change/blur — the standalone Save flushes the
+                           focused field first, and the embedded flow re-emits the
+                           built config whenever it changes (see OnAfterRenderAsync). *@
+                        <td><MudTextField @bind-Value="tag.AddressText"
+                                          InputMode="InputMode.numeric"
+                                          Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td>
+                            <MudText Typo="Typo.body2" Color="@(WireAddressOf(tag) is null ? Color.Error : Color.Default)">
+                                @(WireAddressOf(tag)?.ToString() ?? "invalid")
+                            </MudText>
+                        </td>
+                        <td>
+                            <MudSelect T="string" @bind-Value="tag.Datatype" @bind-Value:after="@(() => OnDatatypeChanged(idx))"
+                                       Variant="Variant.Text" Margin="Margin.Dense" Clearable="true"
+                                       Error="@(datatypeError is not null)"
+                                       ErrorText="@datatypeError?.Message">
+                                @foreach (var dt in ModbusSourceWizardModel.Datatypes)
+                                {
+                                    <MudSelectItem Value="@dt">@dt</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td>
+                            @if (isString)
+                            {
+                                <MudNumericField T="int?" @bind-Value="tag.StringLength"
+                                                 Min="1" Max="255"
+                                                 Variant="Variant.Text" Margin="Margin.Dense"
+                                                 Placeholder="chars"
+                                                 Error="@(stringLengthError is not null)"
+                                                 ErrorText="@stringLengthError?.Message" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="opacity:0.5;">—</MudText>
+                            }
+                        </td>
+                        <td>
+                            <MudSelect T="string" @bind-Value="tag.ByteOrder" Variant="Variant.Text" Margin="Margin.Dense" Clearable="true"
+                                       Disabled="@isString"
+                                       Error="@(byteOrderError is not null)"
+                                       ErrorText="@byteOrderError?.Message">
+                                @foreach (var bo in ModbusSourceWizardModel.ByteOrders)
+                                {
+                                    <MudSelectItem Value="@bo">@bo</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td><MudNumericField @bind-Value="tag.ScanRateMs" Min="50" Max="60000" Step="50" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td><MudTextField @bind-Value="tag.Unit" Variant="Variant.Text" Margin="Margin.Dense" /></td>
+                        <td>
+                            <MudTooltip Text="Remove tag">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                               aria-label="@($"Remove tag {tag.Name}")"
+                                               OnClick="@(() => RemoveTag(idx))" />
+                            </MudTooltip>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="4" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route). Edit the source in JSON and add a route to activate.
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route is added linking this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
+                                      Label="Route id *"
+                                      HelperText="Auto-suggested from instance id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId"
+                                             Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+
+        @* ──── Draft summary preview (Add mode only) ──── *@
+        <MudPaper Elevation="0" Class="pa-4 mb-3"
+                  Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1">When you save, EdgeConnect will:</MudText>
+            <ul style="margin:0; padding-left:1.4rem;">
+                <li>
+                    <strong>Add source:</strong> @(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not yet named)" : _model.InstanceId)
+                    @if (!string.IsNullOrWhiteSpace(_model.Host))
+                    {
+                        <text> (modbustcp, @_model.Host:@_model.Port)</text>
+                    }
+                    @if (_wiringChoice == "none")
+                    {
+                        <text> — </text><strong style="color:var(--mud-palette-warning);">created DISABLED</strong>
+                    }
+                    else
+                    {
+                        <text> — enabled</text>
+                    }
+                </li>
+                <li><strong>Define tags:</strong> @_model.Tags.Count</li>
+                <li>
+                    @switch (_wiringChoice)
+                    {
+                        case "newRoute":
+                            <strong>Create new route:</strong>
+                            @(string.IsNullOrWhiteSpace(_routeId) ? "(not yet named)" : _routeId)
+                            @if (_selectedSinkIds.Count > 0)
+                            {
+                                <text> · attaching to: @string.Join(", ", _selectedSinkIds)</text>
+                            }
+                            break;
+                        default:
+                            <strong>Routes:</strong>
+                            <span> leave for later — source disabled until wired</span>;
+                            break;
+                    }
+                </li>
+            </ul>
+        </MudPaper>
+    }
+
+    </ChildContent>
+    <Footer>
+        @* ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode. *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="ProbeAsync"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0033 — force RTU mode when embedded (no route to infer from, e.g. onboarding).</summary>
+    [Parameter] public bool RtuMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    // v2 §0.1 Q1=A — drop readonly so OnParametersSet can reassign.
+    private ModbusSourceWizardModel _model = new();
+
+    // ADR-0033: this one wizard serves both Modbus protocols. RTU mode is the
+    // "/sources/new/modbus-rtu" route (add) or a hydrated modbusrtu source (edit).
+    private bool _isRtu;
+    private string _protocolLabel => _isRtu ? "Modbus RTU" : "Modbus TCP";
+    private bool _hydrated;
+    // Content signature of the last instance emitted to the parent (embedded
+    // mode). Re-emit only when this changes — see OnAfterRenderAsync.
+    private string? _lastBuiltSignature;
+
+    // Routing UI state (Add mode only)
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    // Loaded context (Add mode)
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private bool _busy;
+
+    /// <summary>
+    /// Resolve the zero-based wire address a tag row will actually read, given
+    /// the selected address base. Returns null when the entered value can't be
+    /// converted (e.g. a Modicon holding-register address below 40001), which
+    /// the table renders as "invalid".
+    /// </summary>
+    private int? WireAddressOf(ModbusTagWizardRow row)
+    {
+        if (!Enum.TryParse<ModbusRegisterClass>(row.RegisterClass, ignoreCase: true, out var rc))
+        {
+            return null;
+        }
+        return _model.AddressBase.TryToZeroBased(row.Address, rc, out var wire) ? wire : null;
+    }
+
+    /// <summary>
+    /// Aggregate current validation errors into the shape the shared
+    /// <c>WizardValidationBanner</c> expects. M.2d.4 wires the banner
+    /// per ADR-0015 Rule 5: dup-instance-id check + per-tag-row errors
+    /// from <c>ModbusSourceWizardModel.ValidateTag</c>. Empty list →
+    /// banner renders zero DOM.
+    /// </summary>
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "modbus.instance-id.duplicate",
+                "InstanceId",
+                _instanceIdError,
+                "#field-instance-id"));
+        }
+
+        // Per-tag-row errors. Modbus is the only source wizard with
+        // a per-instance items collection (the tag table). Aggregating
+        // these into the banner lets operators jump to a specific
+        // row's offending cell from a top-level summary.
+        for (var i = 0; i < _model.Tags.Count; i++)
+        {
+            var row = _model.Tags[i];
+            var issues = ModbusSourceWizardModel.ValidateTag(row, _model.AddressBase);
+            foreach (var issue in issues)
+            {
+                var rowLabel = string.IsNullOrWhiteSpace(row.Name) ? $"row {i + 1}" : row.Name;
+                messages.Add(new WizardValidationMessage(
+                    Code: issue.Code,
+                    Path: $"Tags[{i}].{issue.Path}",
+                    Message: $"Tag '{rowLabel}': {issue.Message}",
+                    // No field-anchor on per-row cells today (the table
+                    // cells don't carry stable ids); clicking is inert
+                    // until a future milestone adds row-cell anchors.
+                    FieldAnchor: null));
+            }
+        }
+
+        return messages;
+    }
+
+    // Test Connection probe — wizard-local transient state, NEVER persisted.
+    // v2 §4.3 step 3 — overrides for the fallback target.
+    private byte? _probeOverrideFc;
+    private ushort? _probeOverrideAddress;
+    private ushort? _probeOverrideQuantity;
+    private ModbusProbeResultDto? _probeResult;
+
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+
+        // Add mode: RTU vs TCP is decided by the route. Seed the model's
+        // protocol id + a sensible default encapsulation for the mode.
+        _isRtu = RtuMode || Nav.Uri.Contains("/modbus-rtu", StringComparison.OrdinalIgnoreCase);
+        if (_isRtu)
+        {
+            _model.ProtocolName = "modbusrtu";
+            _model.Encapsulation = "SerialRtu";
+        }
+        else
+        {
+            _model.ProtocolName = "modbustcp";
+            _model.Encapsulation = "Tcp";
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = ModbusSourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _isRtu = string.Equals(_model.ProtocolName, "modbusrtu", StringComparison.OrdinalIgnoreCase);
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return;
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different instance id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+
+        if (!_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void AddTag()
+    {
+        _model.Tags.Add(new ModbusTagWizardRow());
+    }
+
+    private void RemoveTag(int index)
+    {
+        if (index >= 0 && index < _model.Tags.Count)
+        {
+            _model.Tags.RemoveAt(index);
+        }
+    }
+
+    /// <summary>
+    /// The operator changed a row's register class — offer the datatype that
+    /// class implies. Suggest, never coerce: the row itself declines when its
+    /// datatype was chosen by the operator or hydrated from a saved source.
+    /// </summary>
+    private void OnRegisterClassChanged(int index)
+    {
+        if (index < 0 || index >= _model.Tags.Count) return;
+        _model.Tags[index].ApplyRegisterClassDatatypeSuggestion();
+    }
+
+    private void OnDatatypeChanged(int index)
+    {
+        if (index < 0 || index >= _model.Tags.Count) return;
+        var tag = _model.Tags[index];
+        if (string.Equals(tag.Datatype, "string", StringComparison.OrdinalIgnoreCase))
+        {
+            tag.ByteOrder = null;
+        }
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        // Connection endpoint depends on transport: serial RTU needs a serial
+        // port (no host/port), TCP and RTU-over-TCP need a host. Requiring Host
+        // unconditionally left "Save changes" permanently disabled for serial RTU.
+        if (_isRtu && _model.Encapsulation == "SerialRtu")
+        {
+            if (string.IsNullOrWhiteSpace(_model.SerialPort)) return false;
+        }
+        else if (string.IsNullOrWhiteSpace(_model.Host))
+        {
+            return false;
+        }
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        if (_model.Tags.Any(t => ModbusSourceWizardModel.ValidateTag(t, _model.AddressBase).Count > 0)) return false;
+        return true;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save.
+        if (EmbeddedMode) return;
+
+        // Commit the value of whatever field is focused (e.g. a tag Address the
+        // operator just typed) BEFORE we read the model. Blurring the active
+        // element fires its change handler, so a Save clicked immediately after
+        // typing no longer captures a stale 0. Best-effort — never blocks Save.
+        try
+        {
+            await JS.InvokeVoidAsync("wizardValidation.flushActiveInput");
+            // Yield long enough for the field's pending change event (from the
+            // button-click blur AND the explicit blur above) to be processed on
+            // the circuit dispatcher — that's what writes the just-typed value
+            // into the bound model before BuildSourceInstance reads it.
+            await Task.Delay(150);
+        }
+        catch
+        {
+            // JS unavailable (prerender) or interop hiccup — Immediate binding
+            // on the tag fields still covers the common case.
+        }
+
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    /// <summary>
+    /// ADR-0016 Rule 4 — re-emit the built config to the parent (onboarding)
+    /// whenever it CHANGES, not only on valid&lt;-&gt;invalid transitions. The old
+    /// validity-only guard left the onboarding holding a stale instance when the
+    /// operator edited a value without flipping validity (e.g. address 0 -> 1
+    /// while already valid, or 5 -> 6), so the wrong address got applied. We
+    /// compare a content signature of the built instance: fire on change, stay
+    /// quiet when nothing changed (which also prevents a render loop, since the
+    /// parent's StateHasChanged re-enters this method).
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        SourceInstanceConfig? instance = null;
+        if (CanSave())
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; }
+        }
+        var signature = instance is null
+            ? "<none>"
+            : System.Text.Json.JsonSerializer.Serialize(instance);
+        if (_lastBuiltSignature == signature) return;
+        _lastBuiltSignature = signature;
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Cancel.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale()
+    {
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private async Task ProbeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Host)) return;
+
+        _busy = true;
+        _probeResult = null;
+        try
+        {
+            ModbusProbeTagTarget? firstTagTarget = null;
+            if (_model.Tags.Count > 0)
+            {
+                var first = _model.Tags[0];
+                // Probe the ZERO-BASED WIRE address the saved source will actually
+                // read — convert the operator-entered value through the selected
+                // AddressBase first (same conversion WireAddressOf and the config
+                // parser apply). Without this the probe tests the raw entered value
+                // (e.g. Modicon 40033) instead of the real wire address (32) and
+                // reports a false MODBUS.PROBE_SLAVE_REJECTED even though the source
+                // is correctly configured.
+                if (Enum.TryParse<ModbusRegisterClass>(first.RegisterClass, ignoreCase: true, out var rc)
+                    && _model.AddressBase.TryToZeroBased(first.Address, rc, out var wireAddr))
+                {
+                    byte fc = rc switch
+                    {
+                        ModbusRegisterClass.Coil => (byte)1,
+                        ModbusRegisterClass.DiscreteInput => (byte)2,
+                        ModbusRegisterClass.HoldingRegister => (byte)3,
+                        ModbusRegisterClass.InputRegister => (byte)4,
+                        _ => (byte)3,
+                    };
+                    firstTagTarget = new ModbusProbeTagTarget(fc, (ushort)wireAddr, 1);
+                }
+            }
+
+            ModbusProbeOverrides? overrides = null;
+            if (_probeOverrideFc is not null || _probeOverrideAddress is not null || _probeOverrideQuantity is not null)
+            {
+                overrides = new ModbusProbeOverrides
+                {
+                    FunctionCode = _probeOverrideFc,
+                    Address = _probeOverrideAddress,
+                    Quantity = _probeOverrideQuantity,
+                };
+            }
+
+            var request = new
+            {
+                ipAddress = _model.Host,
+                port = _model.Port,
+                unitId = (byte)Math.Clamp(_model.DefaultUnitId, 0, 247),
+                firstConfiguredTag = firstTagTarget,
+                overrides = overrides,
+            };
+
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/modbus", request);
+            try
+            {
+                _probeResult = await resp.Content.ReadFromJsonAsync<ModbusProbeResultDto>();
+            }
+            catch
+            {
+                _probeResult = null;
+            }
+            if (_probeResult is null)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                // ADR-0016 Rule 3 — Snackbar suppressed in EmbeddedMode.
+                if (!EmbeddedMode) Snackbar.Add($"Probe failed: {raw}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Probe failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add(
+                $"Source '{updatedSource.InstanceId}' updated{reloadHint}.",
+                Severity.Success);
+
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null)
+        {
+            // Never fail silently — a null base config means the initial
+            // GET /api/v1/config never completed (e.g. the page opened before
+            // the connection attached). Tell the operator to reload instead
+            // of making Save look like it did nothing.
+            Snackbar.Add(
+                "Can't save yet — the current configuration hasn't loaded. Reload the page and try again.",
+                Severity.Error);
+            return;
+        }
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            // Save = apply: create the draft AND apply it through the same
+            // audited draft -> validate -> apply pipeline Edit mode uses, so
+            // clicking Save actually persists. Shared with every other Add
+            // wizard via WizardDraftApplier.
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

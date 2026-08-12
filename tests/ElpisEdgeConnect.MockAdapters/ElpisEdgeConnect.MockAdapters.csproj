@@ -1,0 +1,29 @@
+<!--
+  ElpisEdgeConnect.MockAdapters: production-shaped mock adapter
+  implementations of ISourceAdapter / ISinkAdapter for D phase 4 supervisors
+  and D phase 6 integration scenarios. Lives under tests/ because it is
+  referenced from test projects only; the production host references it
+  ONLY behind a dev-adapters toggle that lands in D phase 4.
+
+  Reference: PHASE1_EXECUTION_PLAN.md Milestone D
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.MockAdapters</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.MockAdapters</AssemblyName>
+    <Description>Production-shaped mock source/sink adapters for D-phase integration tests and dev-mode host runs.</Description>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

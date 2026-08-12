@@ -1,0 +1,63 @@
+<!--
+  ValidateSidecar. Internal tool - validates a bulk-provision sidecar
+  (YAML or JSON) against tools/bulk-provision/sidecar-schema.json.
+
+  Mirrors the single-purpose tools/ pattern (SchemaGen, LicenseGen,
+  ModbusCsvImport, ValidateConfig). Unlike ValidateConfig:
+    * NO ProjectReference to ElpisEdgeConnect.Core
+    * NO use of GatewayConfiguration
+    * NO ADR-0030 suspect-roots logic
+    * Generic on the schema path (passed at the command line)
+
+  Consumed by:
+    * tools/bulk-provision/generate.ps1 (Chip 3 generator). Invokes
+      this CLI inline via `dotnet run` before substitution; failure
+      aborts with BulkProvision.SidecarSchemaViolation.
+    * Operators invoking it directly during commissioning.
+
+  Reference:
+    docs/sessions/2026-06-14-chip3-impl-session2.5-plan-v3-lock-final.md
+
+  Usage:
+    See Program.cs for the locked CLI surface and exit codes.
+
+  YamlDotNet version: 17.1.0 (locked).
+    Pin rationale: 17.1.0 carries the latest YamlDotNet security
+    improvements; 18.0.0 introduced a breaking ITypeInspector change
+    on 2026-05-21 that would require additional shim work for no
+    immediate gain in a small validation CLI. NuGet confirms 17.1.0
+    has zero dependencies for net8.0.
+
+    A hand-rolled flat YAML parser (mirroring generate.ps1's
+    ConvertFrom-Yaml-Minimal) would commit sidecars to "one-level deep
+    forever," and the cost of YamlDotNet is the smaller of those two
+    tradeoffs. Per chip 3 v3 §6, the YAML normalization helper is
+    explicitly recursive so future nested fields work without rework.
+
+  NJsonSchema version: 11.1.0 (matches ElpisEdgeConnect.SchemaValidation).
+    Pin rationale: avoid version drift between the two repo projects
+    that depend on NJsonSchema. Upgrade is a separate workstream.
+
+  Dependency-audit gate: run `dotnet restore` then
+  `dotnet list package` with the `vulnerable` and `include-transitive`
+  flags. See v3 plan §7.H for the exact command line.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.ValidateSidecar</RootNamespace>
+    <AssemblyName>ValidateSidecar</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NJsonSchema" Version="11.1.0" />
+    <PackageReference Include="YamlDotNet" Version="17.1.0" />
+  </ItemGroup>
+
+</Project>

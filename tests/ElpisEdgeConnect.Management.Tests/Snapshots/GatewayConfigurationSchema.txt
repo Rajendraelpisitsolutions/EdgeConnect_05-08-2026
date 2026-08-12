@@ -1,0 +1,70 @@
+Object(GatewayConfiguration) [+extensionData]
+  Gateway: Include -> Object(GatewaySettings)
+    Area: Include -> Leaf
+    AreaId: Include -> Leaf
+    DataPath: Include -> Leaf
+    GatewayId: Include -> Leaf
+    GatewayName: Include -> Leaf
+    HealthCheckPort: Include -> Leaf
+    LicenseFile: Include -> Leaf
+    LogLevel: Include -> Leaf
+    ManagementApi: Include -> Object(ManagementApiSettings)
+      Enabled: Include -> Leaf
+      Port: Include -> Leaf
+      RequireAuth: Include -> Leaf
+      TlsCertPath: Include -> Leaf
+    SensitiveTags: Include -> Array[ Leaf ]
+    Site: Include -> Leaf
+    SiteId: Include -> Leaf
+    Watchdog: Include -> Object(WatchdogSettings)
+      Enabled: Include -> Leaf
+      RestartOnFailure: Include -> Leaf
+  Routes: Include -> Array[ Object(RouteConfig)
+    Buffer: Include -> Object(BufferPolicyConfig)
+      MaxAgeDays: Include -> Leaf
+      MaxDepth: Include -> Leaf
+      Mode: Include -> Leaf
+      OnOverflow: Include -> Leaf
+    Delivery: Include -> Object(DeliveryPolicyConfig)
+      BackoffMultiplier: Include -> Leaf
+      FanoutParallel: Include -> Leaf
+      InitialBackoffMs: Include -> Leaf
+      JitterPercent: Include -> Leaf
+      MaxBackoffMs: Include -> Leaf
+      MaxRetries: Include -> Leaf
+      Mode: Include -> Leaf
+      RequiredAcknowledgementBoundary: Include -> Leaf
+    Enabled: Include -> Leaf
+    Filter: Include -> Object(TagFilterConfig)
+      Exclude: Include -> Array[ Leaf ]
+      Include: Include -> Array[ Leaf ]
+    Name: Include -> Leaf
+    RouteId: Include -> Leaf
+    SinkInstanceIds: Include -> Array[ Leaf ]
+    SourceInstanceId: Include -> Leaf
+    Transforms: Include -> Object(TransformProfileConfig)
+      Deadband: Include -> Leaf
+      DeadbandPercent: Include -> Leaf
+      EnrichmentTags: Include -> Leaf
+      RateLimitMs: Include -> Leaf
+      TagMapping: Include -> Leaf ]
+  Sinks: Include -> Array[ Object(SinkInstanceConfig)
+    Connection: - -> Opaque
+    Enabled: Include -> Leaf
+    InstanceId: Include -> Leaf
+    ProtocolName: Include -> Leaf
+    Publishing: Include -> Object(PublishingSettings) [+extensionData]
+      BatchIntervalMs: Include -> Leaf
+      BatchSize: Include -> Leaf ]
+  Sources: Include -> Array[ Object(SourceInstanceConfig)
+    Connection: - -> Opaque
+    DeviceClass: Include -> Leaf
+    DeviceId: Include -> Leaf
+    DeviceName: Include -> Leaf
+    Enabled: Include -> Leaf
+    InstanceId: Include -> Leaf
+    Polling: Include -> Object(PollingSettings)
+      IntervalMs: Include -> Leaf
+      MaxConsecutiveErrors: Include -> Leaf
+    ProtocolName: Include -> Leaf
+    Tags: Include -> Array[ Leaf ] ]

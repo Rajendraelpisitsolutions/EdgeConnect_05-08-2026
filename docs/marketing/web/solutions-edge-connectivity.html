@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions-edge-connectivity.html
+  Purpose:     Static mockup of /solutions/edge-connectivity — SolutionPanel
+               (§15) solution depth-example for the brownfield-direct path.
+               Faithful to page-solutions-edge-connectivity-spec-v1.md (v2.1,
+               LOCKED). 10 sections. Inherits the cnc-machining pattern-setter
+               structure verbatim; only per-solution copy replaced.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       P-G: FOCAS2/MTConnect/Brother HTTP/Modbus TCP/OPC UA Client/S7
+               shipped today; FANUC MT-LINKi REST roadmap. No outcome metrics
+               (proof-architecture). No customer/competitor product framing
+               beyond the spec's category-level callout.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edge Connectivity — EdgeConnect + Edge Gateway · Elpis</title>
+  <meta name="description" content="One operational view across every controller on your floor. Protocol-agnostic edge runtime, canonical CNC vocabulary, software-only or appliance.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions-edge-connectivity">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Edge Connectivity">
+  <meta property="og:description" content="One operational view across every controller on your floor. Protocol-agnostic edge runtime, canonical CNC vocabulary, software-only or appliance.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions-edge-connectivity">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Edge Connectivity">
+  <meta name="twitter:description" content="One operational view across every controller on your floor. Protocol-agnostic edge runtime, canonical CNC vocabulary, software-only or appliance.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .lead-p { margin-top: var(--space-5); max-width: 78ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .incl-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .incl-grid h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .incl-grid h4 { font-size: var(--size-sm); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin: var(--space-5) 0 var(--space-2); }
+    .incl-grid ul { list-style:none; padding:0; }
+    .incl-grid li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .incl-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .incl-grid strong { color: var(--color-text-heading-light); }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .out-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-3) var(--space-8); margin-top: var(--space-6); list-style:none; padding:0; }
+    .out-grid li { padding-left: var(--space-6); position:relative; color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); padding-bottom: var(--space-3); }
+    .out-grid li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .out-grid strong { color: #FFFFFF; }
+    .deploy-cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .deploy-card { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .deploy-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .deploy-card dt { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); margin-top: var(--space-3); }
+    .deploy-card dd { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin: var(--space-1) 0 0; }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">SOLUTION · EDGE CONNECTIVITY</span>
+        <h1 id="hero-heading" class="hero__headline">One operational view across every controller on your floor — without ripping out what you already have.</h1>
+        <p class="hero__subhead">Protocol-agnostic edge runtime for FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and S7. Canonical CNC vocabulary at the edge. Deploy software-only on your Windows infrastructure today, or on the Edge Gateway appliance — and standardize across plants when you scale.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Bring us your controller mix <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+        <p class="trust-strip">Live integrations: FOCAS2 · MTConnect · Brother HTTP · Modbus TCP · OPC UA Client · Siemens S7. FANUC MT-LINKi REST on the roadmap.</p>
+      </div>
+    </section>
+
+    <!-- §2 THE PAIN -->
+    <section class="section" data-mode="light" aria-labelledby="reality-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE PAIN</span><h2 id="reality-heading" class="section-title">Three or four vendors, three or four monitoring tools, one operations team reconciling by hand.</h2></div>
+        <p>Most factory floors have controllers from three or four vendors. A FANUC cell beside a Mazak machining center beside a Brother tapper beside a Siemens S7 line. Each vendor ships a native monitoring tool — FANUC NCStudio, Mazak SmartBox, Brother BCMS, Siemens TIA. Each tool speaks its own vocabulary, has its own UI, its own alarm thresholds, its own reporting cadence. Operations teams that want one operational view across every machine end up either using all the per-vendor tools (and reconciling reports manually), or building custom integration scripts that break every time a vendor pushes a firmware update.</p>
+        <p>The teams that try to consolidate usually face the same three problems: (1) per-protocol custom scripting is expensive to write, expensive to maintain, and expensive to extend when a new controller shows up on the floor, (2) the SCADA / historian / MES already running on the floor doesn't speak the same canonical vocabulary as the integration layer that gets built around it, so reports drift across systems, (3) when the team finally has signals consolidated, the integration is hosted on a single industrial PC that becomes the new single point of failure — and the operations team has to learn yet another piece of infrastructure to maintain.</p>
+        <p>The teams that succeed do something different. They put a protocol-agnostic edge runtime in front of every controller — one runtime that speaks every native protocol the floor uses today, normalizes signals to a canonical vocabulary at the edge, and publishes the normalized stream once for every downstream system that wants it. The SCADA stays. The historian stays. The MES stays. The integration tax goes down. That's what this page is about.</p>
+        <p class="pullquote">"The SCADA stays. The historian stays. The MES stays. The integration tax goes down."</p>
+      </div>
+    </section>
+
+    <!-- §3 HOW ELPIS SOLVES THIS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW ELPIS SOLVES THIS</span></div>
+        <div class="callout">
+          <p><strong>How this differs from per-vendor monitoring tools.</strong> Per-vendor monitoring tools (FANUC NCStudio, Mazak SmartBox, Brother BCMS, Siemens TIA, etc.) each work — for the vendor they ship with. They each speak vendor-specific vocabulary, have their own UI conventions, and report on their own schedule. Edge Connectivity puts a protocol-agnostic edge runtime in front of every vendor at once, normalizes signals to <strong>canonical CNC vocabulary at the edge</strong>, and publishes that normalized stream once for every downstream system that needs it. <strong>Same FANUC, same Mazak, same Brother, same S7. Same operations team. One canonical vocabulary across them all.</strong> The per-vendor tools stay where they are; Elpis adds the cross-vendor layer.</p>
+        </div>
+        <div class="lead-p"><strong>Polls every controller in its native protocol.</strong><span>EdgeConnect is a protocol-agnostic edge runtime that connects to existing controllers over FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, and S7 — today. FANUC MT-LINKi REST integration is on the roadmap. No per-machine custom scripting. No per-vendor middleware. The runtime owns the protocol; the operations team owns the configuration. See the underlying capability story → <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a>. For the full protocol matrix with semantic modes and security profile detail, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>.</span></div>
+        <div class="lead-p"><strong>Normalizes to canonical vocabulary at the edge.</strong><span>Every signal — spindle load, axis position, alarm state, program ID, cycle time — arrives at every sink in the same canonical CNC shape, regardless of which controller produced it. A FANUC alarm code, a Mazak alarm code, a Brother alarm code, and a Siemens S7 alarm bit all surface as the same canonical Alarm State — same shape, same severity vocabulary, same downstream consumer code path. Vendor-specific cycle-time signals collapse the same way into a canonical Cycle Time. The SCADA reads canonical signals. The historian archives canonical signals. EREMOS V2 computes OEE on canonical signals. The MES consumes canonical signals. Reports stop drifting across systems because every system reads the same vocabulary.</span></div>
+        <p class="anchor-line">The next controller added to your floor should not require a new monitoring stack.</p>
+        <div class="lead-p"><strong>Publishes once, fans out to every downstream consumer.</strong><span>Store-and-forward per-route buffering means no lost cycles during broker outages or maintenance windows. Three-way diagnostics — source / pipeline / sink — surface immediately when the data path breaks, so the OT team knows which leg failed before the production team feels the symptom. Hash-chained configuration audit captures every change with actor identity and timestamp.</span></div>
+        <div class="lead-p"><strong>Deploys per plant, on the shape that fits the floor.</strong><span>EdgeConnect deploys <strong style="display:inline">per plant</strong>, never as one runtime across multiple plants — per-gateway identity established at first start protects plant-level isolation and offline operability. Multi-site visibility comes from EREMOS V2 aggregating across the per-plant runtimes, not from a multi-plant EdgeConnect. The same canonical vocabulary surfaces across every plant; the multi-site story stays clean. This is the <strong style="display:inline">Operational Intelligence</strong> capability → <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a>.</span></div>
+
+        <div class="section-head" style="margin-top:var(--space-8);"><span class="eyebrow">THREE DEPLOYMENT SHAPES</span><h3 class="section-title">Choose the deployment shape that fits each plant.</h3></div>
+        <div class="deploy-cards">
+          <div class="deploy-card">
+            <h3>Software-only</h3>
+            <dl>
+              <dt>WHEN IT FITS</dt>
+              <dd>Sites with existing Windows infrastructure where running EdgeConnect on customer-owned hardware fits the operations team's preferences.</dd>
+              <dt>WHAT'S DEPLOYED</dt>
+              <dd>EdgeConnect runtime on customer Windows + EREMOS V2.</dd>
+              <dt>EDGECONNECT TODAY</dt>
+              <dd>Windows service running on customer-owned infrastructure.</dd>
+              <dt>HARDWARE FOOTPRINT</dt>
+              <dd>Software-only.</dd>
+            </dl>
+          </div>
+          <div class="deploy-card">
+            <h3>Edge Gateway appliance</h3>
+            <dl>
+              <dt>WHEN IT FITS</dt>
+              <dd>Sites that prefer a ruggedized turnkey appliance — DIN-rail mount, embedded Linux, built-in 4G + Wi-Fi + Ethernet, USB firmware updates.</dd>
+              <dt>WHAT'S DEPLOYED</dt>
+              <dd><a class="pillar-link" href="edge-gateway">Edge Gateway</a> appliance (standalone PLC-to-cloud today; canonical EdgeConnect appliance once Linux ships) + EREMOS V2.</dd>
+              <dt>EDGECONNECT TODAY</dt>
+              <dd>Edge Gateway ships standalone today with built-in Modbus TCP + cellular publish. EdgeConnect Linux is near-term roadmap — when it ships, it deploys on Edge Gateway as the canonical EdgeConnect appliance, same hardware.</dd>
+              <dt>HARDWARE FOOTPRINT</dt>
+              <dd>Appliance per plant (200 × 150 × 75 mm rugged enclosure, 24 V DC).</dd>
+            </dl>
+          </div>
+          <div class="deploy-card">
+            <h3>Hybrid (multi-site)</h3>
+            <dl>
+              <dt>WHEN IT FITS</dt>
+              <dd>Multi-plant operators standardizing across diverse plant topologies — software-only on some plants, appliance on others, all per-plant runtimes feeding one EREMOS V2 tenant.</dd>
+              <dt>WHAT'S DEPLOYED</dt>
+              <dd>Per-plant mix: EdgeConnect (Windows) or Edge Gateway (appliance), each with its own per-gateway identity.</dd>
+              <dt>EDGECONNECT TODAY</dt>
+              <dd>Whichever runtime fits each plant; multi-site identity reconciled in EREMOS V2.</dd>
+              <dt>HARDWARE FOOTPRINT</dt>
+              <dd>Per-plant choice.</dd>
+            </dl>
+          </div>
+        </div>
+        <p class="deploy-note">The deployment shape is decided <strong>per plant, not per fleet</strong>. A multi-site operator can run software-only EdgeConnect in one plant, the Edge Gateway appliance in another, and either in a third — all reporting into one EREMOS V2 instance with consistent canonical vocabulary, OEE definitions, and alarm semantics across every site. The shape changes per plant; the operational story stays the same. And the Edge Gateway's dual identity matters at procurement time: the same hardware that solves today's standalone PLC-to-cloud need becomes tomorrow's canonical EdgeConnect appliance once Linux ships — reducing platform migration friction as deployments evolve, and reducing the need to maintain customer-owned Windows infrastructure on plants that prefer a turnkey appliance.</p>
+      </div>
+    </section>
+
+    <!-- §4 WHAT'S INCLUDED -->
+    <section class="section" data-mode="light" aria-labelledby="incl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT'S INCLUDED</span></div>
+        <div class="incl-grid">
+          <div>
+            <h3>From the Edge Layer</h3>
+            <h4>EdgeConnect (the protocol-agnostic edge runtime, Windows today)</h4>
+            <ul>
+              <li><strong>Protocol coverage today:</strong> FOCAS2, MTConnect, Brother HTTP, Modbus TCP, OPC UA Client, S7. <strong>On the roadmap:</strong> FANUC MT-LINKi REST integration. For the full protocol matrix with semantic modes + security profiles, see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>.</li>
+              <li><strong>Canonical CNC vocabulary at the edge</strong> — every signal arrives at every sink in the same shape regardless of which controller produced it.</li>
+              <li><strong>Publishes to MQTT, exposes via OPC UA Server, publishes to HTTP/TCP</strong> — multiple downstream consumers from one normalized stream.</li>
+              <li><strong>Per-route store-and-forward buffering</strong> — no lost cycles during broker outages or maintenance windows.</li>
+              <li><strong>Three-way diagnostics</strong> — source / pipeline / sink health surfaced separately, so the OT team knows which leg failed before production feels the symptom.</li>
+              <li><strong>Hash-chained configuration audit</strong> — every change captured with actor identity and timestamp; tamper-evident, replay-ready.</li>
+            </ul>
+            <p class="deploy-note">EdgeConnect ships as a Windows service today. The Linux runtime is near-term roadmap; when it ships, it deploys on the Edge Gateway appliance as the canonical EdgeConnect appliance. The Edge Gateway appliance ships today standalone with built-in Modbus TCP + cellular publish — it grows into the broader EdgeConnect platform path on the same hardware once Linux ships.</p>
+            <h4>Edge Gateway (ruggedized appliance, optional — software-only is fully supported)</h4>
+            <ul>
+              <li><strong>Ruggedized industrial gateway</strong> running embedded Linux — 256 MB RAM, 2 GB Flash, 24 V DC, 200 × 150 × 75 mm rugged enclosure.</li>
+              <li><strong>Built-in Modbus TCP server/client</strong> (today, standalone).</li>
+              <li><strong>4G + Wi-Fi + Ethernet</strong> connectivity with USB firmware updates.</li>
+              <li><strong>Web-configurable</strong> — DIN-rail mount, no separate industrial PC required.</li>
+              <li><strong>Dual identity:</strong> today a standalone PLC-to-cloud gateway. Tomorrow, once EdgeConnect Linux ships, the canonical <a class="pillar-link" href="edge-gateway">EdgeConnect appliance</a> — same hardware, two lifecycles.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>From EREMOS V2 (consuming the canonical stream)</h3>
+            <ul>
+              <li><strong>Multi-tenant analytics</strong> — per-plant signals arrive at per-tenant scope; multi-site visibility from one <a class="pillar-link" href="eremos-v2">EREMOS V2</a> instance across per-plant EdgeConnect runtimes.</li>
+              <li><strong>OEE computed on canonical signals</strong> — same OEE math across every plant + every shift + every vendor controller.</li>
+              <li><strong>Persistent alarms with incident workflows</strong> — alarm → triage → assigned-to → resolution → closure, with operator notes at each step.</li>
+              <li><strong>Customer-controlled cloud connectivity</strong> — opt-in, not required. Plants on isolated OT VLANs install and run the platform the same way as plants with internet.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 COMMON QUESTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What OT Architects ask before scoping a brownfield consolidation.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">Does this replace our SCADA?</p><p class="faq__a">No. EdgeConnect and EREMOS V2 sit beside your SCADA — they don't take over operator HMIs, control logic, or alarm acknowledgment workflows. SCADA stays where it is; Elpis adds the cross-vendor canonical-vocabulary layer and consolidates protocol coverage so your downstream systems (SCADA, historian, MES) receive consistent canonical signals regardless of which controller produced them.</p></div>
+          <div class="faq__item"><p class="faq__q">Can EdgeConnect run on Linux today?</p><p class="faq__a">Today, EdgeConnect ships as a Windows service. Linux is near-term roadmap — when it ships, it deploys on the Edge Gateway appliance as the canonical EdgeConnect appliance. For Linux-required customers today, the Edge Gateway hardware handles the most common protocol bridging via its embedded Linux runtime — but in standalone PLC-to-cloud mode (built-in Modbus TCP + cellular publish), not yet as an EdgeConnect runtime (which arrives when EdgeConnect Linux ships). Both paths are supported; neither is a prerequisite for the other.</p></div>
+          <div class="faq__item"><p class="faq__q">Can one EdgeConnect deployment serve multiple plants?</p><p class="faq__a">No — that's an anti-pattern, and Elpis explicitly doesn't recommend it. Each plant runs its own EdgeConnect (Windows service or Edge Gateway appliance) with a per-gateway UUID established at first start. Multi-site visibility comes from EREMOS V2 aggregating across the per-plant runtimes — not from a single multi-plant EdgeConnect runtime. This protects plant-level isolation, per-site identity, and offline operability per plant.</p></div>
+          <div class="faq__item"><p class="faq__q">What protocols are covered today vs roadmap?</p><p class="faq__a">Today: FOCAS2 (FANUC CNCs), MTConnect (CNC standard), Brother HTTP (Brother CNCs), Modbus TCP (general industrial), OPC UA Client (broad industrial), and S7 (Siemens). On the roadmap: FANUC MT-LINKi REST integration (FANUC robotics / line-monitoring via MT-LINKi's REST API on port 3000). Each shipped protocol ships with semantic-mode coverage appropriate to the controller class — for the full matrix (semantic modes, security profiles, integration test patterns, OPC UA Server security mode detail), see <a class="pillar-link" href="edgeconnect">/edgeconnect</a>. Roadmap protocols are scoped during the architecture review based on the controller mix you bring.</p></div>
+          <div class="faq__item"><p class="faq__q">How do we integrate with our existing historian or MES?</p><p class="faq__a">EdgeConnect publishes to MQTT and exposes signals via OPC UA Server. EREMOS V2 publishes incident records and OEE rollups via REST API. Your historian (whether time-series database like InfluxDB / TimescaleDB or enterprise historian) consumes from the OPC UA Server or the MQTT stream. Your MES consumes EREMOS V2's rollups via API or webhook. <strong>Beside, not replacing</strong> — both your historian and your MES stay where they are; they consume canonical signals instead of vendor-specific ones. For the full integration-patterns walkthrough, see <a class="pillar-link" href="architecture">/architecture</a> §3.6.</p></div>
+          <div class="faq__item"><p class="faq__q">What happens when the network drops?</p><p class="faq__a">Per-route store-and-forward. Every signal queues at the source with its quality code preserved. When connectivity returns, signals replay in source order — no lost cycles, no manual recovery step. Three-way diagnostics (source / pipeline / sink) surface immediately during the outage so the OT team can see exactly which path was affected. Plants on isolated OT VLANs operate the same way; the cloud connectivity is opt-in, not required.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 OUTCOMES -->
+    <section class="section" data-mode="dark" aria-labelledby="out-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow eyebrow--teal">OUTCOMES YOU CAN HOLD US TO</span><h2 id="out-heading" class="section-title">What changes when this lands.</h2></div>
+        <ul class="out-grid">
+          <li><strong>One operational view across every controller on your floor</strong> — FANUC, Mazak, Brother, Siemens, generic Modbus, OPC UA endpoints — speaking the same canonical CNC vocabulary at every downstream system</li>
+          <li><strong>Cut per-vendor monitoring tool sprawl</strong> — the per-vendor tools stay where they are; Elpis adds the cross-vendor layer so the operations team works against one consistent view, not three or four reconciled-by-hand reports</li>
+          <li><strong>Cut custom protocol scripting and the firmware-update tax</strong> — the protocol-agnostic edge runtime owns the protocol drivers; operations doesn't rewrite scripts every time a vendor pushes a firmware update</li>
+          <li><strong>Multi-site canonical consistency</strong> — every plant's EdgeConnect runtime produces signals in the same canonical CNC shape; cross-site reports stop drifting because every site reads the same vocabulary</li>
+          <li><strong>Per-gateway identity from day one</strong> — multi-site fleets have unambiguous per-plant identity from first start; acquisitions, divestitures, plant transfers, name changes survive the identity model unchanged</li>
+          <li><strong>No new monitoring stack for SCADA-running plants</strong> — your SCADA, historian, and MES stay where they are; they consume canonical signals via OPC UA Server / MQTT / API instead of vendor-specific ones</li>
+          <li><strong>Audit-ready configuration history</strong> — every protocol-driver enable, every routing change, every threshold edit captured with actor identity and timestamp; tamper-evident, replay-ready</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 ARCHITECTURE FOR THIS SOLUTION -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="arch-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">ARCHITECTURE FOR THIS SOLUTION</span><h2 id="arch-heading" class="section-title">How the pieces compose for edge connectivity.</h2></div>
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 170" width="100%" role="img" aria-label="Mixed-vendor controllers (FANUC, Mazak, Brother, Siemens, generic Modbus, OPC UA) feed the EdgeConnect runtime over native protocols; canonical CNC vocabulary streams to EREMOS V2 (OEE, alarms, multi-tenant); SCADA/historian/MES sit beside, fed by the canonical stream, not replaced.">
+            <defs><marker id="ec-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <rect x="8" y="40" width="180" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">Mixed-vendor floor</text>
+            <text x="98" y="88" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">FANUC · Mazak · Brother</text>
+            <text x="98" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">Siemens · Modbus · OPC UA</text>
+            <text x="98" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">NATIVE PROTOCOLS</text>
+            <line x1="192" y1="85" x2="246" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#ec-arr)"/>
+            <rect x="250" y="34" width="214" height="102" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="357" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EdgeConnect</text>
+            <text x="357" y="82" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">protocol-agnostic edge runtime</text>
+            <text x="357" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">canonical vocab at the edge</text>
+            <text x="357" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">store-and-forward · 3-way diag</text>
+            <line x1="468" y1="85" x2="522" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#ec-arr)"/>
+            <text x="495" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#00A0E0">CANONICAL</text>
+            <rect x="526" y="34" width="200" height="102" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="626" y="66" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">EREMOS V2</text>
+            <text x="626" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">OEE · alarms · incidents</text>
+            <text x="626" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">multi-tenant · per-plant</text>
+            <line x1="730" y1="85" x2="784" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#ec-arr)"/>
+            <rect x="788" y="40" width="184" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="880" y="74" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13.5" fill="#0F1419">SCADA / historian / MES</text>
+            <text x="880" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">BESIDE, NOT REPLACING</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">For edge connectivity, Col 2 is the EdgeConnect peer; the Acquisition peer (mDAQ + mTracker + VAS + E-IDOS) is not required for this solution. Each plant runs its own EdgeConnect runtime with per-gateway UUID; multi-plant visibility comes from EREMOS V2, not a multi-plant EdgeConnect. See the full peer-architecture story → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §8 TRUST CUE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span></div>
+        <div class="trust-cue"><p><strong>Offline-first operation, including air-gapped plants.</strong> EdgeConnect runs offline by default. License validates locally — no phone-home. Cloud connectivity is opt-in, not required. Plants on isolated OT VLANs install and run the platform the same way as plants with internet access. Per-route store-and-forward survives connectivity gaps without losing source ordering.</p></div>
+        <div class="trust-cue"><p><strong>Per-gateway identity + hash-chained configuration audit.</strong> Each plant runs its own EdgeConnect runtime with a per-gateway UUID established at first start. Hash-chained configuration audit captures every change (protocol-driver enables, routing changes, threshold edits) with actor identity and timestamp — tamper-evident, replay-ready. Acquisitions, divestitures, plant transfers, name changes — the identity model survives them all.</p></div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §9 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities-connectivity-edge"><span class="eyebrow">CAPABILITY · CONNECTIVITY &amp; EDGE</span><span class="cl-desc">The underlying capability — EdgeConnect + Edge Gateway as Pillar 1.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Back to the full solutions directory.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your controller mix. We'll scope the deployment shape.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're scoping a brownfield CNC retrofit, a mixed-vendor consolidation, a greenfield install with existing PLC infrastructure, or a multi-site standardization across diverse plant topologies — bring us the controller list, the existing-systems boundary (SCADA / historian / MES coexistence), and the per-plant deployment-shape preferences. Architecture review runs against real protocols and real integration patterns, not slideware.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Edge%20Connectivity%20scoping%20call" class="btn btn--primary btn--lg">Bring us your controller mix <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

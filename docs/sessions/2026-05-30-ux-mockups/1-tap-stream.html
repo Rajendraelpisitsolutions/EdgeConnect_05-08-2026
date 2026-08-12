@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Live Data Tap (Stream mode)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Diagnostics</a> / Live Data Tap</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">📡</div>
+        <div>
+            <h1>Live Data Tap</h1>
+            <div class="subtitle">
+                Observe what's flowing through a route in real time. Source-side captures
+                (what the route received from the source, <em>before</em> pipeline transforms)
+                on the left; sink-side captures (what each sink received) on the right.
+                Demand-driven — capture starts only while this page is open, stops 60 s
+                after you leave.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — Stream mode (1 of 3 modes).</strong> Sister pages:
+        <a href="2-tap-compare.html">Compare</a> ·
+        <a href="3-tap-inspect.html">Inspect</a>.
+        This is the live debugging view — paired columns scrolling as data arrives.
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <label>
+                <span style="font-size: 12px; color: #757575; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 8px;">Route</span>
+                <select class="select">
+                    <option>OPCCli2OPCServ &nbsp;·&nbsp; OPC-UA-Cli → OPC-UA-Ser</option>
+                    <option>ModbusSim2OPCUA &nbsp;·&nbsp; Modbus-sim → OPC-UA-Ser</option>
+                    <option>ModbusSim2MqttEREMOS &nbsp;·&nbsp; Modbus-sim → MQTT-EREMOS</option>
+                    <option>route-Modbus-sim1 &nbsp;·&nbsp; Modbus-sim1 → MQTT-EREMOS1</option>
+                </select>
+            </label>
+
+            <div class="btn-group" style="margin-left: 12px;">
+                <button class="btn active">Stream</button>
+                <button class="btn">Compare</button>
+                <button class="btn">Inspect</button>
+            </div>
+
+            <div class="spacer"></div>
+
+            <span class="chip chip-success">
+                <span class="dot dot-green"></span>
+                Capturing
+            </span>
+            <button class="btn btn-outlined">⏸ Pause</button>
+            <button class="btn btn-text">⤓ Snapshot</button>
+        </div>
+
+        <div class="split">
+            <div>
+                <div class="split-header">
+                    <span>SOURCE-SIDE &nbsp; <code style="background:transparent">OPC-UA-Cli</code></span>
+                    <span style="font-size: 11px; font-weight: normal; color: #757575;">
+                        captured: 18,432 · last: 84 ms ago
+                    </span>
+                </div>
+                <div class="stream-list">
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.340 · device · ns=2;s=Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>18</strong> &nbsp; quality: Good &nbsp; type: Integer</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.320 · device · ns=2;s=Tag14</div>
+                        <div class="tag-name">Tag14</div>
+                        <div class="value">value: <strong>0.7245</strong> &nbsp; quality: Good &nbsp; type: Float</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.310 · device · ns=2;s=Tag18</div>
+                        <div class="tag-name">Tag18</div>
+                        <div class="value">value: <strong>true</strong> &nbsp; quality: Good &nbsp; type: Boolean</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.290 · device · ns=2;s=Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>17</strong> &nbsp; quality: Good &nbsp; type: Integer</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.280 · device · ns=2;s=Tag16</div>
+                        <div class="tag-name">Tag16</div>
+                        <div class="value">value: <strong>2.0</strong> &nbsp; quality: Good &nbsp; type: Float</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.270 · device · ns=2;s=Tag13</div>
+                        <div class="tag-name">Tag13</div>
+                        <div class="value">value: <strong>"alpha"</strong> &nbsp; quality: Good &nbsp; type: String</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.260 · device · ns=2;s=Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>16</strong> &nbsp; quality: Good &nbsp; type: Integer</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="split-header">
+                    <span>SINK-SIDE &nbsp; <code style="background:transparent">OPC-UA-Ser</code></span>
+                    <span style="font-size: 11px; font-weight: normal; color: #757575;">
+                        captured: 18,432 · last: 52 ms ago · latency: ~30 ms
+                    </span>
+                </div>
+                <div class="stream-list">
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.370 · gateway · scada/OPC-UA-Cli/Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>18</strong> &nbsp; quality: Good &nbsp; ns=2;s=&lt;gatewayId&gt;/OPC-UA-Cli/Tag11</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.350 · gateway · scada/OPC-UA-Cli/Tag14</div>
+                        <div class="tag-name">Tag14</div>
+                        <div class="value">value: <strong>0.7245</strong> &nbsp; quality: Good</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.340 · gateway · scada/OPC-UA-Cli/Tag18</div>
+                        <div class="tag-name">Tag18</div>
+                        <div class="value">value: <strong>true</strong> &nbsp; quality: Good</div>
+                    </div>
+                    <div class="stream-point">
+                        <div class="timestamp">10:53:01.320 · gateway · scada/OPC-UA-Cli/Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>17</strong> &nbsp; quality: Good</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.310 · gateway · scada/OPC-UA-Cli/Tag16</div>
+                        <div class="tag-name">Tag16</div>
+                        <div class="value">value: <strong>2.0</strong> &nbsp; quality: Good</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.300 · gateway · scada/OPC-UA-Cli/Tag13</div>
+                        <div class="tag-name">Tag13</div>
+                        <div class="value">value: <strong>"alpha"</strong> &nbsp; quality: Good</div>
+                    </div>
+                    <div class="stream-point dimmed">
+                        <div class="timestamp">10:53:01.290 · gateway · scada/OPC-UA-Cli/Tag11</div>
+                        <div class="tag-name">Tag11</div>
+                        <div class="value">value: <strong>16</strong> &nbsp; quality: Good</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-help">
+        <span><strong>Capture:</strong> bounded ring 1,000 pts per side, per sink. Oldest silently evicted on insert.</span>
+        <span><strong>Sampling:</strong> off — current rate (~5 pts/sec) is below the 1K/sec threshold.</span>
+        <span><strong>Privacy:</strong> sensitive-tagged values are <span class="masked">***</span>.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Per-gateway sidecar for sample-fanuc.csv (smoke fixture).
+gatewayId: "00000000-0000-0000-0000-000000000001"
+gatewayName: "edge-acme-site-a"
+gatewayProvisioningId: "11111111-1111-1111-1111-111111111111"
+fleetId: "fleet-acme"
+site: "site-a"
+mqttHost: "127.0.0.1"
+mqttPort: 1883
+mqttQos: 1
+mqttClientIdPrefix: "edge-acme"

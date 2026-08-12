@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Add MTConnect source (semantic onboarding wizard)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+    <style>
+        /* page-local: stepper + the semantic-tag rows */
+        .stepper { display:flex; gap:8px; align-items:center; margin: 4px 0 18px 0; font-size:13px; }
+        .stepper .step { display:flex; align-items:center; gap:6px; color:#9e9e9e; }
+        .stepper .step.active { color:#1976d2; font-weight:500; }
+        .stepper .step.done { color:#2e7d32; }
+        .stepper .num { width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+                        font-size:11px; border:1px solid currentColor; }
+        .stepper .sep { flex:1; height:1px; background:#e0e0e0; max-width:48px; }
+
+        .form-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+        .form-field { display:flex; flex-direction:column; gap:4px; }
+        .form-field label { font-size:12px; color:#424242; font-weight:500; }
+        .form-field .hint { font-size:11px; color:#9e9e9e; }
+
+        .tag-row td { vertical-align:middle; }
+        .tag-row.unavail code, .tag-row.unavail td { color:#9e9e9e; }
+        .tag-name { font-family:'Roboto Mono', monospace; font-size:12px; }
+        .src-type { font-size:11px; color:#757575; }
+        .pill { font-size:11px; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+        .pill-ok { background:#e8f5e9; color:#2e7d32; }
+        .pill-off { background:#f5f5f5; color:#9e9e9e; border:1px solid #e0e0e0; }
+        .axis-chip { display:inline-block; font-family:'Roboto Mono',monospace; font-size:12px;
+                     background:#e3f2fd; color:#1565c0; padding:2px 10px; border-radius:10px; margin:0 6px 6px 0; }
+        .state-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .state-card { border:1px solid #e0e0e0; border-radius:8px; padding:14px; }
+        .state-card h3 { font-size:13px; margin:0 0 8px 0; font-weight:500; }
+        .save-bar { position:sticky; bottom:0; background:white; border-top:1px solid #e0e0e0;
+                    margin:20px -24px -24px; padding:14px 24px; display:flex; align-items:center; gap:14px; }
+        .info-line { font-size:12px; color:#757575; }
+        .summary { background:#fafafa; border:1px solid #eee; border-radius:8px; padding:12px 14px; font-size:13px; line-height:1.7; }
+        .summary code { font-size:12px; }
+    </style>
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Sources</a> / <a href="#">Add source</a> / MTConnect</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">🔌</div>
+        <div>
+            <h1>Add MTConnect source</h1>
+            <div class="subtitle">
+                EdgeConnect maps an MTConnect agent to the <strong>same canonical CNC tags</strong> as every
+                other machine protocol (<code>status/run_state</code>, <code>spindle/speed</code>, …). You don't
+                pick individual dataItems — connect, and the wizard shows exactly which standard tags this agent
+                can produce.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — MTConnect onboarding wizard (M.2b.4, sub-milestone M1 sign-off gate).</strong>
+        FOCAS2-style <em>semantic</em> onboarding, not an OPC-UA-style dataItem picker. The wizard exposes the
+        adapter's fixed semantic tag map, enriched by <code>/probe</code> only to make it accurate for the
+        connected agent (real axis names, grey-out of tags this agent doesn't expose). Plan v2 is the source of
+        truth. This page shows the happy path + every error/edge state for sign-off.
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper">
+        <span class="step done"><span class="num">✓</span> Connect</span>
+        <span class="sep"></span>
+        <span class="step active"><span class="num">2</span> Discover &amp; review</span>
+        <span class="sep"></span>
+        <span class="step"><span class="num">3</span> Save</span>
+    </div>
+
+    <!-- Step 1 recap (connection) -->
+    <div class="card">
+        <div class="card-title">1 · Connection</div>
+        <div class="form-row">
+            <div class="form-field" style="min-width:340px;">
+                <label>Agent base URL</label>
+                <input class="select" type="text" value="http://mazak-vcn.shopfloor.local:5000" style="width:340px;">
+                <span class="hint">The MTConnect agent root. The wizard calls <code>/probe</code> (capability) here.</span>
+            </div>
+            <div class="form-field">
+                <label>Device name <span style="font-weight:400;color:#9e9e9e;">(optional)</span></label>
+                <input class="select" type="text" value="VCN-530C" style="width:160px;">
+                <span class="hint">Blank = first device. One source per device — add others separately.</span>
+            </div>
+            <div class="form-field">
+                <label>Source name</label>
+                <input class="select" type="text" value="mazak-vcn-1" style="width:160px;">
+                <span class="hint">Instance id in EdgeConnect.</span>
+            </div>
+        </div>
+        <button class="btn btn-filled" style="text-transform:none;">↻ Test &amp; discover</button>
+        <span class="info-line" style="margin-left:10px;">Probe budget: 10 s. Nothing is saved yet.</span>
+    </div>
+
+    <!-- Step 2: discover result (HAPPY PATH) -->
+    <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div class="card-title" style="margin:0;">2 · What this agent will produce</div>
+            <button class="btn btn-text" style="text-transform:none;">↻ Refresh discovery</button>
+        </div>
+
+        <div class="banner banner-success" style="margin:12px 0 8px;">
+            <span class="banner-icon">✅</span>
+            <span class="banner-text">
+                <strong>Agent reachable.</strong> Device <strong>VCN-530C</strong> (Mazak) —
+                <strong>10 of 12</strong> standard tags available, <strong>4 axes</strong> discovered.
+                "Available" means the agent <em>exposes</em> the source dataItem in <code>/probe</code>; live
+                values appear once the source is running.
+            </span>
+        </div>
+
+        <div class="info-line" style="margin-bottom:14px;">
+            🗂️ <strong style="color:#424242;">2 devices</strong> in this agent's <code>/probe</code> —
+            onboarding <strong>VCN-530C</strong> (chosen in "Device name"). Add the other device as its own source.
+            Re-probe anytime with <strong>Refresh discovery</strong>.
+        </div>
+
+        <div style="margin-bottom:6px;"><strong style="font-size:13px;">Discovered axes</strong>
+            <span class="info-line">— from <code>Linear</code>/<code>Rotary</code> components; 2 position tags each (actual + machine):</span></div>
+        <div style="margin-bottom:16px;">
+            <span class="axis-chip">X</span><span class="axis-chip">Y</span><span class="axis-chip">Z</span><span class="axis-chip">A</span>
+            <span class="info-line">→ <code>axes/x/absolute</code>, <code>axes/x/machine</code>, … (8 position tags)</span>
+        </div>
+
+        <strong style="font-size:13px;">Standard semantic tags</strong>
+        <table class="data-table" style="margin-top:8px;">
+            <thead><tr><th>Canonical tag</th><th>From dataItem</th><th style="text-align:right">Status</th></tr></thead>
+            <tbody>
+                <tr class="tag-row"><td><span class="tag-name">status/run_state</span></td><td class="src-type">Execution</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">status/controller_mode</span></td><td class="src-type">ControllerMode</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">status/emergency_stop</span></td><td class="src-type">EmergencyStop</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">program/main_program</span></td><td class="src-type">Program</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">program/running_program</span></td><td class="src-type">Program</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">spindle/speed</span></td><td class="src-type">SpindleSpeed / RotaryVelocity</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row unavail"><td><span class="tag-name">spindle/load</span></td><td class="src-type">Load (spindle)</td><td style="text-align:right"><span class="pill pill-off" title="No Load dataItem on a Rotary/spindle component">Not exposed by this agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">axes/feed_rate</span></td><td class="src-type">PathFeedrate</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">production/parts_count</span></td><td class="src-type">PartCount</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row unavail"><td><span class="tag-name">production/cycle_time</span></td><td class="src-type">— (no cycle-time dataItem)</td><td style="text-align:right"><span class="pill pill-off" title="Agent exposes no process-timer dataItem">Not exposed by this agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">alarms/count</span></td><td class="src-type">Condition (Fault)</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+                <tr class="tag-row"><td><span class="tag-name">alarms/first_fault</span></td><td class="src-type">Condition (Fault)</td><td style="text-align:right"><span class="pill pill-ok">Exposed by agent</span></td></tr>
+            </tbody>
+        </table>
+
+        <div class="banner banner-info" style="margin-top:14px;">
+            <span class="banner-icon">ℹ️</span>
+            <span class="banner-text">
+                <strong>Conditions are handled automatically.</strong> MTConnect <code>Condition</code> items
+                (Normal / Warning / Fault) aren't individual tags — the adapter aggregates them into
+                <code>alarms/count</code> and <code>alarms/first_fault</code>. There's nothing to select.
+            </span>
+        </div>
+    </div>
+
+    <!-- Step 3: review + save -->
+    <div class="card" style="padding-bottom:0;">
+        <div class="card-title">3 · Review &amp; save</div>
+        <div class="summary">
+            Agent reachable · Device: <strong>VCN-530C</strong> (Mazak)<br>
+            Standard tags active: <strong>10</strong>
+            <span class="info-line">(2 shown, not activated: <code>spindle/load</code>, <code>production/cycle_time</code> — not exposed by this agent)</span><br>
+            Axis tags: <strong>8</strong> <span class="info-line">(X, Y, Z, A &times; actual + machine)</span><br>
+            <strong style="font-size:14px;">Total active tags: 10 standard + 8 axis = 18</strong><br>
+            Conditions: mapped automatically to <code>alarms/count</code> and <code>alarms/first_fault</code>
+        </div>
+        <div class="info-line" style="margin-top:10px;">
+            Tags this agent doesn't expose are <strong>shown for transparency but not activated</strong> — they
+            are not collected and are not part of the source's active tag set (no empty tags are created). Saving
+            goes through the normal <strong>draft → validate → apply</strong> flow.
+        </div>
+        <div class="save-bar">
+            <button class="btn btn-filled" style="text-transform:none;">✓ Save source</button>
+            <label class="info-line" style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" checked style="width:16px;height:16px;"> Also create a route after saving
+            </label>
+            <button class="btn btn-text">Cancel</button>
+            <div class="spacer" style="flex:1;"></div>
+            <span class="info-line"><strong>18 active tags</strong> (10 standard + 8 axis) will be collected.</span>
+        </div>
+    </div>
+
+    <!-- Edge / error states (for sign-off) -->
+    <h2 style="font-size:15px;font-weight:500;margin:26px 0 12px;">Discover — error &amp; edge states (sign-off)</h2>
+    <div class="state-grid">
+        <div class="state-card">
+            <h3>Agent unreachable</h3>
+            <div class="banner banner-warning" style="margin:0;">
+                <span class="banner-icon">⛔</span>
+                <span class="banner-text"><strong>Couldn't reach the agent.</strong> Connection refused at
+                    <code>mazak-vcn.shopfloor.local:5000</code>. Check the URL, port, and that the MTConnect
+                    agent is running. <span class="info-line">(status: Unreachable)</span></span>
+            </div>
+        </div>
+        <div class="state-card">
+            <h3>Probe timed out</h3>
+            <div class="banner banner-warning" style="margin:0;">
+                <span class="banner-icon">⏱️</span>
+                <span class="banner-text"><strong>No response within 10 s.</strong> The agent didn't return
+                    <code>/probe</code> in the probe budget. <span class="info-line">(status: Timeout)</span></span>
+            </div>
+        </div>
+        <div class="state-card">
+            <h3>Reachable, but nothing recognised</h3>
+            <div class="banner banner-warning" style="margin:0 0 10px;">
+                <span class="banner-icon">🟠</span>
+                <span class="banner-text"><strong>Agent reachable, but none of EdgeConnect's standard CNC tags
+                    are present.</strong> This agent's <code>/probe</code> exposes no Execution / Spindle /
+                    Position / … dataItems we map — the source would have <strong>0 active tags</strong>.
+                    <span class="info-line">(status: ReachableNoRecognisedTags)</span></span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-filled" disabled style="opacity:.5; cursor:not-allowed; text-transform:none;">✓ Save source</button>
+                <button class="btn btn-text" style="text-transform:none;">Save anyway</button>
+                <span class="info-line">Save is blocked until you confirm an empty source is intended.</span>
+            </div>
+        </div>
+
+        <div class="state-card">
+            <h3>Multiple devices in /probe</h3>
+            <div class="banner banner-info" style="margin:0;">
+                <span class="banner-icon">🗂️</span>
+                <span class="banner-text"><strong>This agent exposes 3 devices.</strong> EdgeConnect onboards
+                    <strong>one device per source</strong>. Choose the device in "Device name" (blank = the first
+                    in <code>/probe</code>); add the others as separate MTConnect sources.</span>
+            </div>
+        </div>
+        <div class="state-card">
+            <h3>Invalid / not an MTConnect agent</h3>
+            <div class="banner banner-warning" style="margin:0;">
+                <span class="banner-icon">⚠️</span>
+                <span class="banner-text"><strong>That URL didn't return a valid MTConnect <code>/probe</code>
+                    document.</strong> Got HTML / malformed XML instead of <code>&lt;MTConnectDevices&gt;</code>.
+                    <span class="info-line">(status: InvalidProbeDocument)</span></span>
+            </div>
+        </div>
+        <div class="state-card">
+            <h3>Unauthorized</h3>
+            <div class="banner banner-warning" style="margin:0;">
+                <span class="banner-icon">🔒</span>
+                <span class="banner-text"><strong>Agent requires authentication (401/403).</strong> MTConnect
+                    auth isn't configured for this source. <span class="info-line">(status: Unauthorized)</span></span>
+            </div>
+        </div>
+        <div class="state-card">
+            <h3>No axis components</h3>
+            <div class="banner banner-info" style="margin:0;">
+                <span class="banner-icon">🟦</span>
+                <span class="banner-text"><strong>No <code>Linear</code>/<code>Rotary</code> components found.</strong>
+                    Standard non-axis tags still apply; axis position tags are omitted for this device.
+                    <span class="info-line">(>12 axes are capped at 12.)</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-help">
+        <span><strong>Same tags everywhere.</strong> MTConnect produces the identical canonical CNC tags as FOCAS2 / Brother, so downstream MQTT topics are protocol-agnostic.</span>
+        <span><strong>Capability, not flow.</strong> <code>/probe</code> proves what the agent <em>can</em> emit; live values arrive once the source runs.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

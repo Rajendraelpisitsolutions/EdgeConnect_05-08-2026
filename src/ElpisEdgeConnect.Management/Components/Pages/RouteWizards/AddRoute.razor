@@ -1,0 +1,1290 @@
+@*
+    Add / Edit Route wizard (M.2b.5 / M.2d.3).
+
+    Add mode: all sections → POST draft.
+    Edit mode (M.2d.3 v2 §3): rendered by RouteEditRouter.
+       * EditMode + HydratedConfig parameters accepted; model hydrated
+         from existing route via RouteWizardModel.HydrateFromExisting.
+       * RouteId field disabled (immutable in Edit mode).
+       * Source change warning chip (Q4 plan decision): shows when
+         operator changes the source from the original value.
+       * Save → PUT /api/v1/routes/{routeId} (direct-apply).
+       * 409 VersionMismatch → StaleEditWarningBanner.
+
+    KEY ARCHITECTURE NOTES:
+      * Source picker: cards (≤10) auto-fall back to a filterable list
+        (>10) — see RenderSourcePicker. Search input above the cards
+        renders day-one, never retrofit.
+      * Destinations: multi-select checkboxes with state dots + protocol
+        chips. ≥1 required.
+      * Unified Deadband table: one row per tag with a Mode (Absolute |
+        Percent) radio. The runtime split into two dictionaries happens
+        inside RouteTransformsEditorModel.BuildTransformProfileConfig.
+      * Filter glob validation: composes Core's GlobMatcher.Compile via
+        the editor model — no parallel pattern parser (Locked N).
+      * Route id regex: composes Core's RegularExpressionAttribute via
+        RouteWizardModel.ValidateRouteId — no parallel pattern (Locked N).
+      * Auto-suggest "route-{sourceId}" with dirty bit — never overwrites
+        operator edits (Premium-UX commitment #4).
+      * EnrichmentTags deliberately omitted — DORMANT in Core, surfacing
+        it would mislead operators.
+
+    Reference: docs/sessions/2026-05-18-mp2b5-mp2b6-route-destination-wizards-plan-v3.md §3, §5
+               docs/sessions/2026-05-18-mp2b5-mp2b6-ux-mockups.md §1
+               docs/sessions/2026-05-26-m2d3-sink-route-editors-plan-v2.md §3
+*@
+@page "/routes/new"
+@using System.Net
+@using System.Text.Json
+@using ElpisEdgeConnect.Management.Contracts
+@using ElpisEdgeConnect.Management.Contracts.Config
+@using ElpisEdgeConnect.Management.Wizards
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") route · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+@* page-heading — the Studio-wide sticky heading band. This wizard is seven
+   sections tall; without it the operator scrolls past "Edit route — X" and
+   can no longer tell which route they are editing. *@
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    <MudTooltip Text="Back to routes">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/routes"))"
+                       Size="Size.Small"
+                       aria-label="Back to routes" />
+    </MudTooltip>
+    <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Medium" Color="Color.Primary" />
+    <div>
+        <MudText Typo="Typo.h5">@(_isEdit ? $"Edit route — {_model.RouteId}" : "Add a route")</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Wire a source's data into one or more destinations.
+        </MudText>
+    </div>
+</MudStack>
+
+@if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4">
+        <strong>Could not load current configuration.</strong> @_loadError
+    </MudAlert>
+}
+else if (_currentConfig is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @* ──── Section 1: Identity ──── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-3">1. Identity</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.RouteId"
+                              @bind-Value:after="OnRouteIdChanged"
+                              Label="@(_isEdit ? "Route id (immutable in Edit)" : "Route id *")"
+                              HelperText="@(_isEdit ? "Route id is immutable once the route exists. Delete and re-add to rename." : RouteIdHelperText)"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Disabled="@_isEdit" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="Name (optional)"
+                              HelperText="Display name in lists / tooltips. Leave blank to use the route id."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox @bind-Value="_model.Enabled" Color="Color.Primary" Dense="true">
+                    <MudText Typo="Typo.body2">
+                        Enabled
+                        <span style="opacity:0.6;"> — uncheck to create the route stopped.</span>
+                    </MudText>
+                </MudCheckBox>
+            </MudItem>
+        </MudGrid>
+        @if (_routeIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2" Dense="true">@_routeIdError</MudAlert>
+        }
+    </MudPaper>
+
+    @* ──── Section 2: Source ──── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section">
+        @* .grid-toolbar (site.css) — heading left, filter hard right, exactly as
+           Sources / Sinks / Routes do it. NOT a MudStack + MudSpacer: MudBlazor
+           gives .mud-input-control `flex: 1 1 auto`, so the field grows against
+           the spacer and settles at its own max-width — mid-strip, never at the
+           edge. A spacer cannot out-grow a sibling that also grows. The container
+           owns the split (`justify-content: space-between`), so no rule on the
+           field can undo it. Do not reintroduce the spacer. *@
+        <div class="grid-toolbar mb-3">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;">2. Source</MudText>
+            @if (HasAnyAvailableSource())
+            {
+                <MudTextField @bind-Value="_sourceSearch"
+                              Placeholder="Filter sources…"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Margin="Margin.Dense"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Class="grid-toolbar__filter" />
+            }
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Pick the source whose data this route delivers.
+        </MudText>
+        @* Q4 source-change warning chip — shown only when edit mode detects a source change *@
+        @if (_isEdit && !string.IsNullOrEmpty(_originalSourceInstanceId) &&
+             !string.Equals(_model.SourceInstanceId, _originalSourceInstanceId, StringComparison.Ordinal))
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-2"
+                      data-testid="source-change-warning">
+                <strong>Source changed from <code>@_originalSourceInstanceId</code>.</strong>
+                Any buffered data for the previous source will be discarded when this change is applied.
+            </MudAlert>
+        }
+        @if (!HasAnyAvailableSource())
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                No sources are configured.
+                <MudLink Href="/sources/new" Underline="Underline.Always">Add a source →</MudLink>
+                before creating a route.
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="2" role="radiogroup" aria-label="Source">
+                @foreach (var source in FilteredSources())
+                {
+                    var isSelected = string.Equals(_model.SourceInstanceId, source.InstanceId, StringComparison.Ordinal);
+                    var stateName = _sourceStates.TryGetValue(source.InstanceId, out var st) ? st : null;
+                    var cardStyle = SourceCardStyle(isSelected);
+                    var sourceId = source.InstanceId;
+                    <MudPaper Elevation="0"
+                              Class="pa-3"
+                              Style="@cardStyle"
+                              role="radio"
+                              aria-checked="@(isSelected ? "true" : "false")"
+                              tabindex="0"
+                              aria-label="@source.InstanceId"
+                              @onclick="@(() => SelectSource(sourceId))"
+                              @onkeydown="@(e => OnSourceCardKeyDown(e, sourceId))">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                            <MudIcon Icon="@(isSelected ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)"
+                                     Color="@(isSelected ? Color.Primary : Color.Default)" Size="Size.Small" />
+                            <div style="flex:1;">
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body1" Style="font-weight:500;">@source.InstanceId</MudText>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="text-transform:none;">
+                                        @source.ProtocolName
+                                    </MudChip>
+                                    @if (!source.Enabled)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">disabled</MudChip>
+                                    }
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @source.DeviceName · @source.DeviceClass
+                                </MudText>
+                            </div>
+                            @if (stateName is not null)
+                            {
+                                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@OperatorFormat.StateIcon(stateName)" Size="Size.Small" Color="@StateColor(stateName)" aria-hidden="true" />
+                                    <MudText Typo="Typo.caption">@stateName</MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                }
+                @if (!FilteredSources().Any() && !string.IsNullOrWhiteSpace(_sourceSearch))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">No sources match "@_sourceSearch".</MudText>
+                }
+            </MudStack>
+        }
+    </MudPaper>
+
+    @* ──── Section 3: Destinations ──── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section">
+        @* .grid-toolbar — same container-owns-the-split reasoning as section 2
+           above. The field carries no width of its own; .grid-toolbar__filter
+           sizes it by flex-basis so MudBlazor's own width rule cannot fight it. *@
+        <div class="grid-toolbar mb-3">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:500;">3. Destinations</MudText>
+            @if (HasAnyAvailableSink())
+            {
+                <MudTextField @bind-Value="_sinkSearch"
+                              Placeholder="Filter destinations…"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Margin="Margin.Dense"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Class="grid-toolbar__filter" />
+            }
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Pick one or more destinations. Every destination receives its own copy of the source's data.
+        </MudText>
+        @if (!HasAnyAvailableSink())
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                No destinations are configured.
+                <MudLink Href="/destinations/new" Underline="Underline.Always">Add a destination →</MudLink>
+                before creating a route.
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="1">
+                @foreach (var sink in FilteredSinks())
+                {
+                    var stateName = _sinkStates.TryGetValue(sink.InstanceId, out var st) ? st : null;
+                    var isChecked = _model.SinkInstanceIds.Contains(sink.InstanceId);
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="px-2 py-1">
+                        <MudCheckBox T="bool" Value="@isChecked"
+                                     ValueChanged="@(checkedValue => ToggleSink(sink.InstanceId, checkedValue))"
+                                     Dense="true" Color="Color.Primary" />
+                        <MudText Typo="Typo.body2" Style="font-weight:500; flex:0 0 auto;">@sink.InstanceId</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="text-transform:none;">
+                            @sink.ProtocolName
+                        </MudChip>
+                        @if (!sink.Enabled)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">disabled</MudChip>
+                        }
+                        @* A spacer IS the right tool here, unlike the filter strips
+                           above: this row holds a checkbox, a fixed-width label and
+                           chips — nothing that grows — so the spacer is the only
+                           flexible item and takes all the free space, pushing the
+                           state indicator to the edge. It fails only when a sibling
+                           also grows (a MudTextField does). *@
+                        <MudSpacer />
+                        @if (stateName is not null)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@OperatorFormat.StateIcon(stateName)" Size="Size.Small" Color="@StateColor(stateName)" aria-hidden="true" />
+                                <MudText Typo="Typo.caption">@stateName</MudText>
+                            </MudStack>
+                        }
+                    </MudStack>
+                }
+                @if (!FilteredSinks().Any() && !string.IsNullOrWhiteSpace(_sinkSearch))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">No destinations match "@_sinkSearch".</MudText>
+                }
+            </MudStack>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                Selected: @_model.SinkInstanceIds.Count destination@(_model.SinkInstanceIds.Count == 1 ? "" : "s")
+            </MudText>
+        }
+    </MudPaper>
+
+    @* ──── Section 4: Buffer ──── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4 wizard-section">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-3">4. Buffer</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            How the route holds data when a destination is unreachable.
+        </MudText>
+        <MudRadioGroup T="BufferMode" @bind-Value="_model.BufferMode">
+            <MudRadio T="BufferMode" Value="@BufferMode.StoreAndForward" Color="Color.Primary" Dense="true">
+                Store and forward
+                <span style="opacity:0.6;"> · durable, recommended</span>
+            </MudRadio>
+            <MudRadio T="BufferMode" Value="@BufferMode.InMemory" Color="Color.Primary" Dense="true">
+                In memory
+                <span style="opacity:0.6;"> · lossy on restart, lower latency</span>
+            </MudRadio>
+            <MudRadio T="BufferMode" Value="@BufferMode.None" Color="Color.Primary" Dense="true">
+                None
+                <span style="opacity:0.6;"> · drops data when destinations are unreachable</span>
+            </MudRadio>
+        </MudRadioGroup>
+        <MudGrid Spacing="2" Class="mt-2">
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="_model.BufferMaxDepth" Label="Max depth (points)"
+                                 Min="0" Max="10_000_000"
+                                 HelperText="@BufferDepthHelperText"
+                                 Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="_model.BufferMaxAgeDays" Label="Max age (days)"
+                                 Min="0" Max="3650"
+                                 HelperText="Older points are evicted. 0 = no age cap."
+                                 Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect @bind-Value="_model.BufferOnOverflow" Label="On overflow" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@DropPolicy.DropOldest">Drop oldest</MudSelectItem>
+                    <MudSelectItem Value="@DropPolicy.DropNewest">Drop newest</MudSelectItem>
+                    <MudSelectItem Value="@DropPolicy.Block">Block</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* ──── Section 5: Filter (collapsed by default) ──── *@
+    <MudExpansionPanels Elevation="1" Class="mb-4">
+        <MudExpansionPanel>
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">5. Filter</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Filter tags by name · @_model.Filter.Include.Count include, @_model.Filter.Exclude.Count exclude
+                    </MudText>
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Include</MudText>
+                        @foreach (var pattern in _model.Filter.Include.ToList())
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="text-transform:none; flex:1; justify-content:flex-start;">
+                                    @pattern
+                                </MudChip>
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                               aria-label="@($"Remove include pattern {pattern}")"
+                                               OnClick="@(() => _model.Filter.Include.Remove(pattern))" />
+                            </MudStack>
+                        }
+                        <MudStack Row="true" Spacing="1" Class="mt-1">
+                            <MudTextField @bind-Value="_newIncludePattern" Placeholder="Add pattern (e.g. axes/*)"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                          OnKeyDown="@(e => OnFilterKey(e, isInclude: true))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary"
+                                           aria-label="Add include pattern"
+                                           OnClick="@(() => AddFilterPattern(isInclude: true))" />
+                        </MudStack>
+                        @if (_includePatternError is not null)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_includePatternError</MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Exclude (optional)</MudText>
+                        @if (_model.Filter.Exclude.Count == 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">(none)</MudText>
+                        }
+                        @foreach (var pattern in _model.Filter.Exclude.ToList())
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="text-transform:none; flex:1; justify-content:flex-start;">
+                                    @pattern
+                                </MudChip>
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                               aria-label="@($"Remove exclude pattern {pattern}")"
+                                               OnClick="@(() => _model.Filter.Exclude.Remove(pattern))" />
+                            </MudStack>
+                        }
+                        <MudStack Row="true" Spacing="1" Class="mt-1">
+                            <MudTextField @bind-Value="_newExcludePattern" Placeholder="Add pattern (e.g. diagnostics/*_internal)"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true"
+                                          OnKeyDown="@(e => OnFilterKey(e, isInclude: false))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary"
+                                           aria-label="Add exclude pattern"
+                                           OnClick="@(() => AddFilterPattern(isInclude: false))" />
+                        </MudStack>
+                        @if (_excludePatternError is not null)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@_excludePatternError</MudText>
+                        }
+                    </MudItem>
+                </MudGrid>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">
+                    Glob: * matches any sequence, ? matches one character. ** matches across path separators.
+                </MudText>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    @* ──── Section 6: Transforms (collapsed by default) ──── *@
+    <MudExpansionPanels Elevation="1" Class="mb-4">
+        <MudExpansionPanel>
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">6. Transforms</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Reshape values per tag · 1. Rename → 2. Filter → 3. Deadband → 4. Rate limit
+                    </MudText>
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                @* ── Tag Mapping ── *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Tag mapping (@_model.Transforms.TagMappings.Count)</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                    Rename canonical tags as they leave the source.
+                </MudText>
+                @foreach (var row in _model.Transforms.TagMappings.ToList())
+                {
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="mb-1">
+                        <MudTextField @bind-Value="row.SourceTag" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Source tag" />
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Color="Color.Default" />
+                        <MudTextField @bind-Value="row.CanonicalTag" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Canonical tag" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                       aria-label="Remove this tag mapping row"
+                                       OnClick="@(() => _model.Transforms.TagMappings.Remove(row))" />
+                    </MudStack>
+                }
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                           OnClick="AddTagMappingRow" Style="text-transform:none;" Class="mt-1">
+                    Add tag mapping
+                </MudButton>
+                @if (_tagMappingError is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-2">@_tagMappingError</MudAlert>
+                }
+
+                <MudDivider Class="my-4" />
+
+                @* ── Unified Deadband table ── *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Deadband (@_model.Transforms.DeadbandRows.Count)</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                    Suppress small changes. A tag may use either Absolute (≥ 0) OR Percent (in (0, 1]) — not both.
+                </MudText>
+                @foreach (var row in _model.Transforms.DeadbandRows.ToList())
+                {
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-1">
+                        <MudTextField @bind-Value="row.Tag" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Placeholder="Tag (e.g. spindle/speed)" Style="flex:2;" />
+                        <MudSelect T="DeadbandMode" @bind-Value="row.Mode" Variant="Variant.Outlined" Margin="Margin.Dense" Style="flex:1;">
+                            <MudSelectItem Value="@DeadbandMode.Absolute">Absolute</MudSelectItem>
+                            <MudSelectItem Value="@DeadbandMode.Percent">Percent</MudSelectItem>
+                        </MudSelect>
+                        <MudNumericField T="double" @bind-Value="row.Threshold" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Placeholder="@(row.Mode == DeadbandMode.Percent ? "0.05 = 5%" : "0.5")"
+                                         Style="flex:1;" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                       aria-label="Remove this deadband row"
+                                       OnClick="@(() => _model.Transforms.DeadbandRows.Remove(row))" />
+                    </MudStack>
+                }
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                           OnClick="AddDeadbandRow" Style="text-transform:none;" Class="mt-1">
+                    Add deadband
+                </MudButton>
+                @if (_deadbandError is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-2">@_deadbandError</MudAlert>
+                }
+
+                <MudDivider Class="my-4" />
+
+                @* ── Rate limit ── *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Rate limit (@_model.Transforms.RateLimitRows.Count)</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                    Cap publish frequency per tag. Useful for noisy high-frequency tags like alarm flags.
+                </MudText>
+                @foreach (var row in _model.Transforms.RateLimitRows.ToList())
+                {
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-1">
+                        <MudTextField @bind-Value="row.Tag" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Placeholder="Tag (e.g. alarms/active)" Style="flex:2;" />
+                        <MudNumericField @bind-Value="row.MinIntervalMs" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Placeholder="ms" Min="1" Max="3_600_000" Style="flex:1;" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                       aria-label="Remove this rate-limit row"
+                                       OnClick="@(() => _model.Transforms.RateLimitRows.Remove(row))" />
+                    </MudStack>
+                }
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                           OnClick="AddRateLimitRow" Style="text-transform:none;" Class="mt-1">
+                    Add rate limit
+                </MudButton>
+                @if (_rateLimitError is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-2">@_rateLimitError</MudAlert>
+                }
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    @* ──── Section 7: Delivery (collapsed by default) ──── *@
+    <MudExpansionPanels Elevation="1" Class="mb-4">
+        <MudExpansionPanel>
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:500;">7. Delivery</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Advanced · retries, backoff, fanout
+                    </MudText>
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                <MudRadioGroup T="DeliveryMode" @bind-Value="_model.DeliveryMode">
+                    <MudRadio T="DeliveryMode" Value="@DeliveryMode.AtLeastOnce" Color="Color.Primary" Dense="true">
+                        At least once
+                        <span style="opacity:0.6;"> · retries on failure (recommended)</span>
+                    </MudRadio>
+                    <MudRadio T="DeliveryMode" Value="@DeliveryMode.AtMostOnce" Color="Color.Primary" Dense="true">
+                        At most once
+                        <span style="opacity:0.6;"> · no retry — requires buffer mode None</span>
+                    </MudRadio>
+                </MudRadioGroup>
+                <MudGrid Spacing="2" Class="mt-2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.DeliveryMaxRetries" Label="Max retries" Min="0" Max="100" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.DeliveryInitialBackoffMs" Label="Initial backoff (ms)" Min="1" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.DeliveryMaxBackoffMs" Label="Max backoff (ms)" Min="1" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.DeliveryJitterPercent" Label="Jitter %" Min="0" Max="100" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+                <MudCheckBox @bind-Value="_model.DeliveryFanoutParallel" Color="Color.Primary" Dense="true" Class="mt-2">
+                    <MudText Typo="Typo.body2">
+                        Fanout in parallel
+                        <span style="opacity:0.6;"> — publish to all sinks concurrently (faster) vs sequentially.</span>
+                    </MudText>
+                </MudCheckBox>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    @* ──── Draft Summary ──── *@
+    <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">When you save, EdgeConnect will:</MudText>
+        <ul style="margin:0; padding-left:1.2rem;">
+            <li>
+                <MudText Typo="Typo.body2">
+                    Add route <strong>@(string.IsNullOrWhiteSpace(_model.RouteId) ? "(not set)" : _model.RouteId)</strong>
+                    @if (!string.IsNullOrWhiteSpace(_model.SourceInstanceId))
+                    {
+                        <span> — @_model.SourceInstanceId → @(string.Join(", ", _model.SinkInstanceIds))</span>
+                    }
+                </MudText>
+            </li>
+            <li>
+                <MudText Typo="Typo.body2">
+                    Filter: @_model.Filter.Include.Count include pattern@(_model.Filter.Include.Count == 1 ? "" : "s"),
+                    @_model.Filter.Exclude.Count exclude pattern@(_model.Filter.Exclude.Count == 1 ? "" : "s")
+                </MudText>
+            </li>
+            <li>
+                <MudText Typo="Typo.body2">
+                    Transforms: @_model.Transforms.TagMappings.Count mapping@(_model.Transforms.TagMappings.Count == 1 ? "" : "s"),
+                    @_model.Transforms.DeadbandRows.Count deadband row@(_model.Transforms.DeadbandRows.Count == 1 ? "" : "s"),
+                    @_model.Transforms.RateLimitRows.Count rate-limit row@(_model.Transforms.RateLimitRows.Count == 1 ? "" : "s")
+                </MudText>
+            </li>
+            <li>
+                <MudText Typo="Typo.body2">
+                    Buffer: @_model.BufferMode, @_model.BufferMaxDepth.ToString("N0") points,
+                    age @_model.BufferMaxAgeDays day@(_model.BufferMaxAgeDays == 1 ? "" : "s")
+                </MudText>
+            </li>
+            <li>
+                <MudText Typo="Typo.body2">
+                    Delivery: @_model.DeliveryMode, @_model.DeliveryMaxRetries retries
+                </MudText>
+            </li>
+        </ul>
+    </MudPaper>
+
+    @* ADR-0016 Rule 3 — Cancel / Save hidden in EmbeddedMode; parent owns. *@
+    @if (!EmbeddedMode)
+    {
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+            <MudButton Variant="Variant.Text" OnClick="@(() => Nav.NavigateTo("/routes"))"
+                       Style="text-transform:none;" Disabled="@_busy">
+                Cancel
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="OnSaveAsync"
+                       Disabled="@(_busy || !CanSave())"
+                       Style="text-transform:none;">
+                Save changes
+            </MudButton>
+        </MudStack>
+    }
+}
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode from RouteEditRouter.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Route config loaded by the router in Edit mode. Ignored in Add mode.</summary>
+    [Parameter] public RouteConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions with the buildable <see cref="RouteConfig"/>.</summary>
+    [Parameter] public EventCallback<RouteConfig?> OnInstanceBuilt { get; set; }
+
+    /// <summary>
+    /// ADR-0016 Rule 3 carve-out (N3) — in EmbeddedMode, the source from
+    /// the previous Onboarding step is not yet in <c>_currentConfig.Sources</c>
+    /// (bundled apply happens at the end). The wizard surfaces it in the
+    /// source picker as if it existed. Ignored when EmbeddedMode is false.
+    /// </summary>
+    [Parameter] public SourceInstanceConfig? PrePopulatedSource { get; set; }
+
+    /// <summary>
+    /// ADR-0016 Rule 3 carve-out (N3) — same rationale as PrePopulatedSource,
+    /// for the sink from the Onboarding flow's Step 4.
+    /// </summary>
+    [Parameter] public SinkInstanceConfig? PrePopulatedSink { get; set; }
+
+    // Non-readonly — OnParametersSet reassigns in Edit mode.
+    private RouteWizardModel _model = new();
+    private bool _hydrated;
+    private string? _originalSourceInstanceId;
+    private string? _lastNotifiedSignature;
+    private bool _embeddedPrePopulated;
+
+    // The ids this component injected into the model, so a later change to the
+    // pre-populated source / destination can replace ITS OWN id and leave an
+    // operator's own selection alone. See the re-sync in OnParametersSet.
+    private string? _prePopulatedSourceId;
+    private string? _prePopulatedSinkId;
+
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    // Loaded context
+    private GatewayConfiguration? _currentConfig;
+    private readonly Dictionary<string, string> _sourceStates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _sinkStates = new(StringComparer.Ordinal);
+    private string? _loadError;
+
+    // Search/filter inputs
+    private string _sourceSearch = string.Empty;
+    private string _sinkSearch = string.Empty;
+
+    // Filter pattern entry
+    private string _newIncludePattern = string.Empty;
+    private string _newExcludePattern = string.Empty;
+    private string? _includePatternError;
+    private string? _excludePatternError;
+
+    // Transform validation
+    private string? _tagMappingError;
+    private string? _deadbandError;
+    private string? _rateLimitError;
+
+    // Identity
+    private string? _routeIdError;
+    private bool _routeIdManuallyEdited;
+
+    // Save busy state
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            return;
+        }
+
+        // Pull runtime state separately so a missing/failing diagnostics
+        // endpoint doesn't block the wizard. State dots are a UX nice-to-have;
+        // the wizard works without them.
+        try
+        {
+            var sourceList = await HttpClient.GetFromJsonAsync<SourceListItemDto[]>("/api/v1/sources");
+            if (sourceList is not null)
+            {
+                foreach (var item in sourceList)
+                {
+                    if (item.Source is { } src)
+                    {
+                        _sourceStates[src.SourceInstanceId] = src.StateName;
+                    }
+                }
+            }
+        }
+        catch { /* fail-soft */ }
+
+        try
+        {
+            var sinkList = await HttpClient.GetFromJsonAsync<SinkListItemDto[]>("/api/v1/sinks");
+            if (sinkList is not null)
+            {
+                foreach (var item in sinkList)
+                {
+                    var state = item.Sink.AdapterStateName ?? (item.Sink.IsDegraded ? "Degraded" : null);
+                    if (state is not null)
+                    {
+                        _sinkStates[item.Sink.SinkInstanceId] = state;
+                    }
+                }
+            }
+        }
+        catch { /* fail-soft */ }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = RouteWizardModel.HydrateFromExisting(HydratedConfig);
+            _originalSourceInstanceId = _model.SourceInstanceId;
+            _hydrated = true;
+        }
+
+        // ADR-0016 N3 — auto-select pre-populated source / sink when
+        // EmbeddedMode and the operator hasn't already chosen something.
+        // Idempotent: the _embeddedPrePopulated flag prevents
+        // overwriting the operator's choice if they switch to a
+        // different entry and back.
+        if (EmbeddedMode && !_embeddedPrePopulated)
+        {
+            if (PrePopulatedSource is not null && string.IsNullOrEmpty(_model.SourceInstanceId))
+            {
+                // Reuse SelectSource so the RouteId auto-suggestion runs
+                // (route-{sourceId}). Previously we set _model.SourceInstanceId
+                // directly, leaving RouteId blank — operator had to type it
+                // manually and blur the field before CanSave returned true.
+                SelectSource(PrePopulatedSource.InstanceId);
+                _prePopulatedSourceId = PrePopulatedSource.InstanceId;
+            }
+            if (PrePopulatedSink is not null && _model.SinkInstanceIds.Count == 0)
+            {
+                _model.SinkInstanceIds.Add(PrePopulatedSink.InstanceId);
+                _prePopulatedSinkId = PrePopulatedSink.InstanceId;
+            }
+            _embeddedPrePopulated = true;
+        }
+        else if (EmbeddedMode)
+        {
+            // RE-SYNC. The latch above deliberately fires once so it cannot
+            // overwrite a choice the operator made here — but it also meant the
+            // route kept whatever ids it captured the FIRST time this step
+            // rendered. An operator who went back and renamed the destination
+            // left the route pointing at the old id, and the bundled apply
+            // refused at the very last step with "route does not include the new
+            // sink's InstanceId" — after every field had been filled in.
+            //
+            // Only an id this component injected is replaced. If the operator
+            // picked something else, the model no longer holds our id and
+            // nothing here touches it.
+            if (PrePopulatedSource is { } src
+                && !string.Equals(src.InstanceId, _prePopulatedSourceId, StringComparison.Ordinal))
+            {
+                if (string.IsNullOrEmpty(_model.SourceInstanceId)
+                    || string.Equals(_model.SourceInstanceId, _prePopulatedSourceId, StringComparison.Ordinal))
+                {
+                    SelectSource(src.InstanceId);
+                }
+                _prePopulatedSourceId = src.InstanceId;
+            }
+
+            if (PrePopulatedSink is { } sink
+                && !string.Equals(sink.InstanceId, _prePopulatedSinkId, StringComparison.Ordinal))
+            {
+                // A set, so this is a swap rather than an in-place replace: drop
+                // the id we injected and add the new one. Any OTHER destination
+                // the operator added to a fan-out is left exactly as it is.
+                if (_prePopulatedSinkId is not null
+                    && _model.SinkInstanceIds.Remove(_prePopulatedSinkId))
+                {
+                    _model.SinkInstanceIds.Add(sink.InstanceId);
+                }
+                else if (_model.SinkInstanceIds.Count == 0)
+                {
+                    _model.SinkInstanceIds.Add(sink.InstanceId);
+                }
+                _prePopulatedSinkId = sink.InstanceId;
+            }
+        }
+    }
+
+    /// <summary>ADR-0016 Rule 4 — fire OnInstanceBuilt on validity transitions.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        RouteConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildRouteConfig(); }
+            catch { instance = null; }
+        }
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnReloadAfterStale()
+    {
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    // ───── Source / sink picker filters ─────────────────────────────────
+
+    /// <summary>
+    /// True when there's at least one source available to pick — either in
+    /// _currentConfig.Sources or (in EmbeddedMode) supplied via
+    /// PrePopulatedSource. ADR-0016 N3 — the route step's empty-state check
+    /// must include phantom entries from earlier onboarding steps, otherwise
+    /// the warning "No sources are configured" appears even though the
+    /// operator just configured one.
+    /// </summary>
+    private bool HasAnyAvailableSource()
+    {
+        if ((_currentConfig?.Sources.Count ?? 0) > 0) return true;
+        if (EmbeddedMode && PrePopulatedSource is not null) return true;
+        return false;
+    }
+
+    /// <summary>Same logic as <see cref="HasAnyAvailableSource"/> for sinks.</summary>
+    private bool HasAnyAvailableSink()
+    {
+        if ((_currentConfig?.Sinks.Count ?? 0) > 0) return true;
+        if (EmbeddedMode && PrePopulatedSink is not null) return true;
+        return false;
+    }
+
+    private IEnumerable<SourceInstanceConfig> FilteredSources()
+    {
+        var q = _sourceSearch?.Trim();
+
+        // ADR-0016 N3 — yield the pre-populated source first if EmbeddedMode
+        // and it isn't already in _currentConfig (which it won't be in the
+        // Onboarding flow because bundled apply happens at the end).
+        if (EmbeddedMode && PrePopulatedSource is not null)
+        {
+            var alreadyInConfig = _currentConfig?.Sources.Any(s =>
+                string.Equals(s.InstanceId, PrePopulatedSource.InstanceId, StringComparison.Ordinal)) ?? false;
+            if (!alreadyInConfig && MatchesSourceQuery(PrePopulatedSource, q))
+            {
+                yield return PrePopulatedSource;
+            }
+        }
+
+        if (_currentConfig is null) yield break;
+        foreach (var s in _currentConfig.Sources)
+        {
+            if (MatchesSourceQuery(s, q))
+            {
+                yield return s;
+            }
+        }
+
+        static bool MatchesSourceQuery(SourceInstanceConfig s, string? q)
+        {
+            return string.IsNullOrWhiteSpace(q)
+                || s.InstanceId.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || (s.DeviceName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || s.ProtocolName.Contains(q, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private IEnumerable<SinkInstanceConfig> FilteredSinks()
+    {
+        var q = _sinkSearch?.Trim();
+
+        if (EmbeddedMode && PrePopulatedSink is not null)
+        {
+            var alreadyInConfig = _currentConfig?.Sinks.Any(s =>
+                string.Equals(s.InstanceId, PrePopulatedSink.InstanceId, StringComparison.Ordinal)) ?? false;
+            if (!alreadyInConfig && MatchesSinkQuery(PrePopulatedSink, q))
+            {
+                yield return PrePopulatedSink;
+            }
+        }
+
+        if (_currentConfig is null) yield break;
+        foreach (var s in _currentConfig.Sinks)
+        {
+            if (MatchesSinkQuery(s, q))
+            {
+                yield return s;
+            }
+        }
+
+        static bool MatchesSinkQuery(SinkInstanceConfig s, string? q)
+        {
+            return string.IsNullOrWhiteSpace(q)
+                || s.InstanceId.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || s.ProtocolName.Contains(q, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private void SelectSource(string id)
+    {
+        _model.SourceInstanceId = id;
+        // Auto-suggest a route id from the source — unless the operator already typed one.
+        if (!_routeIdManuallyEdited && string.IsNullOrWhiteSpace(_model.RouteId))
+        {
+            var suggested = $"route-{id}";
+            // Best-effort: clamp to the Core regex (replace illegal chars with hyphens).
+            _model.RouteId = SanitizeForRouteId(suggested);
+            _routeIdError = RouteWizardModel.ValidateRouteId(_model.RouteId);
+        }
+    }
+
+    private void ToggleSink(string id, bool isChecked)
+    {
+        if (isChecked) _model.SinkInstanceIds.Add(id);
+        else _model.SinkInstanceIds.Remove(id);
+    }
+
+    /// <summary>Keyboard selection for the (role="radio") source cards — Enter or Space selects the source, matching a click.</summary>
+    private void OnSourceCardKeyDown(KeyboardEventArgs e, string id)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar")
+        {
+            SelectSource(id);
+        }
+    }
+
+    // ───── Identity ─────────────────────────────────────────────────────
+
+    private void OnRouteIdChanged()
+    {
+        _routeIdManuallyEdited = true;
+        _routeIdError = RouteWizardModel.ValidateRouteId(_model.RouteId);
+    }
+
+    private string RouteIdHelperText =>
+        _routeIdManuallyEdited
+            ? "Letters, digits, dot, hyphen, underscore. Must start with a letter or digit."
+            : (string.IsNullOrWhiteSpace(_model.SourceInstanceId)
+                ? "Auto-fills as 'route-{source}' once you pick a source."
+                : "Auto-suggested from the selected source. Edit to override.");
+
+    private string BufferDepthHelperText => GetBufferDepthHelperText(_model.BufferMaxDepth);
+
+    private static string GetBufferDepthHelperText(int maxDepth)
+    {
+        // ~256 bytes/point is the rule-of-thumb from blueprint §6.
+        long bytes = (long)maxDepth * 256;
+        if (bytes <= 0) return "0 = no depth cap.";
+        const long Kib = 1024L;
+        const long Mib = Kib * 1024;
+        const long Gib = Mib * 1024;
+        string size;
+        if (bytes < Mib) size = $"~{bytes / Kib} KB";
+        else if (bytes < Gib) size = $"~{bytes / Mib} MB";
+        else size = $"~{bytes / Gib} GB";
+        return $"{size} at 256 bytes/point.";
+    }
+
+    private static string SanitizeForRouteId(string raw)
+    {
+        // Replace any char outside [A-Za-z0-9._-] with '-'. Leading hyphen / dot /
+        // underscore is illegal — strip the leading char if it would violate the
+        // 'first char must be letter or digit' rule.
+        var sb = new System.Text.StringBuilder(raw.Length);
+        foreach (var c in raw)
+        {
+            if (char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_')
+                sb.Append(c);
+            else
+                sb.Append('-');
+        }
+        var result = sb.ToString();
+        while (result.Length > 0 && !(char.IsLetterOrDigit(result[0])))
+        {
+            result = result[1..];
+        }
+        return result;
+    }
+
+    // ───── Filter editor ────────────────────────────────────────────────
+
+    private void OnFilterKey(KeyboardEventArgs e, bool isInclude)
+    {
+        if (e.Key == "Enter")
+        {
+            AddFilterPattern(isInclude);
+        }
+    }
+
+    private void AddFilterPattern(bool isInclude)
+    {
+        if (isInclude)
+        {
+            _includePatternError = RouteFilterEditorModel.ValidatePattern(_newIncludePattern);
+            if (_includePatternError is not null) return;
+            if (_model.Filter.Include.Contains(_newIncludePattern!))
+            {
+                _includePatternError = "Pattern already in Include list.";
+                return;
+            }
+            _model.Filter.Include.Add(_newIncludePattern!);
+            _newIncludePattern = string.Empty;
+        }
+        else
+        {
+            _excludePatternError = RouteFilterEditorModel.ValidatePattern(_newExcludePattern);
+            if (_excludePatternError is not null) return;
+            if (_model.Filter.Exclude.Contains(_newExcludePattern!))
+            {
+                _excludePatternError = "Pattern already in Exclude list.";
+                return;
+            }
+            _model.Filter.Exclude.Add(_newExcludePattern!);
+            _newExcludePattern = string.Empty;
+        }
+    }
+
+    // ───── Transform rows ───────────────────────────────────────────────
+
+    private void AddTagMappingRow()
+    {
+        _tagMappingError = null;
+        var row = new TagMappingRow();
+        _model.Transforms.TagMappings.Add(row);
+    }
+
+    private void AddDeadbandRow()
+    {
+        _deadbandError = null;
+        var row = new DeadbandRow { Mode = DeadbandMode.Absolute, Threshold = 0 };
+        _model.Transforms.DeadbandRows.Add(row);
+    }
+
+    private void AddRateLimitRow()
+    {
+        _rateLimitError = null;
+        var row = new RateLimitRow { MinIntervalMs = 1000 };
+        _model.Transforms.RateLimitRows.Add(row);
+    }
+
+    // ───── Source-card styling ──────────────────────────────────────────
+
+    private static string SourceCardStyle(bool isSelected)
+    {
+        var leftWidth = isSelected ? "3px" : "1px";
+        var leftColor = isSelected ? "var(--mud-palette-primary)" : "var(--mud-palette-lines-default)";
+        return $"cursor:pointer; border:1px solid var(--mud-palette-lines-default); border-left:{leftWidth} solid {leftColor};";
+    }
+
+    // ───── State chip color ─────────────────────────────────────────────
+
+    private static Color StateColor(string? state) => state switch
+    {
+        "Running" => Color.Success,
+        "Degraded" => Color.Warning,
+        "Failed" or "Faulted" or "Stopped" => Color.Error,
+        "Disabled" or "Configured / Not running" => Color.Default,
+        _ => Color.Default,
+    };
+
+    // ───── Save eligibility + action ────────────────────────────────────
+
+    private bool CanSave()
+    {
+        if (RouteWizardModel.ValidateRouteId(_model.RouteId) is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.SourceInstanceId)) return false;
+        if (_model.SinkInstanceIds.Count == 0) return false;
+        if (!_isEdit && _currentConfig is null) return false;
+        return true;
+    }
+
+    private Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save.
+        if (EmbeddedMode) return Task.CompletedTask;
+        return _isEdit ? SaveEditAsync() : SaveAsDraftAsync();
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            foreach (var row in _model.Transforms.TagMappings)
+            {
+                var err = _model.Transforms.ValidateTagMappingRow(row);
+                if (err is not null) { _tagMappingError = err; return; }
+            }
+            foreach (var row in _model.Transforms.DeadbandRows)
+            {
+                var err = _model.Transforms.ValidateDeadbandRow(row);
+                if (err is not null) { _deadbandError = err; return; }
+            }
+            foreach (var row in _model.Transforms.RateLimitRows)
+            {
+                var err = _model.Transforms.ValidateRateLimitRow(row);
+                if (err is not null) { _rateLimitError = err; return; }
+            }
+
+            RouteConfig updatedRoute;
+            try
+            {
+                updatedRoute = _model.BuildRouteConfig();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Snackbar.Add($"Cannot build route: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            var body = new UpdateRouteRequestDto
+            {
+                RouteConfig = updatedRoute,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/routes/{Uri.EscapeDataString(updatedRoute.RouteId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add($"Route '{updatedRoute.RouteId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo("/routes");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            // Validate every transform row eagerly — the editor models'
+            // ValidateXxxRow checks compose Core's invariants (no parallel
+            // logic). Cross-record rules are still enforced lazily by the
+            // /api/v1/config/drafts round-trip.
+            foreach (var row in _model.Transforms.TagMappings)
+            {
+                var err = _model.Transforms.ValidateTagMappingRow(row);
+                if (err is not null) { _tagMappingError = err; return; }
+            }
+            foreach (var row in _model.Transforms.DeadbandRows)
+            {
+                var err = _model.Transforms.ValidateDeadbandRow(row);
+                if (err is not null) { _deadbandError = err; return; }
+            }
+            foreach (var row in _model.Transforms.RateLimitRows)
+            {
+                var err = _model.Transforms.ValidateRateLimitRow(row);
+                if (err is not null) { _rateLimitError = err; return; }
+            }
+
+            RouteConfig newRoute;
+            try
+            {
+                newRoute = _model.BuildRouteConfig();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Snackbar.Add($"Cannot build route: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewRouteDraft(_currentConfig, newRoute);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            var body = new
+            {
+                configuration = newDraft,
+                actor = "system",
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/config/drafts", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Draft creation rejected: {err}", Severity.Error);
+                return;
+            }
+
+            var created = await resp.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, string>>();
+            var newDraftId = created is { } d && d.TryGetValue("draftId", out var id) ? id : null;
+
+            Snackbar.Configuration.VisibleStateDuration = 10_000;
+            Snackbar.Add("Saved. Review and activate it on the Configuration page.", Severity.Success);
+
+            var target = newDraftId is not null
+                ? $"/config?new={Uri.EscapeDataString(newDraftId)}"
+                : "/config";
+            Nav.NavigateTo(target);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,183 @@
+@*
+    WizardShell — shared page-frame primitive for the six wizards. M.2d.1
+    deliverable per the v2 plan §5.1.
+
+    Responsibilities (narrow by design — round-1 #1 in the M.2d.1 review):
+      * Header band — back-arrow + protocol icon + title + subtitle.
+      * Load-state guard — Loading / Error / Content branches.
+      * ChildContent slot — sections, banners, anything the wizard arranges.
+      * Footer slot — typically a WizardActions row.
+      * SaveState parameter — passthrough only; no visual side-effect in
+        M.2d.1 (Q4 lock).
+
+    What this is NOT responsible for (anti-coupling locks):
+      * Section structure — WizardSection owns numbered cards.
+      * Layout — wizards decide MudGrid / table / flex / etc. inside
+        WizardSection.ChildContent.
+      * Save-state visualisation — M.2d.2/.3 decide per-wizard.
+      * Validation anchoring — WizardValidationBanner owns the surface;
+        scroll/focus implementation lands in M.2d.4.
+      * Runtime Tap behaviour — WizardWatchSlot owns the embed.
+
+    DoD §6 anti-coupling check: this file contains zero
+    MudPaper-with-numbered-title constructs.
+
+    Reference: docs/sessions/2026-05-21-m2d1-shared-primitives-plan-v2.md §5.1
+*@
+
+@* page-heading is the Studio-wide sticky heading band (site.css §Page heading).
+   Every other screen carries it; without it the wizard title scrolls away and
+   the operator loses track of which wizard they are in on a tall form.
+
+   Suppressed when Embedded: the host (the onboarding overlay) already titles the
+   panel, so rendering this produced two stacked headers — "Configure Modbus TCP"
+   above "Add Modbus TCP source" — saying the same thing twice. ADR-0016 Rule 3
+   gives the heading to the host in embedded mode. *@
+@if (!Embedded)
+{
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4 page-heading">
+    @if (!string.IsNullOrEmpty(BackHref))
+    {
+        <MudTooltip Text="Back">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@OnBackClicked"
+                           Size="Size.Small"
+                           aria-label="Back to the previous screen" />
+        </MudTooltip>
+    }
+    @if (Icon is not null)
+    {
+        <MudIcon Icon="@Icon" Size="Size.Medium" Color="Color.Primary" />
+    }
+    <div>
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <MudText Typo="Typo.h5">@Title</MudText>
+        }
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Subtitle</MudText>
+        }
+        @* Progress ("Step 3 of 5 — Upload CSV") belongs WITH the title that names
+           the wizard, not in a card of its own above the content: a card is a
+           place where work happens, and a step counter is not work.
+
+           A RenderFragment rather than a string so the caller owns the pill's
+           visual — the shell has no stylesheet hook of its own here, and a
+           caller-supplied MudChip renders as a pill without needing one. *@
+        @if (HeaderMeta is not null)
+        {
+            <div class="mt-1" data-testid="wizard-shell-meta">@HeaderMeta</div>
+        }
+    </div>
+</MudStack>
+}
+
+@if (!string.IsNullOrEmpty(LoadError))
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4" data-testid="wizard-shell-load-error">
+        <strong>Could not load.</strong> @LoadError
+    </MudAlert>
+}
+else if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" data-testid="wizard-shell-loading" />
+}
+else
+{
+    <div data-testid="wizard-shell-content">
+        @ChildContent
+    </div>
+
+    @* Embedded wizards hide their WizardActions per ADR-0016 Rule 3, but the
+       RenderFragment is still non-null, so this wrapper used to paint an empty
+       bordered strip at the foot of the overlay. The host supplies the actions. *@
+    @if (Footer is not null && !Embedded)
+    {
+        @* Pins Save / Cancel / Test to the foot of the scroll region so they stay
+           reachable on a tall form — the Modbus RTU wizard with its serial fields
+           is the worst case. On a short form it sits in normal flow at the end of
+           the content. See .sticky-action-bar in site.css for why its offset is 0
+           rather than the status-footer height. *@
+        <div data-testid="wizard-shell-footer" class="sticky-action-bar">
+            @Footer
+        </div>
+    }
+}
+
+@code {
+    /// <summary>Protocol-specific icon for the header band.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Header title text.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Header subtitle text.</summary>
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>
+    /// Optional short progress marker rendered beneath the subtitle — e.g. a
+    /// <c>Step 3 of 5 — Upload CSV</c> pill for a multi-step wizard. Omit for
+    /// single-page wizards, where nothing is rendered.
+    /// </summary>
+    [Parameter] public RenderFragment? HeaderMeta { get; set; }
+
+    /// <summary>
+    /// Parent route the back-arrow navigates to (e.g. <c>/sources/new</c>).
+    /// When null or empty, the back arrow is hidden.
+    /// </summary>
+    [Parameter] public string? BackHref { get; set; }
+
+    /// <summary>
+    /// Optional explicit back-click handler. If null, the shell navigates
+    /// via the injected <c>NavigationManager</c> to <see cref="BackHref"/>.
+    /// </summary>
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    /// <summary>
+    /// True when this wizard is rendered inside another surface (the
+    /// Connect-a-device overlay). Suppresses the shell's own heading band and
+    /// action-bar wrapper so the host owns both — ADR-0016 Rule 3.
+    /// </summary>
+    [Parameter] public bool Embedded { get; set; }
+
+    /// <summary>True while the wizard is loading its initial config.</summary>
+    [Parameter] public bool IsLoading { get; set; }
+
+    /// <summary>Non-null/non-empty: render the load-error branch.</summary>
+    [Parameter] public string? LoadError { get; set; }
+
+    /// <summary>
+    /// The body of the wizard — WizardSection instances + validation
+    /// banners + anything else the wizard arranges. Layout is the
+    /// wizard's choice.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Optional footer slot. Typically a <c>WizardActions</c> instance.
+    /// Renders nothing when null.
+    /// </summary>
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    /// <summary>
+    /// Save-state passthrough — M.2d.1 exposes the parameter; M.2d.2/.3
+    /// decide whether to render a chip, toast, or nothing per the Q4
+    /// verdict. No visual side-effect inside the shell itself.
+    /// </summary>
+    [Parameter] public WizardSaveState SaveState { get; set; } = WizardSaveState.Editing;
+
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private async Task OnBackClicked()
+    {
+        if (OnBack.HasDelegate)
+        {
+            await OnBack.InvokeAsync();
+        }
+        else if (!string.IsNullOrEmpty(BackHref))
+        {
+            Nav.NavigateTo(BackHref);
+        }
+    }
+}

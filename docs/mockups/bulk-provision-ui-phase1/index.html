@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bulk-Provision UI Phase 1 — static mockup</title>
+<style>
+  :root {
+    --fg: #1f2933;
+    --muted: #5c6b7a;
+    --soft: #f3f5f7;
+    --border: #d4dce4;
+    --primary: #2563eb;
+    --primary-fg: #ffffff;
+    --success: #15803d;
+    --warn-bg: #fef3c7;
+    --warn-fg: #854d0e;
+    --warn-border: #fcd34d;
+    --error-bg: #fee2e2;
+    --error-fg: #991b1b;
+    --error-border: #fca5a5;
+    --gateway-bg: #eff6ff;
+    --gateway-border: #bfdbfe;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--fg);
+    background: #fafbfc;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+  .doc {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+  .doc > header {
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .doc > header h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+  }
+  .doc > header .lede {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+  .toc {
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 32px;
+    font-size: 13px;
+  }
+  .toc strong { display: block; margin-bottom: 6px; }
+  .toc ol { margin: 0; padding-left: 22px; }
+  .toc li { margin: 2px 0; }
+  .toc a { color: var(--primary); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .state {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 26px 28px;
+    margin: 24px 0;
+  }
+  .state > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .state > header h2 {
+    font-size: 18px;
+    margin: 0;
+  }
+  .state > header .ref {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .state .note {
+    background: #f8fafc;
+    border-left: 3px solid var(--primary);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 12px 0 18px;
+  }
+  .browser {
+    background: white;
+    border: 1px solid #99a3ad;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 12px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .browser .chrome {
+    background: #e7ebef;
+    border-bottom: 1px solid #c0c8d0;
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .browser .chrome .dots { display: inline-flex; gap: 4px; }
+  .browser .chrome .dots span {
+    width: 9px; height: 9px; border-radius: 50%; background: #b9c1c9;
+  }
+  .browser .chrome .url {
+    flex: 1;
+    background: white;
+    border: 1px solid #c0c8d0;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+  .browser .body {
+    padding: 20px 24px;
+    font-size: 14px;
+    min-height: 200px;
+  }
+  .studio-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .studio-nav .brand { font-weight: 700; color: var(--primary); }
+  .studio-nav .crumbs { color: var(--muted); }
+  .studio-nav .gateway { margin-left: auto; color: var(--muted); font-family: var(--mono); }
+  .page-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .page-title h3 { margin: 0; font-size: 17px; }
+  .page-title .actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--fg);
+  }
+  .btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-fg);
+  }
+  .btn-disabled,
+  .btn[disabled] {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 8px 0;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--soft);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  tbody tr:hover { background: #fafbfc; }
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .pill-ok { background: #dcfce7; color: #166534; }
+  .pill-warn { background: var(--warn-bg); color: var(--warn-fg); }
+  .pill-err { background: var(--error-bg); color: var(--error-fg); }
+  .pill-muted { background: var(--soft); color: var(--muted); }
+  .gateway-context {
+    background: var(--gateway-bg);
+    border: 1px solid var(--gateway-border);
+    border-radius: 5px;
+    padding: 14px 18px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .gateway-context h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #1e40af;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+  }
+  .gateway-context dl {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 4px 12px;
+    margin: 0;
+  }
+  .gateway-context dt { color: var(--muted); }
+  .gateway-context dd { margin: 0; font-family: var(--mono); font-size: 12px; }
+  .picker-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 10px 0 18px;
+  }
+  .picker-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    cursor: pointer;
+  }
+  .picker-card.selected {
+    border-color: var(--primary);
+    background: #eff6ff;
+    border-width: 2px;
+    padding: 13px;
+  }
+  .picker-card h4 { margin: 0 0 4px; font-size: 14px; }
+  .picker-card p { margin: 0; font-size: 12px; color: var(--muted); }
+  .picker-card .id { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .form-row { margin: 12px 0; }
+  .form-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .form-row input,
+  .form-row select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .file-upload {
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    text-align: center;
+    margin: 12px 0;
+    background: #fafbfc;
+  }
+  .file-upload .icon { font-size: 28px; color: var(--muted); }
+  .file-upload .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .download-link { display: inline-block; font-size: 12px; color: var(--primary); text-decoration: underline; margin: 6px 0; }
+  .warning-box {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-fg);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .warning-box strong { display: block; margin-bottom: 4px; }
+  .error-box {
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-fg);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .error-box strong { display: block; margin-bottom: 4px; }
+  .success-box {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #14532d;
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .summary-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    font-size: 13px;
+    background: var(--soft);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+  .summary-block dt { color: var(--muted); }
+  .summary-block dd { margin: 0; font-family: var(--mono); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .variant-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .variant-card {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px;
+    background: white;
+  }
+  .variant-card h5 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .step-strip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 18px;
+    font-size: 11px;
+  }
+  .step-strip .step {
+    padding: 4px 10px;
+    background: var(--soft);
+    border-radius: 3px;
+    color: var(--muted);
+  }
+  .step-strip .step.done { background: #dcfce7; color: #166534; }
+  .step-strip .step.active { background: var(--primary); color: white; font-weight: 600; }
+  .step-strip .sep { color: #c0c8d0; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<header>
+  <h1>Bulk-Provision UI Phase 1 — static mockup</h1>
+  <p class="lede">Operator-facing flow review for sign-off. Per v3 §9 / v3.1 §7. Pre-Razor; this is the contract the implementation matches 1:1 on user-facing states, wording, and validation moments.</p>
+</header>
+
+<div class="toc">
+  <strong>States covered</strong>
+  <ol>
+    <li><a href="#state-1">Sources page entry — "Bulk import" button</a></li>
+    <li><a href="#state-2">Gateway context panel (3 sink variants)</a></li>
+    <li><a href="#state-3">Protocol picker (4 templates)</a></li>
+    <li><a href="#state-4">CSV template download (protocol-specific)</a></li>
+    <li><a href="#state-5">CSV upload + parse preview</a></li>
+    <li><a href="#state-6">Optional Test connectivity (MTConnect /probe)</a></li>
+    <li><a href="#state-7">Preview — merge summary + warnings</a></li>
+    <li><a href="#state-8">Submit confirmation (one draft)</a></li>
+    <li><a href="#state-9">Error states (9 blockers + 3 warnings)</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-1">
+  <header>
+    <h2>State 1 — Sources page entry</h2>
+    <span class="ref">v3 §9 / v3.1 step strip "Entry"</span>
+  </header>
+  <p class="note">Existing Sources page gets a new <strong>Bulk import</strong> button beside the existing <strong>Add Source</strong>. No other change to the existing layout.</p>
+
+  <div class="browser">
+    <div class="chrome">
+      <span class="dots"><span></span><span></span><span></span></span>
+      <span class="url">https://gateway-a.local:5080/sources</span>
+    </div>
+    <div class="body">
+      <div class="studio-nav">
+        <span class="brand">EdgeConnect Studio</span>
+        <span class="crumbs">Sources</span>
+        <span class="gateway">gateway: edge-acme-site-a</span>
+      </div>
+      <div class="page-title">
+        <h3>Sources (12)</h3>
+        <div class="actions">
+          <button class="btn">Add Source</button>
+          <button class="btn btn-primary">Bulk import</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Source</th><th>Protocol</th><th>Host</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>cell-A-1</td><td>focas2</td><td>192.168.10.11</td><td><span class="pill pill-ok">Running</span></td></tr>
+          <tr><td>cell-A-2</td><td>focas2</td><td>192.168.10.12</td><td><span class="pill pill-ok">Running</span></td></tr>
+          <tr><td>cell-A-3</td><td>brother-http</td><td>192.168.10.61</td><td><span class="pill pill-warn">Reconnecting</span></td></tr>
+          <tr><td colspan="4" style="text-align:center; color: var(--muted); font-size: 12px; padding: 8px 0;">… 9 more rows …</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-2">
+  <header>
+    <h2>State 2 — Gateway context panel</h2>
+    <span class="ref">v3 §7 + v3.1 §3 (3 sink variants)</span>
+  </header>
+  <p class="note">Read-only panel at top of the bulk-import page. <strong>Replaces the 9-field sidecar form from v1/v2.</strong> Studio knows the gateway's identity, existing sinks, and routes; operator confirms the target instead of typing 9 fields.</p>
+
+  <h4 style="margin: 18px 0 4px; font-size: 13px; color: var(--muted);">Variant A — exactly 1 enabled MQTT sink (auto-select)</h4>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step active">1. Gateway context</span><span class="sep">›</span>
+        <span class="step">2. Protocol</span><span class="sep">›</span>
+        <span class="step">3. Upload CSV</span><span class="sep">›</span>
+        <span class="step">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+      <div class="gateway-context">
+        <h4>You are importing into</h4>
+        <dl>
+          <dt>Gateway</dt><dd>edge-acme-site-a</dd>
+          <dt>Gateway ID</dt><dd>00000000-0000-0000-0000-000000000001</dd>
+          <dt>Existing sources</dt><dd>12</dd>
+          <dt>Existing routes</dt><dd>12 (one per source)</dd>
+          <dt>Routes target</dt><dd>edge-acme-mqtt &nbsp;<span class="pill pill-muted">auto-selected · 1 enabled MQTT sink</span></dd>
+          <dt>Draft target</dt><dd>current gateway config + N new sources</dd>
+        </dl>
+      </div>
+      <div class="footer-actions">
+        <span></span>
+        <button class="btn btn-primary">Continue to protocol picker</button>
+      </div>
+    </div>
+  </div>
+
+  <h4 style="margin: 18px 0 4px; font-size: 13px; color: var(--muted);">Variant B — multiple enabled MQTT sinks (picker required)</h4>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="gateway-context">
+        <h4>You are importing into</h4>
+        <dl>
+          <dt>Gateway</dt><dd>edge-acme-site-a</dd>
+          <dt>Existing sources</dt><dd>12</dd>
+          <dt>Routes target</dt><dd>
+            <span style="font-family: inherit;">This gateway has 2 enabled MQTT sinks. Select one:</span>
+            <select style="margin-top: 6px; width: 320px; padding: 4px 8px; font-size: 12px;">
+              <option>edge-acme-mqtt — 127.0.0.1:1883</option>
+              <option>edge-acme-mqtt-backup — backup.acme.local:1883</option>
+            </select>
+          </dd>
+        </dl>
+      </div>
+      <div class="footer-actions">
+        <span></span>
+        <button class="btn btn-primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <h4 style="margin: 18px 0 4px; font-size: 13px; color: var(--muted);">Variant C — no enabled MQTT sink (blocker)</h4>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="error-box">
+        <strong>This gateway has no enabled MQTT sink.</strong>
+        Bulk source import requires an MQTT sink to route to. Add an MQTT sink (Sinks page → Add destination) before running bulk source import.
+      </div>
+      <div class="footer-actions">
+        <a class="btn" href="#">← Back to Sources</a>
+        <button class="btn btn-disabled" disabled>Continue (blocked)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-3">
+  <header>
+    <h2>State 3 — Protocol picker</h2>
+    <span class="ref">v3 §1 protocol allowlist</span>
+  </header>
+  <p class="note">One protocol per run (v3 §1 Q1). Four-card grid; operator selects one to continue. The CSV download in state 4 is protocol-specific.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1. Gateway context</span><span class="sep">›</span>
+        <span class="step active">2. Protocol</span><span class="sep">›</span>
+        <span class="step">3. Upload CSV</span><span class="sep">›</span>
+        <span class="step">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+      <h3 style="margin: 0 0 10px; font-size: 15px;">Select protocol for this batch</h3>
+      <div class="picker-grid">
+        <div class="picker-card selected">
+          <h4>FANUC FOCAS2</h4>
+          <p>Fanuc CNCs via FOCAS2. MT-LINKi paths included.</p>
+          <p class="id">template-fanuc-v1</p>
+        </div>
+        <div class="picker-card">
+          <h4>MTConnect</h4>
+          <p>MTConnect-enabled CNCs (e.g. Okuma, Mazak).</p>
+          <p class="id">template-mtconnect-v1</p>
+        </div>
+        <div class="picker-card">
+          <h4>Brother HTTP</h4>
+          <p>Brother Speedio CNCs over Brother's HTTP API.</p>
+          <p class="id">template-brother-v1</p>
+        </div>
+        <div class="picker-card">
+          <h4>Modbus TCP</h4>
+          <p>Generic Modbus TCP devices.</p>
+          <p class="id">template-modbus-v1</p>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button class="btn">← Back</button>
+        <button class="btn btn-primary">Continue to upload CSV</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-4">
+  <header>
+    <h2>State 4 — CSV template download</h2>
+    <span class="ref">v3 §3 protocol-specific CSV shape</span>
+  </header>
+  <p class="note">Per v3 §3 the column shape is protocol-specific (FOCAS2/Brother/Modbus use <code>host</code>; MTConnect uses <code>baseUrl</code>). The download link surfaces the right CSV template for the protocol picked in state 3.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1. Gateway context</span><span class="sep">›</span>
+        <span class="step done">2. Protocol</span><span class="sep">›</span>
+        <span class="step active">3. Upload CSV</span><span class="sep">›</span>
+        <span class="step">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+
+      <h3 style="margin: 0 0 6px; font-size: 15px;">Upload CSV — FOCAS2 (template-fanuc-v1)</h3>
+
+      <div style="background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-size: 13px; margin: 10px 0;">
+        <strong>Required columns:</strong>
+        <code style="margin-left: 6px;">deviceId, deviceName, host, enabled</code>
+        <br />
+        <strong>deviceId format:</strong>
+        <code>^[A-Za-z0-9_-]+$</code>, length 1–64. No spaces, dots, or Unicode.
+        <br />
+        <a class="download-link" href="#">↓ Download sample-fanuc.csv (3 rows)</a>
+      </div>
+
+      <div class="form-row">
+        <label for="import-label-input">Import label <span style="font-weight: normal; color: var(--muted);">(optional — defaults to <code>{protocol}-batch-{YYYY-MM-DD}</code> if blank)</span></label>
+        <input type="text" id="import-label-input" placeholder="fanuc-batch-2026-06-14" />
+      </div>
+
+      <div class="file-upload">
+        <div class="icon">⬆</div>
+        <div><strong>Drop CSV file here or click to upload</strong></div>
+        <div class="hint">Max 1 MB · Max 1,000 rows · UTF-8 · per v3.1 §8</div>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn">← Back</button>
+        <button class="btn btn-disabled" disabled>Continue (upload required)</button>
+      </div>
+    </div>
+  </div>
+
+  <h4 style="margin: 24px 0 8px; font-size: 13px; color: var(--muted);">MTConnect variant — different column shape</h4>
+  <p class="note">Per v3 §3 the column shape is protocol-specific. When the operator picks <strong>MTConnect</strong> in state 3, the upload step shows <code>baseUrl</code> instead of <code>host</code>, and the download link points at <code>sample-mtconnect.csv</code>.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1. Gateway context</span><span class="sep">›</span>
+        <span class="step done">2. Protocol</span><span class="sep">›</span>
+        <span class="step active">3. Upload CSV</span><span class="sep">›</span>
+        <span class="step">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+
+      <h3 style="margin: 0 0 6px; font-size: 15px;">Upload CSV — MTConnect (template-mtconnect-v1)</h3>
+
+      <div style="background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-size: 13px; margin: 10px 0;">
+        <strong>Required columns:</strong>
+        <code style="margin-left: 6px;">deviceId, deviceName, baseUrl, enabled</code>
+        <br />
+        <strong>baseUrl format:</strong>
+        Absolute URL starting with <code>http://</code> or <code>https://</code>. Example: <code>http://192.168.10.51:5000/</code> or <code>http://192.168.10.53:5050/</code> for Okuma on alternate port.
+        <br />
+        <strong>deviceId format:</strong>
+        <code>^[A-Za-z0-9_-]+$</code>, length 1–64.
+        <br />
+        <a class="download-link" href="#">↓ Download sample-mtconnect.csv (3 rows)</a>
+      </div>
+
+      <div class="form-row">
+        <label for="import-label-input-mt">Import label <span style="font-weight: normal; color: var(--muted);">(optional)</span></label>
+        <input type="text" id="import-label-input-mt" placeholder="mtconnect-batch-2026-06-14" />
+      </div>
+
+      <div class="file-upload">
+        <div class="icon">⬆</div>
+        <div><strong>Drop CSV file here or click to upload</strong></div>
+        <div class="hint">Max 1 MB · Max 1,000 rows · UTF-8</div>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn">← Back</button>
+        <button class="btn btn-disabled" disabled>Continue (upload required)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-5">
+  <header>
+    <h2>State 5 — CSV upload + parse preview</h2>
+    <span class="ref">v3 §9 step 2 + v3.1 §5 deviceId validation</span>
+  </header>
+  <p class="note">CSV parsed; per-row validation status surfaces inline. Errors block continue; warnings don't.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1</span><span class="sep">›</span>
+        <span class="step done">2</span><span class="sep">›</span>
+        <span class="step active">3. Upload CSV</span><span class="sep">›</span>
+        <span class="step">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+      <h3 style="margin: 0 0 6px; font-size: 15px;">CSV parsed — 35 rows</h3>
+      <p style="color: var(--muted); font-size: 13px; margin: 0 0 12px;">
+        <span class="mono">fanuc-batch-2026-06-14.csv</span> · 35 rows · 4.2 KB · 35 valid · 0 errors · 2 warnings
+      </p>
+      <table>
+        <thead><tr><th>Row</th><th>deviceId</th><th>deviceName</th><th>host</th><th>enabled</th><th>Validation</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>cnc-031</td><td>Lathe-Bay-5</td><td>192.168.10.81</td><td>true</td><td><span class="pill pill-ok">valid</span></td></tr>
+          <tr><td>2</td><td>cnc-032</td><td>Lathe-Bay-6</td><td>192.168.10.82</td><td>true</td><td><span class="pill pill-ok">valid</span></td></tr>
+          <tr><td>3</td><td>cnc-033</td><td>Lathe-Bay-7</td><td>192.168.10.83</td><td>false</td><td><span class="pill pill-warn">duplicate name</span></td></tr>
+          <tr><td>4</td><td>cnc-034</td><td>Mill-B1</td><td>192.168.10.91</td><td>true</td><td><span class="pill pill-ok">valid</span></td></tr>
+          <tr><td>5</td><td>cnc-035</td><td>Mill-B2</td><td>192.168.10.92</td><td>true</td><td><span class="pill pill-ok">valid</span></td></tr>
+          <tr><td colspan="6" style="text-align:center; color: var(--muted); font-size: 12px;">… 30 more rows …</td></tr>
+        </tbody>
+      </table>
+      <div class="warning-box" style="margin-top: 14px;">
+        <strong>2 warnings (do not block submit)</strong>
+        Row 3 (cnc-033) and row 12 (cnc-042) share <code>deviceName=Lathe-Bay-7</code>. Operationally identifiable by <code>deviceId</code>; <code>deviceName</code> collisions are allowed.
+      </div>
+      <div class="footer-actions">
+        <button class="btn">← Back</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-disabled" disabled title="Connectivity test not available in Phase 1 for FOCAS2.">Test connectivity</button>
+          <span style="font-size: 11px; color: var(--muted);">↳ not available in Phase 1 for FOCAS2</span>
+          <button class="btn btn-primary" style="margin-left: 8px;">Continue to preview</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-6">
+  <header>
+    <h2>State 6 — Optional Test connectivity</h2>
+    <span class="ref">v3.1 §9 (MTConnect /probe only in Phase 1)</span>
+  </header>
+  <p class="note">Optional. Cheap for MTConnect (<code>/probe</code>); disabled with hover-text for FOCAS2/Brother/Modbus in Phase 1.</p>
+
+  <h4 style="margin: 18px 0 4px; font-size: 13px; color: var(--muted);">MTConnect — /probe enabled</h4>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <h3 style="margin: 0 0 6px; font-size: 15px;">Test connectivity — 15 rows probed</h3>
+      <p style="color: var(--muted); font-size: 13px; margin: 0 0 12px;">
+        ~3 seconds · 13 reachable · 2 unreachable · failures do not block submit
+      </p>
+      <table>
+        <thead><tr><th>Row</th><th>deviceId</th><th>baseUrl</th><th>Status</th><th>Observations</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>okuma-vmc-1</td><td><span class="mono">http://192.168.10.51:5000/</span></td><td><span class="pill pill-ok">reachable</span></td><td>22</td></tr>
+          <tr><td>2</td><td>okuma-vmc-2</td><td><span class="mono">http://192.168.10.52:5000/</span></td><td><span class="pill pill-ok">reachable</span></td><td>22</td></tr>
+          <tr><td>3</td><td>okuma-lb-pro</td><td><span class="mono">http://192.168.10.53:5050/</span></td><td><span class="pill pill-ok">reachable</span></td><td>27</td></tr>
+          <tr><td>4</td><td>mazak-vtc-1</td><td><span class="mono">http://192.168.10.71:5000/</span></td><td><span class="pill pill-warn">timeout (5s)</span></td><td>—</td></tr>
+          <tr><td>5</td><td>mazak-vtc-2</td><td><span class="mono">http://192.168.10.72:5000/</span></td><td><span class="pill pill-err">no route</span></td><td>—</td></tr>
+          <tr><td colspan="5" style="text-align:center; color: var(--muted); font-size: 12px;">… 10 more rows …</td></tr>
+        </tbody>
+      </table>
+      <div class="footer-actions">
+        <button class="btn">← Back to upload</button>
+        <button class="btn btn-primary">Continue to preview (15 rows, 2 unreachable)</button>
+      </div>
+    </div>
+  </div>
+
+  <h4 style="margin: 18px 0 4px; font-size: 13px; color: var(--muted);">FOCAS2/Brother/Modbus — button disabled with hover</h4>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn btn-disabled" disabled>Test connectivity</button>
+        <span style="font-size: 12px; color: var(--muted);">↳ "Connectivity test not available in Phase 1 for this protocol."</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-7">
+  <header>
+    <h2>State 7 — Preview</h2>
+    <span class="ref">v3 §9 step 4 + v3.1 §7 preview warning</span>
+  </header>
+  <p class="note">Summary + per-source table + tag-availability warning (per v3.1 §7, surfaces in Preview not just post-apply). Submit enabled only if no blockers.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1</span><span class="sep">›</span>
+        <span class="step done">2</span><span class="sep">›</span>
+        <span class="step done">3</span><span class="sep">›</span>
+        <span class="step active">4. Preview</span><span class="sep">›</span>
+        <span class="step">5. Submit</span>
+      </div>
+      <h3 style="margin: 0 0 8px; font-size: 15px;">Preview merge</h3>
+      <dl class="summary-block">
+        <dt>Gateway</dt><dd>edge-acme-site-a</dd>
+        <dt>Routes target</dt><dd>edge-acme-mqtt</dd>
+        <dt>Protocol</dt><dd>focas2 (template-fanuc-v1)</dd>
+        <dt>Import label</dt><dd>fanuc-batch-2026-06-14</dd>
+        <dt>Rows in CSV</dt><dd>35</dd>
+        <dt>Valid rows</dt><dd>35</dd>
+        <dt>New sources</dt><dd>35 → appended to existing 12 = 47 total</dd>
+        <dt>New routes</dt><dd>35 → all target edge-acme-mqtt</dd>
+        <dt>Conflicts</dt><dd>0</dd>
+        <dt>Draft result</dt><dd>1 new draft of current config + merged sources/routes</dd>
+      </dl>
+
+      <div class="warning-box">
+        <strong>Tag availability is not verified in Phase 1.</strong>
+        Some CNCs may not expose every tag in the selected protocol baseline
+        (e.g. a lathe without a spindle won't publish Spindle/Speed).
+        Missing tags will not publish; other tags continue normally.
+        After applying the draft, check the Sources page for per-tag read
+        errors via 3-way diagnostics.
+      </div>
+
+      <h4 style="margin: 14px 0 6px; font-size: 13px;">New sources (35) — showing first 5</h4>
+      <table>
+        <thead><tr><th>InstanceId</th><th>DeviceId</th><th>DeviceName</th><th>Host</th><th>Enabled</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">cnc-031-source</span></td><td>cnc-031</td><td>Lathe-Bay-5</td><td>192.168.10.81</td><td>true</td></tr>
+          <tr><td><span class="mono">cnc-032-source</span></td><td>cnc-032</td><td>Lathe-Bay-6</td><td>192.168.10.82</td><td>true</td></tr>
+          <tr><td><span class="mono">cnc-033-source</span></td><td>cnc-033</td><td>Lathe-Bay-7</td><td>192.168.10.83</td><td>false</td></tr>
+          <tr><td><span class="mono">cnc-034-source</span></td><td>cnc-034</td><td>Mill-B1</td><td>192.168.10.91</td><td>true</td></tr>
+          <tr><td><span class="mono">cnc-035-source</span></td><td>cnc-035</td><td>Mill-B2</td><td>192.168.10.92</td><td>true</td></tr>
+          <tr><td colspan="5" style="text-align:center; color: var(--muted); font-size: 12px;">… 30 more rows …</td></tr>
+        </tbody>
+      </table>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted);">
+        <span>baseConfigHash:</span>
+        <span class="mono">sha256-89733f…1b06f7</span>
+        <span style="margin-left: auto;"><a href="#" class="download-link">Show raw merged JSON</a></span>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn">← Back</button>
+        <button class="btn btn-primary">Create draft (35 sources)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-8">
+  <header>
+    <h2>State 8 — Submit confirmation</h2>
+    <span class="ref">v3 §9 step 5 + ChatGPT Q1 "Create another batch"</span>
+  </header>
+  <p class="note">One draft created. NOT "Created 35 drafts" — that was the v1/v2 N-draft model the architecture amendment killed. "Create another batch" UX makes the two-runs-per-gateway flow feel intentional.</p>
+  <div class="browser">
+    <div class="chrome"><span class="dots"><span></span><span></span><span></span></span><span class="url">https://gateway-a.local:5080/sources/bulk-import</span></div>
+    <div class="body">
+      <div class="step-strip">
+        <span class="step done">1</span><span class="sep">›</span>
+        <span class="step done">2</span><span class="sep">›</span>
+        <span class="step done">3</span><span class="sep">›</span>
+        <span class="step done">4</span><span class="sep">›</span>
+        <span class="step active">5. Submit</span>
+      </div>
+
+      <div class="success-box">
+        <strong style="font-size: 16px;">✓ One draft created — 35 new sources</strong>
+        <div style="margin-top: 6px;">
+          Draft <span class="mono">#142</span> · contains current config + 35 merged sources + 35 routes targeting edge-acme-mqtt
+        </div>
+      </div>
+
+      <div style="background: var(--soft); border-radius: 4px; padding: 12px 14px; font-size: 13px; margin: 12px 0;">
+        <strong>What's next</strong>
+        <ul style="margin: 8px 0 0 18px; padding: 0;">
+          <li>Review the draft on the Config page before applying.</li>
+          <li>After apply, verify source health on the Sources page (3-way diagnostics shows per-tag read errors).</li>
+          <li>Some CNCs may not expose every tag in the protocol baseline; missing tags do not publish but other tags continue.</li>
+        </ul>
+      </div>
+
+      <div class="footer-actions">
+        <a href="#" class="btn">View draft #142</a>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn">Back to Sources</button>
+          <button class="btn btn-primary">Create another batch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section class="state" id="state-9">
+  <header>
+    <h2>State 9 — Error states</h2>
+    <span class="ref">v3 §4 block/warn matrix + v3.1 §5/§6</span>
+  </header>
+  <p class="note">Nine blockers + three warnings per v3 + v3.1. All include the offending row identified + operator-readable fix.</p>
+
+  <div class="variant-grid">
+
+    <div class="variant-card">
+      <h5>Duplicate deviceId within CSV</h5>
+      <div class="error-box">
+        <strong>Block — 1 row in CSV.</strong>
+        Row 7 and row 12 both have <code>deviceId=cnc-031</code>. Each deviceId must be unique within the upload.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.CsvDuplicateDeviceId</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Existing source InstanceId collision</h5>
+      <div class="error-box">
+        <strong>Block — 2 rows collide with existing sources.</strong>
+        Row 7 (<code>cnc-007-source</code>) and row 8 (<code>cnc-008-source</code>) already exist on this gateway. Either rename, remove from CSV, or delete the existing source first.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.SourceInstanceIdCollision</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Existing source DeviceId collision (re-import)</h5>
+      <div class="error-box">
+        <strong>Block — operator likely re-imported same device.</strong>
+        Row 4 has <code>deviceId=cnc-031</code> but a source for that DeviceId already exists (<code>cnc-031-source</code>, "Lathe-Bay-5"). DeviceId is the operational identity; importing the same one twice is a mistake.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.SourceDeviceIdCollision</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Invalid MTConnect baseUrl</h5>
+      <div class="error-box">
+        <strong>Block — 1 row has malformed baseUrl.</strong>
+        Row 7 (<code>okuma-vmc-7</code>): <code>192.168.10.57:5000</code> is not an absolute URL. MTConnect baseUrl must start with <code>http://</code> or <code>https://</code>.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.MtConnectBaseUrlInvalid</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Invalid deviceId format</h5>
+      <div class="error-box">
+        <strong>Block — 3 rows have invalid deviceId.</strong>
+        Row 3: <code>cnc 007</code> (space). Row 8: <code>cnc/007</code> (slash). Row 14: <code>cnc.007</code> (dot).
+        deviceId must match <code>^[A-Za-z0-9_-]+$</code>, length 1–64.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.DeviceIdFormatInvalid</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Stale preview / config changed</h5>
+      <div class="error-box">
+        <strong>Block — config changed since preview.</strong>
+        Someone else applied a draft after you generated this preview. Please refresh the preview to review the new gateway state before submitting.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.BaseConfigHashMismatch</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Generated config fails schema validation</h5>
+      <div class="error-box">
+        <strong>Block — generated merged config did not validate.</strong>
+        The merged GatewayConfiguration failed schema validation. Common causes:
+        a CSV value contains an unexpected character that broke the rendered
+        JSON (e.g. an unescaped backslash in <code>deviceName</code>); a recently
+        modified protocol template produced invalid output. Re-check the
+        offending row above; if everything looks normal, capture the import
+        label <code>fanuc-batch-2026-06-14</code> and contact platform support.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.MergedConfigSchemaViolation</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Invalid CSV header / extra column</h5>
+      <div class="error-box">
+        <strong>Block — CSV header does not match the expected shape.</strong>
+        Expected columns: <code>deviceId, deviceName, host, enabled</code> (FOCAS2 / Brother / Modbus) or <code>deviceId, deviceName, baseUrl, enabled</code> (MTConnect). Found extra column <code>tagProfile</code>. Per v3.1 §8 the wizard does not accept extra columns; they would silently bypass validation. Remove unknown columns or download the protocol's CSV template.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.CsvHeaderShapeInvalid</span></span>
+      </div>
+    </div>
+
+    <div class="variant-card">
+      <h5>Generated RouteId collision</h5>
+      <div class="error-box">
+        <strong>Block — generated RouteId already exists.</strong>
+        Row 4 would generate <code>RouteId = route-cnc-031</code>, but that route already exists on this gateway (pointing at <code>cnc-031-source</code>). Either rename the imported row's <code>deviceId</code>, delete the existing source/route pair, or remove the row from the CSV.
+        <br /><br />
+        <span style="font-size: 12px;">Code: <span class="mono">BulkProvision.RouteIdCollision</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <h4 style="margin: 18px 0 6px; font-size: 13px; color: var(--muted);">Warnings (do not block; surface in upload preview)</h4>
+  <div class="variant-grid">
+    <div class="variant-card">
+      <h5>Duplicate deviceName in CSV</h5>
+      <div class="warning-box">
+        <strong>Warning — 2 rows share deviceName.</strong>
+        Row 3 (<code>cnc-033</code>) and row 12 (<code>cnc-042</code>) both named "Lathe-Bay-7". Operationally identifiable by deviceId; this is allowed.
+      </div>
+    </div>
+    <div class="variant-card">
+      <h5>Duplicate Route Name</h5>
+      <div class="warning-box">
+        <strong>Warning — 1 generated Route Name matches an existing route.</strong>
+        Row 7 (<code>cnc-037</code>) would generate <code>"Mill-A3 to edge-acme-mqtt"</code>, which matches the name of an existing route. Routes are uniquely identified by <code>RouteId</code> (which is unique here), so this is allowed; duplicate names can make the Routes page harder to read but don't affect operation. Per v3.1 §4.
+      </div>
+    </div>
+    <div class="variant-card">
+      <h5>Unapplied draft already exists</h5>
+      <div class="warning-box">
+        <strong>Warning — this gateway has an unapplied draft.</strong>
+        Draft <span class="mono">#138</span> (created 2 hours ago) is still pending review. Submitting this import will create draft <span class="mono">#142</span> alongside it. Either apply or discard <span class="mono">#138</span> before applying <span class="mono">#142</span> to avoid confusion about which change takes effect.
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px;">
+  <p>Static HTML mockup · per <a href="../../sessions/2026-06-14-bulk-provision-ui-phase1-v3-lock-final.md">v3 lock</a> + <a href="../../sessions/2026-06-14-bulk-provision-ui-phase1-v3.1-addendum.md">v3.1 addendum</a> · pre-Razor · for operator sign-off</p>
+</footer>
+
+</div>
+</body>
+</html>

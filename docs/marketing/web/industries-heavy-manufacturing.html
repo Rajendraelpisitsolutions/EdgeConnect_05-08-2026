@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/industries-heavy-manufacturing.html
+  Purpose:     Static mockup of /industries/heavy-manufacturing — the
+               IndustryShell (8-section) PATTERN-SETTER for the 6 vertical
+               pages. Faithful to page-industry-heavy-manufacturing-spec-v2.md
+               (LOCKED). The other 5 vertical pages inherit this structure.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       Vertical lens — cross-links the LOCKED capability/solution
+               owners, re-derives none. Category-level proof + verbatim
+               geography anchor; NO defense/space-agency anchor (reserved).
+               P-G: FOCAS2/MTConnect/Brother HTTP/Modbus TCP/OPC UA Client/S7
+               shipped; MT-LINKi REST roadmap. No outcome metrics.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heavy Manufacturing — mixed-floor intelligence · Elpis</title>
+  <meta name="description" content="One operational view across mixed-vendor CNCs, presses, and PLCs — plus condition monitoring on the rotating equipment that can't fail. Brownfield-ready.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/industries-heavy-manufacturing">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Heavy Manufacturing">
+  <meta property="og:description" content="One operational view across mixed-vendor CNCs, presses, and PLCs — plus condition monitoring on the rotating equipment that can&#x27;t fail. Brownfield-ready.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/industries-heavy-manufacturing">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Heavy Manufacturing">
+  <meta name="twitter:description" content="One operational view across mixed-vendor CNCs, presses, and PLCs — plus condition monitoring on the rotating equipment that can&#x27;t fail. Brownfield-ready.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .lead-p { margin-top: var(--space-5); max-width: 80ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 82ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .card-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .lens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; transition: border-color var(--motion-fast) var(--motion-easing), transform var(--motion-fast) var(--motion-easing); }
+    .lens-card:hover { border-color: var(--color-brand-teal); transform: translateY(-2px); }
+    .lens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .lens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">INDUSTRY · HEAVY MANUFACTURING</span>
+        <h1 id="hero-heading" class="hero__headline">Heavy manufacturing runs on mixed iron. Your operational view shouldn't fragment because of it.</h1>
+        <p class="hero__subhead">Decades-old presses beside last year's CNCs. FANUC next to Siemens S7 next to Modbus PLCs. Elpis collects from all of it over native protocols, normalizes every signal to one vocabulary, and watches the rotating equipment that can't fail — without replacing a single machine. Operating across India and the Middle East.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+        <p class="trust-strip">Live integrations: FOCAS2 · MTConnect · Brother HTTP · Modbus TCP · OPC UA Client · Siemens S7. FANUC MT-LINKi REST on the roadmap.</p>
+      </div>
+    </section>
+
+    <!-- §2 THE REALITY -->
+    <section class="section" data-mode="light" aria-labelledby="reality-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE REALITY ON A HEAVY FLOOR</span><h2 id="reality-heading" class="section-title">Five generations of iron, one production target.</h2></div>
+        <p>A heavy-manufacturing floor is an archaeology of capital decisions. A hydraulic press commissioned in 1998 still stamping good parts. A FANUC turning center from the 2010s. A Siemens-controlled line cell added last year. A row of older machines fronted by Modbus PLCs because their original interfaces never survived a network-security review. Every one of them is making parts. None of them speaks the same language.</p>
+        <p>The cost of that fragmentation is concentrated and expensive. A large press or a flagship CNC going down doesn't slow a line — it stops one. Maintenance hears about a bearing or a hydraulic fault from the operator who noticed the noise, not from a trend. OEE gets reconciled across bays in a spreadsheet on Monday, describing a problem that already cost the weekend. And the data that would have caught it early was on the floor the whole time — just never reaching the people who could act.</p>
+        <p>Replacing the iron isn't the answer. It's depreciated, validated for the parts it runs, and the operators know it by feel. What needs to modernize is the data layer, not the machines. The heavy shops that get there put one protocol-agnostic runtime in front of every controller, normalize every signal at the edge, instrument the consequence-heavy rotating equipment, and let the existing systems keep doing their jobs.</p>
+        <p class="pullquote">"The data that would have caught it early was on the floor the whole time."</p>
+      </div>
+    </section>
+
+    <!-- §3 WHAT ELPIS DOES HERE -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT ELPIS DOES ON A HEAVY FLOOR</span><h2 id="solve-heading" class="section-title">The data layer modernizes. The iron stays.</h2></div>
+        <div class="lead-p"><strong>Speak every controller you already own.</strong><span>EdgeConnect polls your mixed floor over native protocols — FOCAS2 for FANUC, Siemens S7 for press and line PLCs, Modbus TCP for older machines fronted by a PLC, MTConnect for open-standard machines, Brother HTTP for Brother machining centers, and OPC UA Client where a controller exposes it. Canonical vocabulary at the edge means a spindle, a stroke count, or a fault code means the same thing whichever machine produced it. FANUC MT-LINKi REST integration is on the roadmap. → <a class="pillar-link" href="capabilities-connectivity-edge">/capabilities/connectivity-edge</a></span></div>
+        <div class="lead-p"><strong>One OEE truth across every bay.</strong><span>EREMOS V2 computes OEE Segments from the edge-collected signals against your OEE definition — so the number that took a Monday spreadsheet to assemble holds the same meaning across a 1998 press and a 2024 cell. → <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a></span></div>
+        <div class="lead-p"><strong>Watch the equipment that can't fail.</strong><span>VAS reads vibration signatures on the rotating equipment a heavy floor lives on — large motors, gearboxes, fans, and presses — and E-IDOS reads particle contamination and water saturation on hydraulic-press and lubrication systems (ISO 4406 / NAS 1638). Early warning on a signature your maintenance team sets, not a calendar. → <a class="pillar-link" href="capabilities-condition-monitoring">/capabilities/condition-monitoring</a></span></div>
+        <div class="lead-p"><strong>Reach the signals the PLC won't give you.</strong><span>Where a machine exposes nothing useful, mDAQ acquires the sensor signal directly — temperature, pressure, flow, vibration — without waiting on a controller retrofit. → <a class="pillar-link" href="capabilities-data-acquisition">/capabilities/data-acquisition</a></span></div>
+        <p class="anchor-line">The data layer modernizes. The iron stays.</p>
+      </div>
+    </section>
+
+    <!-- §4 RELEVANT SOLUTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="sol-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">SOLUTIONS THAT FIT A HEAVY FLOOR</span><h2 id="sol-heading" class="section-title">The outcomes a heavy floor reaches for.</h2></div>
+        <div class="card-grid">
+          <a class="lens-card" href="solutions-brownfield-modernization"><span class="eyebrow">SOLUTION · BROWNFIELD MODERNIZATION</span><span class="cl-desc">Modern OEE and audit trails from the controllers you already own.</span></a>
+          <a class="lens-card" href="solutions-cnc-machining"><span class="eyebrow">SOLUTION · CNC MACHINING</span><span class="cl-desc">Mixed-vendor CNC floors on one operational view.</span></a>
+          <a class="lens-card" href="solutions-predictive-maintenance"><span class="eyebrow">SOLUTION · PREDICTIVE MAINTENANCE</span><span class="cl-desc">Early warning on presses, motors, and gearboxes — before they fail.</span></a>
+          <a class="lens-card" href="solutions-multi-site-operations"><span class="eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span><span class="cl-desc">One fleet view when you run more than one plant.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 PROOF POSTURE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="proof-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">PROOF POSTURE</span><h2 id="proof-heading" class="section-title">Built for floors where downtime is measured in stopped lines.</h2></div>
+        <div class="trust-cue"><p>Elpis is deployed across heavy fabrication and machining operations — mixed-vendor floors with consequence-heavy rotating equipment. <strong>Operating across India and the Middle East.</strong> The platform runs offline-first: the license validates locally with no phone-home, and per-route store-and-forward is built to preserve every reading through a network or broker drop — queuing locally and replaying in source order on reconnect. Every configuration change is captured in a hash-chained, tamper-evident audit trail.</p></div>
+        <p class="deploy-note">Full operational trust posture → <a class="pillar-link" href="security">/security</a>  ·  Anonymized deployment patterns → <a class="pillar-link" href="customers">/customers</a></p>
+      </div>
+    </section>
+
+    <!-- §6 COMMON QUESTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What heavy-manufacturing teams ask first.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">Which of our machines can you actually collect from?</p><p class="faq__a">FANUC over FOCAS2, Siemens controllers over S7, older machines fronted by a PLC over Modbus TCP, plus MTConnect, Brother HTTP, and OPC UA Client where it's exposed — all shipping today. FANUC MT-LINKi REST integration is on the roadmap. Bring the controller list to the scoping call and we confirm the collection path per machine.</p></div>
+          <div class="faq__item"><p class="faq__q">Do we have to replace our older presses and CNCs?</p><p class="faq__a">No. EdgeConnect reads each controller as a read-only client — it never changes control logic, and no machine comes offline to connect it. The iron stays; the data layer modernizes.</p></div>
+          <div class="faq__item"><p class="faq__q">Can you monitor our presses and large motors for failure?</p><p class="faq__a">Yes — that's what VAS and E-IDOS are for. VAS reads vibration signatures on rotating equipment (motors, gearboxes, fans, presses); E-IDOS reads hydraulic and lubrication oil health. They give early warning when a signature crosses a threshold your maintenance team defines — a better trigger than a calendar, not a guarantee against every failure.</p></div>
+          <div class="faq__item"><p class="faq__q">We run more than one plant. Does this aggregate?</p><p class="faq__a">Each plant runs its own EdgeConnect with a per-gateway identity; EREMOS V2 aggregates across plants for a fleet view. Multi-site visibility comes from aggregation — never from one runtime stretched across plants. → <a class="pillar-link" href="solutions-multi-site-operations">/solutions/multi-site-operations</a></p></div>
+          <div class="faq__item"><p class="faq__q">Does this replace our SCADA or MES?</p><p class="faq__a">No. Elpis sits beside them. EdgeConnect publishes canonical signals (MQTT, OPC UA Server); EREMOS V2 exposes OEE, alarms, and reports via API. Your SCADA keeps operator HMIs and control; your MES keeps scheduling and work orders. → <a class="pillar-link" href="architecture">/architecture</a></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §7 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="card-grid">
+          <a class="lens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Every outcome, organized by the problem it solves.</span></a>
+          <a class="lens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the pieces connect into one stack.</span></a>
+          <a class="lens-card" href="platform"><span class="eyebrow">PLATFORM</span><span class="cl-desc">Why Elpis exists and how we engage.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your floor — every vintage of it.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">A controller list, the rotating equipment that worries you, and an OEE definition — that's enough to scope a proof of value. We run it on your real protocols against your real signals.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Heavy%20manufacturing%20scoping" class="btn btn--primary btn--lg">Book a scoping call <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

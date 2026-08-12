@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<!--
+  MELSEC Wizard + Diagnostics UI — STATIC MOCKUP (non-functional) for operator
+  sign-off BEFORE any Razor. Matches EdgeConnect Studio design tokens
+  (Inter; #F8FAFC page / #FFFFFF cards / #E5E7EB borders / #1976D2 accent;
+  semantic success/warning/error/info). Mirrors the S7 wizard structure and the
+  shared WizardShell/WizardSection/WizardValidationBanner/WizardActions primitives.
+  Plan: docs/sessions/2026-07-01-melsec-wizard-ui-plan-v2.md (APPROVED)
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MELSEC Wizard + Diagnostics — Mockup</title>
+<style>
+  :root{
+    --bg:#F8FAFC; --card:#FFFFFF; --border:#E5E7EB; --ink:#1F2937; --muted:#6B7280;
+    --blue:#1976D2; --blue-soft:#E8F1FB; --ok:#16A34A; --ok-soft:#ECFDF3;
+    --warn:#F59E0B; --warn-soft:#FFFBEB; --err:#DC2626; --err-soft:#FEF2F2;
+    --info:#2563EB; --info-soft:#EFF6FF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,-apple-system,Segoe UI,Roboto,system-ui,sans-serif;font-size:14px;line-height:1.5}
+  .appbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+  .appbar .logo{font-weight:600;color:var(--blue)}
+  .appbar .crumbs{color:var(--muted);font-size:13px}
+  .wrap{max-width:940px;margin:0 auto;padding:24px}
+  h1{font-size:22px;font-weight:500;margin:8px 0}
+  h2{font-size:16px;font-weight:500;margin:0}
+  .mocknote{background:#111827;color:#E5E7EB;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:20px}
+  .mocknote b{color:#fff}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;margin:16px 0;overflow:hidden}
+  .card-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .card-b{padding:18px}
+  .num{width:24px;height:24px;border-radius:50%;background:var(--blue-soft);color:var(--blue);
+    font-size:13px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .req::after{content:" *";color:var(--err)}
+  input,select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  input.err{border-color:var(--err);box-shadow:0 0 0 3px var(--err-soft)}
+  input.readonly{background:#F3F4F6;color:#6B7280}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .field-err{font-size:12px;color:var(--err);margin-top:4px;font-weight:500}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:.12s}
+  .tile:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(25,118,210,.08)}
+  .tile.sel{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+  .tile .t-title{font-weight:500;margin:6px 0 2px}
+  .tile .t-desc{font-size:12px;color:var(--muted)}
+  .tile.pending{opacity:.55;border-style:dashed;cursor:not-allowed}
+  .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}
+  .chip.ok{background:var(--ok-soft);color:var(--ok)}
+  .chip.pend{background:#F3F4F6;color:#6B7280}
+  .chip.warn{background:var(--warn-soft);color:#B45309}
+  .chip.err{background:var(--err-soft);color:var(--err)}
+  .chip.info{background:var(--info-soft);color:var(--info)}
+  .banner{border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:16px;border:1px solid}
+  .banner.err{background:var(--err-soft);border-color:#FCA5A5;color:#991B1B}
+  .banner.info{background:var(--info-soft);border-color:#BFDBFE;color:#1E40AF}
+  .banner.ok{background:var(--ok-soft);border-color:#86EFAC;color:#166534}
+  .banner.warn{background:var(--warn-soft);border-color:#FCD34D;color:#92400E}
+  .banner ul{margin:8px 0 0;padding-left:18px}
+  .banner a{color:inherit;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;padding:8px;border-bottom:1px solid var(--border)}
+  td{padding:8px;border-bottom:1px solid #F1F5F9;vertical-align:top}
+  td input,td select{padding:6px 8px;font-size:13px}
+  .row-ok{color:var(--ok);font-weight:600}
+  .row-err{color:var(--err);font-weight:600}
+  .btn{border:1px solid var(--border);background:#fff;color:var(--ink);padding:8px 14px;border-radius:6px;
+    font:inherit;font-weight:500;cursor:pointer}
+  .btn:hover{background:#F9FAFB}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.ghost{color:var(--blue);border-color:transparent;background:transparent}
+  .exp{border:1px solid var(--border);border-radius:8px;margin-top:12px}
+  .exp>summary{cursor:pointer;padding:12px 14px;font-weight:500;list-style:none;display:flex;justify-content:space-between}
+  .exp>summary::after{content:"▾";color:var(--muted)}
+  .exp[open]>summary::after{content:"▴"}
+  .exp .exp-b{padding:14px;border-top:1px solid var(--border)}
+  .kv{display:grid;grid-template-columns:190px 1fr;gap:6px 16px;font-size:13px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0;font-variant-numeric:tabular-nums}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px}
+  .actions{display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--border);background:#FCFCFD}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
+  .sectiontag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:30px 0 6px}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <span class="logo">Elpis EdgeConnect · Studio</span>
+  <span class="crumbs">Sources › Add a source › Mitsubishi MELSEC</span>
+</div>
+
+<div class="wrap">
+  <div class="mocknote">
+    <b>STATIC MOCKUP v2 — not functional.</b> For operator sign-off before Razor.
+    Shows the licensed &amp; "Requires Premium" tile states, the guided wizard, the
+    probe (test-connection / test-read incl. read-all-valid), and the diagnostics
+    panel (typed <span style="color:#fff">MelsecDiagnosticsDto</span>). Slice&nbsp;1 =
+    MC&nbsp;3E binary over TCP, read-only. No browse / writes / UDP / 4E / 1E /
+    ASCII / demo / CSV import.
+  </div>
+
+  <!-- ============================ TILE PICKER ============================ -->
+  <div class="sectiontag">Step 1 · Choose a source protocol</div>
+  <div class="tiles">
+    <div class="tile"><div class="chip ok">Available</div><div class="t-title">Siemens S7</div><div class="t-desc">S7-300/400/1200/1500.</div></div>
+    <div class="tile sel">
+      <div class="chip ok">Available</div>
+      <div class="t-title">Mitsubishi MELSEC</div>
+      <div class="t-desc">iQ-R / iQ-F / Q / L via SLMP / MC 3E binary (TCP).</div>
+    </div>
+    <div class="tile"><div class="chip ok">Available</div><div class="t-title">Modbus TCP</div><div class="t-desc">Any Modbus TCP slave.</div></div>
+    <div class="tile"><div class="chip ok">Available</div><div class="t-title">OPC UA Client</div><div class="t-desc">Any OPC UA server.</div></div>
+    <div class="tile"><div class="chip ok">Available</div><div class="t-title">FANUC FOCAS2</div><div class="t-desc">FANUC CNC.</div></div>
+    <div class="tile pending"><div class="chip pend">Coming soon</div><div class="t-title">EtherNet/IP</div><div class="t-desc">Allen-Bradley.</div></div>
+  </div>
+  <p class="sub" style="margin-top:10px"><b>Premium license state (source-melsec):</b>
+    the tile is Available only when the license enables the module; otherwise it
+    shows a locked "Requires Premium" state. The UI is explanatory — the real gate
+    is backend (registration + apply).</p>
+  <div class="tiles" style="max-width:320px">
+    <div class="tile pending" title="License module 'source-melsec' not enabled">
+      <div class="chip warn">Requires Premium</div>
+      <div class="t-title">Mitsubishi MELSEC</div>
+      <div class="t-desc">Premium module — contact sales to enable.</div>
+    </div>
+  </div>
+
+  <!-- ============================ WIZARD ================================ -->
+  <div class="sectiontag">Step 2 · Configure the MELSEC source</div>
+  <h1>Add Mitsubishi MELSEC source</h1>
+  <p class="sub">Addresses use MELSEC device syntax — e.g. <span class="mono">D100</span>,
+    <span class="mono">W1A</span>, <span class="mono">M200</span>, word-bit
+    <span class="mono">D100.3</span>. Device number radix:
+    <b>ZR, W, X, Y, B are hexadecimal</b>; <b>D, R, M are decimal</b>.</p>
+
+  <!-- validation banner (shows a hydrate-time unsupported-mode example) -->
+  <div class="banner err" role="alert">
+    <b>2 issues to fix before saving</b>
+    <ul>
+      <li><a href="#">Transport 'Udp'</a> — <span class="mono">MELSEC.CONFIG_MODE_NOT_IMPLEMENTED</span>:
+        accepted in config but not implemented in Slice&nbsp;1 (TCP only).</li>
+      <li><a href="#">Tag "spindle_state" address 'SM400'</a> —
+        <span class="mono">MELSEC.DEVICE_NOT_IMPLEMENTED</span>: recognized but not
+        supported (supported: D, W, R, ZR, M, X, Y, B).</li>
+    </ul>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="card">
+    <div class="card-h"><span class="num">1</span><h2>Source</h2></div>
+    <div class="card-b">
+      <div class="grid">
+        <div><label class="req">Source id</label><input value="melsec-press-2"></div>
+        <div><label>Source name</label><input value="iQ-R Press #2"></div>
+        <div><label>Description</label><input placeholder="e.g. iQ-R controlling the press line"></div>
+        <div><label>Device class</label>
+          <select><option>plc</option><option>cnc</option><option>meter</option><option>rtu</option></select></div>
+      </div>
+      <div style="margin-top:12px"><label><input type="checkbox" checked style="width:auto"> Enabled</label></div>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="card">
+    <div class="card-h"><span class="num">2</span><h2>PLC connection</h2></div>
+    <div class="card-b">
+      <div class="grid">
+        <div><label class="req">Host / IP address</label><input value="192.168.3.50"></div>
+        <div><label class="req">TCP port</label><input value="6000">
+          <div class="hint">Set on the Ethernet module. Common: 5000 / 5001 / 5006 / 6000.</div></div>
+      </div>
+
+      <div class="banner info" style="margin-top:14px">
+        <b>Protocol (Slice 1, fixed):</b> MC Protocol <b>3E</b> · <b>Binary</b> ·
+        <b>TCP</b> · <b>read-only</b>. Browse, writes, and other frame modes are not
+        offered in this release — tags are entered manually below.
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn">Test connection</button>
+        <div class="banner ok" style="margin:0;flex:1;padding:8px 12px">
+          <span class="dot ok"></span><b>Connected</b> to 192.168.3.50:6000 · 18&nbsp;ms
+        </div>
+      </div>
+
+      <details class="exp">
+        <summary>Advanced — route header</summary>
+        <div class="exp-b">
+          <div class="grid3">
+            <div><label>Network No.</label><input value="0x00"><div class="hint">byte · 0x00–0xFF</div></div>
+            <div><label>PC No.</label><input value="0xFF"><div class="hint">byte · 0x00–0xFF</div></div>
+            <div><label>Dest. module I/O No.</label><input value="0x03FF"><div class="hint">ushort · 0x0000–0xFFFF</div></div>
+            <div><label>Dest. station No.</label><input value="0x00"><div class="hint">byte · 0x00–0xFF</div></div>
+          </div>
+          <div class="hint">Ranges enforced by the backend field types (byte / ushort) via MelsecConnectionKeys — not duplicated UI rules. Defaults address the local CPU; change only for a routed network (CC-Link IE / MELSECNET).</div>
+        </div>
+      </details>
+
+      <details class="exp">
+        <summary>Advanced — timing &amp; reliability</summary>
+        <div class="exp-b">
+          <div class="grid3">
+            <div><label>Request timeout (ms)</label><input value="5000"></div>
+            <div><label>Monitoring timer (ms)</label><input value="4000">
+              <div class="hint">Encoded in 250&nbsp;ms units, rounded up.</div></div>
+            <div><label>Max points / request</label><input value="480"><div class="hint">Default 480 (conservative) · hard cap 960 · written into config</div></div>
+            <div><label>Max gap (words)</label><input value="8"></div>
+            <div><label>Connect timeout (ms)</label><input value="3000"></div>
+            <div><label>Keep alive</label><select><option>Yes</option><option>No</option></select></div>
+            <div><label>Max retries</label><input value="2"></div>
+            <div><label>Breaker threshold</label><input value="5"></div>
+            <div><label>Breaker reset (ms)</label><input value="30000"></div>
+            <div><label>Initial backoff (ms)</label><input value="2000"></div>
+            <div><label>Max backoff (ms)</label><input value="60000"></div>
+            <div><label>Backoff multiplier</label><input value="2.0"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="card">
+    <div class="card-h"><span class="num">3</span><h2>Tags (4)</h2></div>
+    <div class="card-b">
+      <table>
+        <thead><tr><th>Name</th><th>Address</th><th>Datatype</th><th>Word order</th><th>Scan (ms)</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input value="stroke_count"></td>
+            <td><input value="D100"></td>
+            <td><select><option>Int16</option><option selected>UInt16</option></select></td>
+            <td><span class="muted">—</span></td>
+            <td><input value="1000"></td>
+            <td class="row-ok">✓ Valid</td>
+            <td><button class="btn ghost">Remove</button></td>
+          </tr>
+          <tr>
+            <td><input value="total_cycles"></td>
+            <td><input value="D200"></td>
+            <td><select><option selected>UInt32</option></select></td>
+            <td><select><option selected>Low-word-first</option><option>High-word-first</option></select></td>
+            <td><input value="1000"></td>
+            <td class="row-ok">✓ Valid</td>
+            <td><button class="btn ghost">Remove</button></td>
+          </tr>
+          <tr>
+            <td><input value="run_flag"></td>
+            <td><input value="D100.3"></td>
+            <td><select><option selected>Bool</option></select></td>
+            <td><span class="muted">—</span></td>
+            <td><input value="500"></td>
+            <td class="row-ok">✓ Valid</td>
+            <td><button class="btn ghost">Remove</button></td>
+          </tr>
+          <tr>
+            <td><input value="spindle_state"></td>
+            <td><input class="err" value="SM400">
+              <div class="field-err">MELSEC.DEVICE_NOT_IMPLEMENTED — SM is recognized but not supported (supported: D, W, R, ZR, M, X, Y, B).</div></td>
+            <td><select><option selected>Bool</option></select></td>
+            <td><span class="muted">—</span></td>
+            <td><input value="1000"></td>
+            <td class="row-err">✗ Error</td>
+            <td><button class="btn ghost">Remove</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;display:flex;gap:10px">
+        <button class="btn">+ Add tag</button>
+        <button class="btn ghost" onclick="document.getElementById('more').open=true">Show Unit / Scale / Offset</button>
+      </div>
+
+      <details class="exp" id="more">
+        <summary>Per-tag Unit / Scale / Offset (row: total_cycles)</summary>
+        <div class="exp-b"><div class="grid3">
+          <div><label>Unit</label><input value="cycles"></div>
+          <div><label>Scale</label><input value="1.0"></div>
+          <div><label>Offset</label><input value="0"></div>
+        </div></div>
+      </details>
+
+      <!-- test read -->
+      <details class="exp" open>
+        <summary>Test read · probe endpoint POST /api/v1/sources/probe/melsec/test-read</summary>
+        <div class="exp-b">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <button class="btn">Test read selected (stroke_count)</button>
+            <button class="btn">Read all valid tags</button>
+          </div>
+          <div class="banner warn" style="margin:0 0 10px">
+            <b>1 invalid tag skipped</b> — "spindle_state" (SM400) is <b>not sent to the PLC</b>. Fix it above to include it.
+          </div>
+          <div class="hint" style="margin-bottom:6px">Read-all plans these blocks and shows them before executing (short-lived probe connection; no runtime state change):</div>
+          <table style="margin-bottom:12px">
+            <thead><tr><th>Block</th><th>Device</th><th>Head</th><th>Words</th><th>Tags</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>D (word)</td><td class="mono">100</td><td>3</td><td>stroke_count, run_flag</td></tr>
+              <tr><td>2</td><td>D (word)</td><td class="mono">200</td><td>2</td><td>total_cycles</td></tr>
+            </tbody>
+          </table>
+          <table>
+            <thead><tr><th>Tag</th><th>Address</th><th>Quality</th><th>Decoded value</th></tr></thead>
+            <tbody>
+              <tr><td>stroke_count</td><td class="mono">D100</td><td><span class="chip ok">Good</span></td><td class="mono">4821</td></tr>
+              <tr><td>run_flag</td><td class="mono">D100.3</td><td><span class="chip ok">Good</span></td><td class="mono">true</td></tr>
+              <tr><td>total_cycles</td><td class="mono">D200</td><td><span class="chip err">Bad</span></td>
+                <td><span class="mono">—</span> <span class="chip err">protocol 0xC056</span> address+points exceed device range</td></tr>
+            </tbody>
+          </table>
+          <details class="exp" style="margin-top:10px">
+            <summary>Advanced — raw word payload (may contain production data)</summary>
+            <div class="exp-b mono">
+              D100 → 12 D3 &nbsp;(LE word 0xD312 = 4821)<br>
+              D100.3 → bit 3 of 0xD312 = 1<br>
+              request: 50 00 00 FF FF 03 00 0C 00 10 00 01 04 00 00 64 00 00 A8 01 00
+              <div class="hint" style="margin-top:8px">Not persisted to normal logs. Excluded from exported diagnostics unless explicitly requested and redacted (ADR-0020).</div>
+            </div>
+          </details>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="card">
+    <div class="card-h"><span class="num">4</span><h2>Wire data into a route</h2></div>
+    <div class="card-b">
+      <label><input type="radio" name="route" style="width:auto" checked> Create a new route</label>
+      <label style="margin-top:6px"><input type="radio" name="route" style="width:auto"> Do not wire yet</label>
+      <div class="grid" style="margin-top:12px">
+        <div><label>Route id</label><input value="route-melsec-press-2"></div>
+        <div><label>Destination</label><select><option>MQTT (eremos-mqtt)</option></select></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn">Test connection</button>
+    <button class="btn ghost">Cancel</button>
+    <button class="btn primary">Save as draft</button>
+  </div>
+
+  <!-- ============================ DIAGNOSTICS ============================ -->
+  <div class="sectiontag">Diagnostics · melsec-press-2 · Source detail page</div>
+  <div class="card">
+    <div class="card-h" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px"><span class="num">◔</span><h2>Adapter health</h2></div>
+      <span class="chip warn">Degraded</span>
+    </div>
+    <div class="card-b">
+      <div class="hint" style="margin-bottom:12px">Source: typed <span class="mono">MelsecDiagnosticsDto</span> — <b>observational only</b>, never controls the adapter (P1). Summary counters come from generic AdapterHealth; MELSEC-specific detail (route, scan blocks, end code, affected tags) is nested in the DTO. (Global /diagnostics page carries a fault summary + link.)</div>
+      <dl class="kv">
+        <dt>State</dt><dd><span class="dot warn"></span>Running (Degraded)</dd>
+        <dt>Connection</dt><dd><span class="dot ok"></span>Connected · 192.168.3.50:6000</dd>
+        <dt>Last successful poll</dt><dd>2026-07-01 14:22:09Z (3&nbsp;s ago)</dd>
+        <dt>Last request latency</dt><dd>21&nbsp;ms</dd>
+        <dt>Last error</dt><dd><span class="chip err">protocol</span> <span class="mono">MELSEC.READ_PROTOCOL</span> — end code <span class="mono">0xC056</span> (read address + points exceed device range)</dd>
+        <dt>Reconnects (consecutive)</dt><dd>0</dd>
+        <dt>Circuit breaker</dt><dd><span class="chip ok">Closed</span></dd>
+        <dt>Route header</dt><dd class="mono">net 0x00 · pc 0xFF · io 0x03FF · station 0x00</dd>
+      </dl>
+
+      <div style="margin-top:16px;font-weight:500">Scan blocks (from planner)</div>
+      <table style="margin-top:6px">
+        <thead><tr><th>Device</th><th>Head</th><th>Words</th><th>Scan (ms)</th><th>Tags</th><th>Last result</th></tr></thead>
+        <tbody>
+          <tr><td>D (word)</td><td class="mono">100</td><td>3</td><td>1000</td><td>stroke_count, run_flag</td><td><span class="chip ok">Good</span></td></tr>
+          <tr><td>D (word)</td><td class="mono">200</td><td>2</td><td>1000</td><td>total_cycles</td><td><span class="chip err">Bad · 0xC056</span></td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:16px;font-weight:500">Per-tag quality</div>
+      <table style="margin-top:6px">
+        <thead><tr><th>Tag</th><th>Quality</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>stroke_count</td><td><span class="chip ok">Good</span></td><td>—</td></tr>
+          <tr><td>run_flag</td><td><span class="chip ok">Good</span></td><td>—</td></tr>
+          <tr><td>total_cycles</td><td><span class="chip err">Bad</span></td><td>protocol 0xC056 — affected by failed block D200 (2 words)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:24px">Approved mockup (plan v2). Razor implementation follows this design.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!--
+  ModbusSoakRunner — long-running test harness that brings up the EdgeConnect
+  Host against a gateway.json (sim or real PLC) and captures per-minute
+  AdapterHealth snapshots to CSV. Produces a pass/fail summary at the end
+  evaluated against the KepServer-benchmarked acceptance criteria.
+
+  Used to validate Phase A' of the Modbus + MQTT production path.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.ModbusSoakRunner</RootNamespace>
+    <AssemblyName>ModbusSoakRunner</AssemblyName>
+    <Description>EdgeConnect soak runner — Modbus → MQTT pipeline stability + metrics capture.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1822;CA1848</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Host\ElpisEdgeConnect.Host.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sources.ModbusTcp\ElpisEdgeConnect.Sources.ModbusTcp.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sinks.Mqtt\ElpisEdgeConnect.Sinks.Mqtt.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>

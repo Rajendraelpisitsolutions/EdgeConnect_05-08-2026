@@ -1,0 +1,74 @@
+{
+  "_provisioning": {
+    "_TEMPLATE_NOTE": "This block is REPLACED by generate.ps1 at generation time with the actual 9-field provisioning block."
+  },
+  "Gateway": {
+    "GatewayId": "{{ gatewayId }}",
+    "GatewayName": "{{ gatewayName }}"
+  },
+  "Sources": [
+    {
+      "InstanceId": "{{ instanceId }}",
+      "ProtocolName": "modbus-tcp",
+      "DeviceId": "{{ deviceId }}",
+      "DeviceName": "{{ deviceName }}",
+      "DeviceClass": "plc",
+      "Enabled": {{ enabled }},
+      "Polling": {
+        "IntervalMs": 1000
+      },
+      "Connection": {
+        "host": "{{ host }}",
+        "port": 502,
+        "unitId": 1,
+        "timeoutMs": 5000,
+        "initialBackoffMs": 5000,
+        "maxBackoffMs": 120000,
+        "backoffMultiplier": 2.0,
+        "maxConnectRetries": 5,
+        "tags": []
+      }
+    }
+  ],
+  "Sinks": [
+    {
+      "InstanceId": "{{ mqttClientIdPrefix }}-mqtt",
+      "ProtocolName": "mqtt",
+      "Enabled": true,
+      "Connection": {
+        "brokerHost": "{{ mqttHost }}",
+        "brokerPort": {{ mqttPort }},
+        "clientId": "{{ mqttClientIdPrefix }}-{{ gatewayProvisioningId }}",
+        "useTls": false,
+        "publishMode": "PerTag",
+        "perTagTopicTemplate": "eremos/{gatewayId}/{deviceClass}/{sourceId}/{tagName}",
+        "qosLevel": {{ mqttQos }},
+        "reconnectDelayMs": 1000,
+        "maxReconnectDelayMs": 30000
+      }
+    }
+  ],
+  "Routes": [
+    {
+      "RouteId": "route-modbus-{{ gatewayProvisioningId }}",
+      "Name": "Modbus PLCs to MQTT",
+      "SourceInstanceId": "{{ instanceId }}",
+      "SinkInstanceIds": [ "{{ mqttClientIdPrefix }}-mqtt" ],
+      "Enabled": true,
+      "Buffer": {
+        "Mode": "StoreAndForward",
+        "MaxDepth": 100000,
+        "MaxAgeDays": 7,
+        "OnOverflow": "DropOldest"
+      },
+      "Delivery": {
+        "Mode": "AtLeastOnce",
+        "MaxRetries": 100,
+        "InitialBackoffMs": 100,
+        "MaxBackoffMs": 30000,
+        "BackoffMultiplier": 2.0,
+        "JitterPercent": 10
+      }
+    }
+  ]
+}

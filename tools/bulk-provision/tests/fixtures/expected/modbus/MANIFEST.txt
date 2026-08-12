@@ -1,0 +1,6 @@
+# bulk-provision MANIFEST.txt
+# generator: tools/bulk-provision/generate.ps1 v0.1.0
+
+31cea5e14e35f299768693744c3bde9c06ade9bce8c4827fe971519d621dbe14  plc-001.gateway.json
+a9dcea6abf66dc1377fe889ccc66bba81ac8582f4ef27e50ee025272795e47fb  plc-002.gateway.json
+be2113b78a45e954e49a1c83a32e9c45b1ecb83acc37e582de68020343c0843e  plc-003.gateway.json

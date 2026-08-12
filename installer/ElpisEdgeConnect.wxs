@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Elpis EdgeConnect — WiX installer manifest.
+  Builds a per-machine x64 MSI that:
+    * installs the Management (Studio) and Host publish outputs under
+      "%ProgramFiles%\Elpis EdgeConnect\{Management,Host}"
+    * registers ElpisEdgeConnect.Management.exe as the auto-start Windows
+      service "ElpisEdgeConnect" — it runs the full data pipeline AND serves
+      the Studio UI on http://127.0.0.1:5080
+    * adds a Start Menu shortcut that opens the Studio UI in the browser
+    * OPTIONALLY adds a Desktop shortcut — a deselectable feature the user
+      toggles in the install wizard's feature tree (default: installed)
+    * shows a friendly install wizard (WixUI_FeatureTree) with the Elpis logo
+    * supports clean major-version upgrades and full uninstall
+
+  NOTE ON TOPOLOGY: Management is a superset of the headless Host (it runs the
+  same pipeline via EdgeConnectComposition PLUS the UI). Only ONE of them may
+  run as a service against a given data root, so the service points at
+  Management. Host.exe is still installed for optional manual/headless use but
+  is NOT registered as a service — do not run it while the service is running
+  (they would contend on the same SQLite buffers under C:\ProgramData\EdgeConnect).
+
+  Build (from repo root):
+    wix build installer/ElpisEdgeConnect.wxs -arch x64 \
+      -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext \
+      -bindpath "MgmtSrc=<root>/publish/Management" \
+      -bindpath "FocasSrc=<root>/fwlib0iD64" \
+      -o publish/ElpisEdgeConnect.msi
+
+  FocasSrc is not optional: omit it and the build fails on the unresolved
+  !(bindpath.FocasSrc) reference below. See docs/installer/creating-the-installer.md.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Elpis EdgeConnect"
+           Manufacturer="Elpis IT Solutions"
+           Version="$(Version)"
+           UpgradeCode="b7e2c1a4-9f3d-4c8e-8a21-5f6d7e8c9b01"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="Elpis EdgeConnect — Industrial Edge Integration Platform" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Elpis EdgeConnect is already installed. Please uninstall it first." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Elpis logo icon — shown in Add/Remove Programs and reused for the
+         shortcuts. Path is relative to the repo root, where `wix build` is
+         invoked. -->
+    <Icon Id="ElpisIcon.ico" SourceFile="installer\elpis.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ElpisIcon.ico" />
+
+    <!-- Add/Remove Programs metadata -->
+    <Property Id="ARPCOMMENTS" Value="Protocol-agnostic industrial edge integration platform with management Studio." />
+    <Property Id="ARPCONTACT" Value="Elpis IT Solutions" />
+
+    <!-- ===================================================================
+         "Complete delete" uninstall option
+         ===================================================================
+         Unset (default) = today's behaviour: the MSI removes only what it
+         installed, and everything under %ProgramData%\EdgeConnect survives.
+         Set to 1 = also remove the gateway data, EXCEPT the license file.
+
+         Public + Secure so it survives the switch to the deferred/elevated
+         execute sequence and can be driven unattended:
+             msiexec /x ElpisEdgeConnect.msi COMPLETEDELETE=1 /qn
+         The setup.exe bundle sets it from a checkbox (see Bundle.wxs).
+
+         See docs/installer/uninstall-complete-delete-design.md. -->
+    <Property Id="COMPLETEDELETE" Secure="yes" />
+
+    <!-- Where the product put things, recorded into HKLM at install time by
+         the DataCleanup component below and read back here at uninstall.
+
+         WHY A REGISTRY ROUND-TRIP RATHER THAN JUST [INSTALLFOLDER]:
+         util:RemoveFolderEx's custom action (Wix4RemoveFoldersEx_X64) is
+         sequenced at 799 — BEFORE CostInitialize/CostFinalize (800/1000) —
+         because it has to populate the RemoveFile table early enough for
+         the installer to cost it. At 799 no Directory property is resolved
+         yet, so [INSTALLFOLDER] is still empty and anything computed from
+         it would silently remove nothing. Values recovered by AppSearch
+         (sequence 50) are available in time; directory properties are not.
+
+         Reading the data root back rather than recomputing it also means a
+         relocated root is honoured: if the runtime ever rewrites this same
+         DataRoot value (e.g. after EDGECONNECT_DATA_ROOT moved it), the
+         uninstall follows it without an installer change. -->
+    <Property Id="ECINSTALLDIRREG">
+      <RegistrySearch Id="FindInstallDir" Root="HKLM" Key="Software\Elpis IT Solutions\EdgeConnect" Name="InstallDir" Type="raw" />
+    </Property>
+    <Property Id="ECDATAROOTREG">
+      <RegistrySearch Id="FindDataRoot" Root="HKLM" Key="Software\Elpis IT Solutions\EdgeConnect" Name="DataRoot" Type="raw" />
+    </Property>
+
+    <!-- The actual removal targets, deliberately EMPTY unless the operator
+         opted in: util:RemoveFolderEx and RemoveFile both no-op on an unset
+         path property, so THE PROPERTY ASSIGNMENT IS THE GATE — not a
+         component condition. That distinction matters: a component whose
+         condition is false at INSTALL time is never installed, so its
+         removal rows would never run at uninstall time either, and the
+         checkbox would appear to do nothing. Gating the paths instead keeps
+         the component unconditionally installed and lets a choice made at
+         uninstall time actually take effect.
+
+         Scheduled After="AppSearch" (~51) so they beat the 799 deadline
+         above with the searched values already in hand. -->
+    <SetProperty Id="ECINSTALLTREE"  Value="[ECINSTALLDIRREG]"        After="AppSearch" Sequence="both" Condition="COMPLETEDELETE = 1 AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="ECDATA_ROOT"    Value="[ECDATAROOTREG]"          After="AppSearch" Sequence="both" Condition="COMPLETEDELETE = 1 AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="ECDATA_CONFIG"  Value="[ECDATAROOTREG]\config"   After="AppSearch" Sequence="both" Condition="COMPLETEDELETE = 1 AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="ECDATA_BUFFER"  Value="[ECDATAROOTREG]\buffer"   After="AppSearch" Sequence="both" Condition="COMPLETEDELETE = 1 AND NOT UPGRADINGPRODUCTCODE" />
+    <SetProperty Id="ECDATA_LOGS"    Value="[ECDATAROOTREG]\logs"     After="AppSearch" Sequence="both" Condition="COMPLETEDELETE = 1 AND NOT UPGRADINGPRODUCTCODE" />
+
+    <!-- NOT UPGRADINGPRODUCTCODE is load-bearing, not defensive noise. A
+         major upgrade uninstalls the OLD product as part of installing the
+         new one; without this guard an upgrade that happened to carry
+         COMPLETEDELETE=1 would silently wipe the customer's entire
+         configuration, buffers and logs mid-upgrade. The property is set by
+         Windows Installer only during the uninstall half of a major
+         upgrade, which is exactly the case to exclude. -->
+
+
+    <!-- ===== Install wizard UI ===== -->
+    <!-- WixUI_FeatureTree gives a Welcome -> License -> feature-selection
+         (Customize) -> Ready -> Install -> Finish flow. The feature tree is
+         where the operator turns the optional Desktop shortcut on or off. -->
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="installer\license.rtf" />
+
+    <!-- ===== Directory layout ===== -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Elpis EdgeConnect">
+        <Directory Id="MgmtDir" Name="Management" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuDir" Name="Elpis EdgeConnect" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+
+    <!-- ===== Management (Studio) — the auto-start service ===== -->
+    <ComponentGroup Id="ManagementComponents" Directory="MgmtDir">
+      <!-- Studio executable as an explicit component so ServiceInstall can
+           attach to it; the rest of the files are harvested. -->
+      <Component Id="StudioServiceExe" Guid="*">
+        <File Id="StudioExe"
+              Source="!(bindpath.MgmtSrc)\ElpisEdgeConnect.Management.exe"
+              KeyPath="yes" />
+        <ServiceInstall Id="StudioSvcInstall"
+                        Name="ElpisEdgeConnect"
+                        DisplayName="Elpis EdgeConnect"
+                        Description="Elpis EdgeConnect Industrial Edge Integration Platform and management Studio (UI at http://127.0.0.1:5080)."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <!-- Windows Service Recovery — auto-restart the gateway if the
+               service process fails (crash / OOM / unhandled fault), so it
+               keeps running without manual intervention. Restarts on the
+               1st, 2nd and every subsequent failure after a 30s delay, and
+               resets the failure counter once per day. This is the OS-level
+               safety net; per-adapter/route faults are already recovered
+               in-process by the source supervisor and reconnect loops. -->
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="30"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+        <!-- Stop/remove: WAIT so the old exe is fully released before the
+             upgrade overwrites files (avoids file-in-use on version upgrade). -->
+        <ServiceControl Id="StudioSvcStop"
+                        Name="ElpisEdgeConnect"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+        <!-- Start: DO NOT WAIT. The Studio's first-run startup connects its
+             configured sinks/sources (e.g. an MQTT sink to a remote broker can
+             take up to its ~15s connect timeout), so the service can take ~20s
+             to reach "Running". Waiting for that during install exceeded the
+             installer's service-start window and failed the whole install with
+             MSI error 1920 (then rolled back, leaving the service stopped).
+             Starting without waiting lets the install complete immediately; the
+             service finishes coming up in the background. -->
+        <ServiceControl Id="StudioSvcStart"
+                        Name="ElpisEdgeConnect"
+                        Start="install"
+                        Wait="no" />
+      </Component>
+
+      <!-- Every other Studio file, minus build/dev artifacts that are not
+           needed at runtime: debug symbols (*.pdb), XML doc files (*.xml),
+           and the IIS-only web.config (this is a self-contained Windows
+           service, not an IIS-hosted app). Keeps the install lean. -->
+      <Files Include="!(bindpath.MgmtSrc)\**">
+        <Exclude Files="!(bindpath.MgmtSrc)\ElpisEdgeConnect.Management.exe" />
+        <Exclude Files="!(bindpath.MgmtSrc)\**\*.pdb" />
+        <Exclude Files="!(bindpath.MgmtSrc)\**\*.xml" />
+        <Exclude Files="!(bindpath.MgmtSrc)\web.config" />
+        <!-- The FOCAS2 natives are harvested from !(bindpath.FocasSrc) below, so
+             they must NOT also be picked up here. ElpisEdgeConnect.Sources.Focas2
+             copies them into the output of every referencing project (Content +
+             Link, so they land flat beside the exe), which means the Management
+             publish folder now contains them too. Harvesting the same six files
+             from both roots is a hard build failure — WIX0091 duplicate File and
+             Component identifiers, since the generated ids derive from the
+             destination path. Excluding them here rather than dropping the
+             FocasSrc harvest keeps that bindpath REQUIRED, which is the point:
+             a build with no FocasSrc fails loudly instead of quietly producing
+             an MSI that cannot talk to a FANUC CNC. -->
+        <Exclude Files="!(bindpath.MgmtSrc)\fwlib*.dll" />
+      </Files>
+
+      <!-- FANUC FOCAS2 native libraries.
+           Focas2Interop's DllImportResolver loads "Fwlib64.dll" on Windows x64
+           and requires it BESIDE the executable — without it every FOCAS2 source
+           fails at first poll with DllNotFoundException, and the operator sees a
+           fault they cannot fix from the Studio.
+           All six ship together on purpose: Fwlib64.dll is the entry point, and
+           it loads the per-CNC-model libraries (fwlib0iD64, fwlib30i64, ...) at
+           runtime, so shipping only the entry point breaks every model. -->
+      <Files Include="!(bindpath.FocasSrc)\*.dll" />
+    </ComponentGroup>
+
+
+    <!-- ===== Start Menu shortcut to the Studio UI ===== -->
+    <ComponentGroup Id="StartMenuComponents" Directory="AppMenuDir">
+      <Component Id="StudioShortcut" Guid="*">
+        <!-- IconFile points at the installed Management.exe, which embeds the
+             Elpis logo (ApplicationIcon), so the shortcut shows the Elpis logo
+             without shipping a separate .ico. -->
+        <util:InternetShortcut Id="StudioLink"
+                               Name="Elpis EdgeConnect Studio"
+                               Target="http://127.0.0.1:5080/"
+                               Type="url"
+                               IconFile="[#StudioExe]"
+                               IconIndex="0" />
+        <RemoveFolder Id="RemoveAppMenuDir" On="uninstall" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="StudioShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ===== OPTIONAL Desktop shortcut (deselectable feature) ===== -->
+    <ComponentGroup Id="DesktopShortcutComponents" Directory="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="*">
+        <util:InternetShortcut Id="DesktopStudioLink"
+                               Name="Elpis EdgeConnect Studio"
+                               Target="http://127.0.0.1:5080/"
+                               Type="url"
+                               IconFile="[#StudioExe]"
+                               IconIndex="0" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="DesktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ===== "Complete delete" cleanup rules ===== -->
+    <!-- This component is ALWAYS installed (see the note on the SetProperty
+         block above). Its removal rows fire only when the matching path
+         property was populated, i.e. only when the operator ticked the box.
+
+         THE LICENSE FILE IS PRESERVED BY NEVER BEING NAMED HERE. That is
+         exclusion by omission rather than by filtering, and it is the safer
+         construction on purpose: there is no "delete everything except X"
+         filter that a future edit could accidentally widen. Anything not
+         listed below survives, so edgelicense.json survives.
+
+         Consequence to keep in mind when adding a new data subdirectory:
+         it will be LEFT BEHIND until it is added here. -->
+    <ComponentGroup Id="DataCleanupComponents" Directory="MgmtDir">
+      <Component Id="DataCleanup" Guid="*">
+        <!-- Written at install (WriteRegistryValues runs after CostFinalize,
+             so [INSTALLFOLDER] is resolved by then), recovered at uninstall
+             by the RegistrySearches above. Doubles as a support breadcrumb:
+             it records where this gateway actually put its files. -->
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="DataRoot"
+                       Type="string"
+                       Value="[CommonAppDataFolder]EdgeConnect"
+                       KeyPath="yes" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\Elpis IT Solutions\EdgeConnect"
+                       Name="InstallDir"
+                       Type="string"
+                       Value="[INSTALLFOLDER]" />
+
+        <!-- Recursive trees. RemoveFile/RemoveFolder only handle one level
+             and these nest (config\drafts\, config\history\<version>\,
+             buffer\route-*.db + -wal/-shm), so RemoveFolderEx is required. -->
+        <util:RemoveFolderEx On="uninstall" Property="ECDATA_CONFIG" />
+        <util:RemoveFolderEx On="uninstall" Property="ECDATA_BUFFER" />
+        <util:RemoveFolderEx On="uninstall" Property="ECDATA_LOGS" />
+
+        <!-- Program Files tree. The MSI already removes every file it
+             installed; this additionally sweeps anything left beside them
+             that the MSI does not own, so "delete everything" means it. -->
+        <util:RemoveFolderEx On="uninstall" Property="ECINSTALLTREE" />
+
+        <!-- Loose files in the data root. Addressed via Property (not
+             Directory) so they inherit the same empty-unless-opted-in gate.
+             edgelicense.json is deliberately absent from this list. -->
+        <RemoveFile Id="RmRootIdentity"  Property="ECDATA_ROOT" Name="identity"             On="uninstall" />
+        <RemoveFile Id="RmClockAnchor"   Property="ECDATA_ROOT" Name=".clock-anchor-v2"     On="uninstall" />
+        <RemoveFile Id="RmVersionMarker" Property="ECDATA_ROOT" Name=".edgeconnect-version" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ===== Features ===== -->
+    <!-- Main application is required (AllowAbsent="no") — the operator cannot
+         deselect the service/files. The Desktop shortcut is a separate,
+         deselectable feature the user toggles in the wizard's feature tree. -->
+    <Feature Id="MainApplication"
+             Title="Elpis EdgeConnect"
+             Description="The Elpis EdgeConnect service, Studio UI, and headless Host."
+             Level="1"
+             AllowAbsent="no"
+             Display="expand">
+      <ComponentGroupRef Id="ManagementComponents" />
+      <ComponentGroupRef Id="StartMenuComponents" />
+      <ComponentGroupRef Id="DataCleanupComponents" />
+    </Feature>
+
+    <Feature Id="DesktopShortcutFeature"
+             Title="Desktop shortcut"
+             Description="Add a shortcut to Elpis EdgeConnect Studio on the desktop."
+             Level="1">
+      <ComponentGroupRef Id="DesktopShortcutComponents" />
+    </Feature>
+
+  </Package>
+</Wix>

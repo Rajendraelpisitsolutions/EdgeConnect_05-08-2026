@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "GatewaySettings",
+  "type": "object",
+  "description": "Gateway-level identity and host settings. This is the Gateway\nsection of the top-level configuration JSON. Per blueprint §10, the\ngateway identity is established at first start and persisted; this record\nholds the configurable subset of that identity plus host-process settings.",
+  "required": [
+    "GatewayId",
+    "GatewayName"
+  ],
+  "properties": {
+    "GatewayId": {
+      "type": "string",
+      "description": "Stable gateway identifier (e.g., \"GW-MENON-001\"). Required;\nmust be unique across the customer's fleet. Used as a foundational\nidentity key in canonical points, diagnostics, and license binding.",
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "GatewayName": {
+      "type": "string",
+      "description": "Human-readable gateway name shown in the admin UI.",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "Site": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "description": "Customer site or location label. Optional but recommended for fleet\nmanagement.",
+      "maxLength": 256,
+      "minLength": 0
+    },
+    "LicenseFile": {
+      "type": "string",
+      "description": "Path to the license file relative to the gateway data directory.\nDefault \"license.json\".",
+      "maxLength": 512,
+      "minLength": 0
+    },
+    "LogLevel": {
+      "type": "string",
+      "description": "Minimum log level. One of Trace, Debug, Information,\nWarning, Error, Critical, None. Default\nInformation. Stored as a string to avoid a Core dependency on\nMicrosoft.Extensions.Logging.Abstractions; the host project\nparses this into the appropriate log level type.",
+      "pattern": "^(Trace|Debug|Information|Warning|Error|Critical|None)$"
+    },
+    "DataPath": {
+      "type": "string",
+      "description": "Filesystem path (relative or absolute) to the gateway's persistent\ndata directory. Holds buffers, drafts, history, audit logs, and the\nidentity file. Default \"data/\".",
+      "maxLength": 512,
+      "minLength": 1
+    },
+    "HealthCheckPort": {
+      "type": "integer",
+      "description": "TCP port for the lightweight HTTP health check endpoint\n(GET /health). Default 8080 per blueprint §8.1 sample.",
+      "format": "int32",
+      "maximum": 65535.0,
+      "minimum": 1.0
+    },
+    "ManagementApi": {
+      "description": "Local management API settings.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ManagementApiSettings"
+        }
+      ]
+    },
+    "Watchdog": {
+      "description": "Watchdog settings.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/WatchdogSettings"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ManagementApiSettings": {
+      "type": "object",
+      "description": "Configuration for the local REST management API exposed by the gateway.\nThe API itself lands in Phase 4; this record is the JSON-loadable shape\nonly and is consumed by the host project when it stands the API up.",
+      "properties": {
+        "Enabled": {
+          "type": "boolean",
+          "description": "True if the management API is enabled. Default true."
+        },
+        "Port": {
+          "type": "integer",
+          "description": "TCP port the API listens on. Default 8443 per blueprint §8.1 sample.",
+          "format": "int32",
+          "maximum": 65535.0,
+          "minimum": 1.0
+        },
+        "RequireAuth": {
+          "type": "boolean",
+          "description": "True if the API requires authentication. Default true — the\nmanagement API exposes config and license operations and should not\nbe unauthenticated in any production deployment."
+        },
+        "TlsCertPath": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Filesystem path to the TLS certificate (PFX) used by the API\nlistener. Optional; if absent, the host falls back to plain HTTP\n(intended for development only)."
+        }
+      }
+    },
+    "WatchdogSettings": {
+      "type": "object",
+      "description": "Watchdog configuration controlling whether the host process restarts\nitself on unrecoverable failure. Implementation is a Phase 4 host concern;\nthis record is the JSON-loadable shape only.",
+      "properties": {
+        "Enabled": {
+          "type": "boolean",
+          "description": "True if the watchdog is enabled. Default true per blueprint\n§11 reliability requirements."
+        },
+        "RestartOnFailure": {
+          "type": "boolean",
+          "description": "True if the host should restart on unrecoverable failure. Default\ntrue per blueprint §8.1 sample."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+<!--
+  ElpisEdgeConnect.Sinks.SparkplugB: Sparkplug B sink adapter (K2 wire layer).
+
+  Implements ADR-0035 (LOCKED): a separate, coexisting sink assembly
+  (Rule 1) with NO Eclipse Tahu runtime dependency (Rule 2) - payloads are
+  encoded via C# types generated from the pinned, reviewed copy of the
+  official sparkplug_b.proto vendored under Protos/ (generated code under
+  Protobuf/, regenerated only via tools/sparkplug-proto/regenerate.ps1).
+  Provenance: docs/compliance/sparkplug-b-proto-provenance.md.
+
+  Reference: docs/decisions/0035-sparkplug-b-northbound-standard.md,
+  docs/sessions/2026-07-19-sparkplug-b-k2-wire-payload-plan-v3.md (frozen).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sinks.SparkplugB</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sinks.SparkplugB</AssemblyName>
+    <Description>Sparkplug B sink adapter for Elpis EdgeConnect (Edge-Node data publishing, spBv1.0)</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sinks.SparkplugB.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The pinned schema ships with the source for provenance; it is not compiled. -->
+    <None Include="Protos\sparkplug_b.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <!-- Already a repo dependency (Core); the K3 identity store (slice 2) depends on it directly. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+    <!-- Already a repo dependency (MQTT sink); the K3 transport (slice 4) uses it directly. -->
+    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
+  </ItemGroup>
+
+</Project>

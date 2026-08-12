@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Add Siemens S7 source (manual tag editor)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+    <style>
+        /* Align fields to the TOP so inputs share a common baseline whether or
+           not a field has a .hint below it. (flex-end aligned column bottoms,
+           which pushed hinted fields' inputs up ~20px.) A min-height on the
+           label keeps inputs aligned even if a label wraps to two lines. */
+        .form-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; align-items:flex-start; }
+        .form-field { display:flex; flex-direction:column; gap:4px; }
+        .form-field label { font-size:12px; color:#424242; font-weight:500; min-height:16px; }
+        .form-field input, .form-field select { font:inherit; font-size:13px; padding:7px 9px; border:1px solid #cfcfcf; border-radius:5px; }
+        .form-field .hint { font-size:11px; color:#9e9e9e; }
+        .mono { font-family:'Roboto Mono', monospace; }
+        .adv { border:1px solid #eee; border-radius:8px; background:#fafafa; padding:12px 14px; margin-top:6px; }
+        .adv h4 { margin:0 0 10px 0; font-size:12px; font-weight:600; color:#616161; }
+        .tag-table input, .tag-table select { font-size:12px; padding:5px 7px; border:1px solid #cfcfcf; border-radius:4px; width:100%; box-sizing:border-box; }
+        .tag-table td { vertical-align:top; padding:8px 8px; }
+        .preview { font-size:11px; color:#2e7d32; margin-top:3px; }
+        .suggest { font-size:11px; color:#1565c0; margin-top:3px; }
+        .err { font-size:11px; color:#d32f2f; margin-top:3px; }
+        .invalid input { border-color:#d32f2f; background:#fff7f7; }
+        .st { font-size:12px; font-weight:600; }
+        .st-ok { color:#2e7d32; } .st-warn { color:#ef6c00; } .st-err { color:#d32f2f; }
+        .more-row td { background:#fafafa; }
+        .more-link { font-size:11px; color:#1976d2; cursor:pointer; }
+        .save-bar { position:sticky; bottom:0; background:white; border-top:1px solid #e0e0e0; margin:20px -24px -24px; padding:14px 24px; display:flex; align-items:center; gap:14px; }
+        .design-only { border:1px dashed #ce93d8; background:#faf4fb; }
+        .states-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .state-card { border:1px solid #e0e0e0; border-radius:8px; padding:12px 14px; font-size:12px; background:#fff; }
+        .state-card h4 { margin:0 0 6px 0; font-size:12px; font-weight:600; color:#616161; }
+        .x-mut { color:#9e9e9e; }
+    </style>
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Sources</a> / <a href="#">Add source</a> / Siemens S7</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">🔌</div>
+        <div>
+            <h1>Add Siemens S7 source</h1>
+            <div class="subtitle">
+                Enter the PLC connection details and the Siemens S7 addresses to read.
+                Examples: <code class="mono">DB1.DBW0</code>, <code class="mono">DB1.DBX0.0</code>,
+                <code class="mono">M10.2</code>, <code class="mono">IW4</code>, <code class="mono">Q0.1</code>.
+                EdgeConnect validates each address as you type.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — Siemens S7 source wizard (M.2b.2, M1 sign-off gate).</strong>
+        Manual tag editor (Modbus playbook); S7 has no self-description. Plan v2
+        (<code>2026-06-02-s7-source-wizard-plan-v2.md</code>) is the source of truth.
+        Operator-facing copy is task-first. The purple-dashed <em>Design reference</em> card near the bottom
+        is a sign-off aid — it is <strong>NOT</strong> rendered in the live wizard (those states show only when they happen).
+        <br><strong>Revised 2026-06-03</strong> (post-M2 review): Test connection defaults to “Not tested yet”;
+        Advanced collapsed by default; “Scan interval (ms)”; explicit row-selection for Test selected tag read;
+        Counter added to the unsupported state; planner-rejected datatypes disabled in the dropdown; duplicate
+        tag-name state; real empty-state CTA; CSV affordance removed for v1; accessibility wiring noted for M3.
+    </div>
+
+    <!-- ── 1. Source ────────────────────────────────────────────── -->
+    <div class="card">
+        <div class="card-title">Source</div>
+        <div class="form-row">
+            <div class="form-field" style="min-width:240px;">
+                <label>Source name</label>
+                <input type="text" value="Line 3 PLC">
+                <span class="hint">Shown across the Studio; must be unique.</span>
+            </div>
+            <div class="form-field" style="flex:1; min-width:240px;">
+                <label>Description <span class="x-mut">(optional)</span></label>
+                <input type="text" placeholder="e.g. S7-1500 controlling the hob line">
+            </div>
+            <div class="form-field">
+                <label>Protocol</label>
+                <input type="text" value="Siemens S7" disabled style="background:#f5f5f5;color:#757575;">
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 2. PLC connection ────────────────────────────────────── -->
+    <div class="card">
+        <div class="card-title">PLC connection</div>
+        <div class="form-row">
+            <div class="form-field" style="min-width:200px;"><label>PLC host / IP</label><input type="text" value="192.168.0.10"></div>
+            <div class="form-field" style="width:90px;"><label>Port</label><input type="text" value="102"></div>
+            <div class="form-field" style="width:90px;">
+                <label>Rack</label><input type="text" value="0"><span class="hint">Usually 0.</span>
+            </div>
+            <div class="form-field" style="width:90px;">
+                <label>Slot</label><input type="text" value="1"><span class="hint">Commonly 1 or 2.</span>
+            </div>
+            <div class="form-field" style="min-width:160px;">
+                <label>S7 connection type</label>
+                <select><option>Basic</option><option>OP</option><option>PG</option></select>
+            </div>
+        </div>
+
+        <div class="form-row" style="align-items:center;">
+            <button class="btn btn-outlined">Test connection</button>
+            <!-- Default result before the operator clicks Test connection. -->
+            <span class="chip" style="color:#616161;border:1px solid #e0e0e0;background:#fafafa;"
+                  role="status" aria-live="polite">Not tested yet</span>
+        </div>
+
+        <!-- Advanced is COLLAPSED BY DEFAULT in the live wizard (▸). Shown
+             expanded here only for sign-off review. -->
+        <div class="adv">
+            <h4>▸ Advanced <span class="x-mut" style="font-weight:400;">— collapsed by default; expanded here for review</span></h4>
+            <div class="form-row">
+                <div class="form-field" style="width:120px;"><label>Connect timeout (ms)</label><input value="2000"></div>
+                <div class="form-field" style="width:120px;"><label>Request timeout (ms)</label><input value="1000"></div>
+                <div class="form-field" style="width:120px;"><label>Max retries</label><input value="2"></div>
+                <div class="form-field" style="width:140px;"><label>Circuit breaker (fails)</label><input value="5"></div>
+            </div>
+            <div class="form-field" style="margin-top:4px;">
+                <label><input type="checkbox" style="width:auto;"> Use optimized DB access</label>
+                <span class="hint">
+                    Leave off for absolute DB addresses such as <code class="mono">DB1.DBW0</code> or <code class="mono">DB1.DBX0.0</code>.
+                    For this release, standard / non-optimized DBs are the supported path for absolute DB addressing.
+                    Only enable if this PLC's backend configuration specifically requires it.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 3. Tags ──────────────────────────────────────────────── -->
+    <div class="card">
+        <div class="toolbar">
+            <div class="card-title" style="margin:0;">Tags</div>
+            <div class="spacer"></div>
+            <!-- No "Import CSV — planned" affordance in production v1 (re-added
+                 with S7TagCsvImporter in v1.1). Disabled roadmap buttons are not
+                 a product convention here — "not yet available" is conveyed by
+                 the protocol-picker Pending tile, not in-wizard dead buttons. -->
+            <button class="btn btn-outlined">+ Add tag</button>
+        </div>
+
+        <table class="data-table tag-table">
+            <thead>
+                <tr>
+                    <th style="width:22%">Name</th>
+                    <th style="width:26%">Address</th>
+                    <th style="width:20%">Datatype</th>
+                    <th style="width:12%">Scan interval (ms)</th>
+                    <th style="width:12%">Status</th>
+                    <th style="width:8%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- valid word — SELECTED row (drives "Test selected tag read") -->
+                <tr style="background:#eef4fb;" aria-selected="true" title="Selected — click any row to select it for Test selected tag read">
+                    <td><input value="spindle_rpm" aria-label="Tag name"></td>
+                    <td>
+                        <input class="mono" value="DB1.DBW0" aria-label="S7 address">
+                        <div class="preview">DB 1 · Word · byte 0</div>
+                    </td>
+                    <td>
+                        <!-- Planner-rejected datatypes for a 2-byte word address
+                             are DISABLED (item 6): 4-byte types can't fit. -->
+                        <select aria-label="Datatype">
+                            <option>Int</option><option>Word</option><option>Bool</option>
+                            <option disabled>Real — needs a dword address (e.g. DB1.DBD0)</option>
+                            <option disabled>DInt — needs a dword address (e.g. DB1.DBD0)</option>
+                        </select>
+                        <div class="suggest">Address suggests: Int or Word</div>
+                    </td>
+                    <td><input value="1000" aria-label="Scan interval in milliseconds"></td>
+                    <td><span class="st st-ok">✓ Valid</span> <span class="x-mut">· selected</span><div class="more-link" role="button" tabindex="0">More ▾</div></td>
+                    <td><button class="btn btn-text" aria-label="Remove tag spindle_rpm">✕</button></td>
+                </tr>
+                <!-- expanded "More" advanced columns for the row above -->
+                <tr class="more-row">
+                    <td></td>
+                    <td colspan="4">
+                        <div class="form-row" style="margin:0;">
+                            <div class="form-field" style="width:120px;"><label>Unit</label><input value="rpm"></div>
+                            <div class="form-field" style="width:90px;"><label>Scale</label><input value="1"></div>
+                            <div class="form-field" style="width:90px;"><label>Offset</label><input value="0"></div>
+                        </div>
+                    </td>
+                    <td></td>
+                </tr>
+                <!-- valid bit -->
+                <tr>
+                    <td><input value="estop_active"></td>
+                    <td>
+                        <input class="mono" value="M10.2">
+                        <div class="preview">Marker · Bit · byte 10 . bit 2</div>
+                    </td>
+                    <td>
+                        <select><option>Bool</option></select>
+                        <div class="suggest">Address suggests: Bool</div>
+                    </td>
+                    <td><input value="500"></td>
+                    <td><span class="st st-ok">✓ Valid</span><div class="more-link">More ▾</div></td>
+                    <td><button class="btn btn-text">✕</button></td>
+                </tr>
+                <!-- invalid -->
+                <tr class="invalid">
+                    <td><input value="feed_rate"></td>
+                    <td>
+                        <input class="mono" value="DB1.DBZ0">
+                        <div class="err">DBZ is not a valid DB width. Use DBX, DBB, DBW, or DBD. Examples: DB1.DBW0, DB1.DBX0.0.</div>
+                    </td>
+                    <td><select><option>Real</option></select></td>
+                    <td><input value="1000"></td>
+                    <td><span class="st st-err">✗ Error</span></td>
+                    <td><button class="btn btn-text">✕</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="toolbar" style="margin-top:10px;">
+            <!-- Enabled because a VALID row is selected (spindle_rpm). With no
+                 selection or an invalid row selected it is disabled — see the
+                 "Test selected tag read — selection" design state. -->
+            <button class="btn btn-outlined">Test selected tag read</button>
+            <span class="info-line x-mut">Reads <code class="mono">DB1.DBW0</code> (spindle_rpm) once, read-only — does not save configuration.</span>
+        </div>
+    </div>
+
+    <!-- ── Design reference (NOT rendered in the live wizard) ────── -->
+    <div class="card design-only">
+        <div class="card-title">Design reference — result states (not shown in the live wizard; rendered only when they happen)</div>
+        <div class="states-grid">
+            <div class="state-card">
+                <h4>Test connection — failure</h4>
+                <span class="chip chip-error">⛔ Connection refused — host unreachable or ISO-on-TCP closed</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-warning"><span class="dot dot-amber"></span> Timed out after 2,000 ms — check host / rack / slot</span>
+            </div>
+            <div class="state-card">
+                <h4>Test selected tag read</h4>
+                <span class="chip chip-success"><span class="dot dot-green"></span> Read OK — value 1487</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-error">⛔ Read failed</span> &nbsp;
+                <span class="chip chip-error">⛔ DB access denied</span>
+                <!-- S7 reads are raw bytes: "datatype mismatch" is NOT a read
+                     outcome. Datatype/address compatibility is enforced
+                     pre-Save (see the compatibility card), not at read time. -->
+            </div>
+            <div class="state-card">
+                <h4>Datatype / address compatibility</h4>
+                <!-- Planner-rejected combos BLOCK Save (M.2b.2 v2 decision). -->
+                <span class="chip chip-error">⛔ DInt needs 4 bytes, but DB1.DBW0 is a 2-byte word address</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-error">⛔ Bit addresses can only be read as Bool</span>
+                <div style="margin-top:6px;"></div>
+                <!-- Planner-accepted-but-suspicious (narrower) only WARNS. -->
+                <span class="chip chip-warning-outline">⚠ Bool is narrower than the DB1.DBW0 word — confirm intentional</span>
+            </div>
+            <div class="state-card">
+                <h4>Unsupported address</h4>
+                <!-- Timer AND Counter parse but are unsupported this release (M.2b.2 v2). -->
+                <span class="chip chip-error">⛔ Timer addresses are not supported this release — use DB, M, I, or Q</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-error">⛔ Counter addresses are not supported this release — use DB, M, I, or Q</span>
+            </div>
+            <div class="state-card">
+                <h4>Duplicate tag name</h4>
+                <!-- Duplicate canonical TagName blocks Save; duplicate addresses only warn. -->
+                <span class="chip chip-error">⛔ Tag name “spindle_rpm” is used by 2 tags — names must be unique</span>
+                <div style="margin-top:6px;"></div>
+                <span class="chip chip-warning-outline">⚠ DB1.DBW0 is read by 2 tags — allowed, but usually unintended</span>
+            </div>
+            <div class="state-card">
+                <h4>Test selected tag read — selection</h4>
+                <span class="x-mut">No row selected:</span>
+                <span class="chip" style="color:#9e9e9e;border:1px solid #e0e0e0;">Test selected tag read (disabled) — select a tag row</span>
+                <div style="margin-top:6px;"></div>
+                <span class="x-mut">Invalid row selected:</span>
+                <span class="chip" style="color:#9e9e9e;border:1px solid #e0e0e0;">disabled — fix the selected row’s errors to test it</span>
+                <div style="margin-top:6px;"></div>
+                <span class="x-mut">Valid row selected:</span>
+                <span class="chip chip-success"><span class="dot dot-green"></span> enabled — reads that tag once, does not save</span>
+            </div>
+            <div class="state-card">
+                <h4>Empty editor</h4>
+                <span class="x-mut">No tags yet. Add the first S7 address to read — validation runs as you type.</span>
+                <div style="margin-top:8px;"><button class="btn btn-filled">+ Add your first tag</button></div>
+            </div>
+            <div class="state-card">
+                <h4>Save blocked</h4>
+                <span class="chip chip-error">⛔ 1 tag has an invalid address — fix the highlighted row to save.</span>
+            </div>
+            <div class="state-card">
+                <h4>Accessibility (built in M3, in Razor)</h4>
+                <ul class="x-mut" style="margin:4px 0 0 16px; padding:0; font-size:11px; line-height:1.5;">
+                    <li>Every field has a programmatic label (<code>label for</code> / <code>aria-label</code>).</li>
+                    <li>Invalid rows set <code>aria-invalid</code> + <code>aria-describedby</code> pointing at the inline error.</li>
+                    <li>Test connection / Test read results announce via <code>role="status"</code> + <code>aria-live="polite"</code>.</li>
+                    <li>Status column conveys ✓/⚠/✗ as <strong>text</strong>, not colour alone.</li>
+                    <li>Planner-rejected datatype options are <code>disabled</code> (keyboard-skippable) with a reason in the option text.</li>
+                    <li>Selected tag row exposes <code>aria-selected</code>; selection reachable by keyboard.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 4. Save bar ──────────────────────────────────────────── -->
+    <div class="save-bar">
+        <span class="info-line">3 tags · 1 invalid. Fix the highlighted row before saving.</span>
+        <div class="spacer"></div>
+        <button class="btn btn-text">Cancel</button>
+        <button class="btn btn-filled" disabled title="Fix the invalid address row first">Save source</button>
+    </div>
+
+</div>
+
+</body>
+</html>

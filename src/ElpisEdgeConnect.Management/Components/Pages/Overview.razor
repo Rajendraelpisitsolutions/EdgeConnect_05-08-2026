@@ -1,0 +1,494 @@
+@*
+    Overview — the Day-1 landing page. Every commissioning session
+    starts here: at-a-glance status for every route, every source,
+    every sink. Live updates via Blazor Server.
+
+    Visual reference: KepServer's "Channels" view and Matrikon
+    Explorer's tree dashboard — but cleaner, with real status dots,
+    no per-license clutter, no Windows-95 chrome.
+
+    Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone M.1a
+*@
+@page "/"
+@inject HttpClient HttpClient
+@implements IAsyncDisposable
+
+<PageTitle>Overview · Connectivity Studio</PageTitle>
+
+@* ---- Page heading (§4). Hoisted OUT of the MudGrid so its sticky
+       pinning works against the scroll region, not a grid cell. ---- *@
+<div class="page-heading">
+    <span class="page-heading__icon"><MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Medium" /></span>
+    <div class="page-heading__text">
+        <div class="page-heading__title">Overview</div>
+        <div class="page-heading__desc">
+            Live status of every configured route — updates push automatically, no refresh needed.
+        </div>
+    </div>
+    <div class="page-heading__actions">
+        <MudChip T="string" Size="Size.Small"
+                 Icon="@Icons.Material.Filled.Schedule"
+                 Color="Color.Default" Variant="Variant.Text">
+            @LastUpdatedLabel
+        </MudChip>
+    </div>
+</div>
+
+<MudGrid>
+    @* ---- Configuration-faults inline strip (M.P2.1 phase 3b) ---- *@
+    @* Visible only when faults are registered. Tiny — operators *@
+    @* who land on /overview should NOTICE without being shouted *@
+    @* at. Full detail lives on /diagnostics. *@
+    @if (_faultCount > 0)
+    {
+        <MudItem xs="12">
+            <MudPaper Class="pa-2" Elevation="0"
+                      Style="border:1px solid var(--mud-palette-warning); background:rgba(245,158,11,0.06);">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.ReportProblem"
+                             Size="Size.Small" Color="Color.Warning" />
+                    <MudText Typo="Typo.body2">
+                        @_faultCount configuration fault@(_faultCount == 1 ? "" : "s") —
+                        <MudLink Href="/diagnostics" Underline="Underline.Hover" Color="Color.Warning">
+                            see Diagnostics
+                        </MudLink>
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    }
+
+    @if (_loadError is not null)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                <strong>Could not load routes.</strong> @_loadError
+            </MudAlert>
+        </MudItem>
+    }
+    else if (_routes is null)
+    {
+        <MudItem xs="12">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        </MudItem>
+    }
+    else if (_routes.Length == 0)
+    {
+        <MudItem xs="12">
+            <MudPaper Class="pa-8" Elevation="0" Style="border:1px dashed var(--mud-palette-lines-default);"
+                      data-testid="overview-empty-state">
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Size="Size.Large"
+                             Color="Color.Primary" />
+                    <MudText Typo="Typo.h5">Get started</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Style="max-width:560px;">
+                        EdgeConnect is configured but no data flow is wired yet. <strong>Connect a device</strong>
+                        sets up your first source, destination, and route in one guided ceremony.
+                    </MudText>
+                    <MudButton Href="/onboard"
+                               Variant="Variant.Filled" Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.RocketLaunch"
+                               Style="text-transform:none;"
+                               data-testid="overview-empty-state-connect">
+                        Connect a device
+                    </MudButton>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                        Already have a source / destination configured?
+                        <MudLink Href="/routes/new" Underline="Underline.Hover">Wire a route directly →</MudLink>
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    }
+    else
+    {
+        @* ---- Health verdict (ported from the 4-6 Aug Session A work) ----
+           A route's StateName describes the PIPELINE, not its endpoints: a
+           route whose source is Stopped and whose sink is disconnected still
+           reports "Running", because the pipeline task is alive with nothing
+           to read and nowhere to publish. A board of green chips therefore
+           said "all healthy" while no data moved at all. The verdict is
+           computed by RouteHealth so this banner, the cards and the footer
+           cannot contradict each other. Colour is always paired with an icon
+           and a word. ---- *@
+        <MudItem xs="12">
+            <MudPaper Class="pa-3" Elevation="0" Style="@VerdictStyle"
+                      data-testid="overview-verdict">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@VerdictIcon" Color="@VerdictColor" Size="Size.Medium" aria-hidden="true" />
+                    <div style="flex-grow:1; min-width:0;">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600; line-height:1.25;">
+                            @VerdictHeadline
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                            @VerdictNextStep
+                        </MudText>
+                    </div>
+                    @if (BrokenCount > 0)
+                    {
+                        @* Clickable: the count says HOW MANY, and the operator's
+                           very next question is WHICH and WHY. The answer already
+                           exists on each card's fault panel, but on a board of
+                           many routes that means hunting. Expanding here lists
+                           every broken route with the same ErrorGuidance wording
+                           the card uses — one source of truth for the
+                           explanation, shown where the question is asked. *@
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled"
+                                 Icon="@Icons.Material.Filled.Error"
+                                 OnClick="@(() => _showBrokenReasons = !_showBrokenReasons)"
+                                 aria-expanded="@_showBrokenReasons.ToString().ToLowerInvariant()"
+                                 title="@(_showBrokenReasons ? "Hide the reasons" : "Show why these routes are not delivering")"
+                                 Style="cursor:pointer;"
+                                 data-testid="overview-broken-count">
+                            @BrokenCount broken
+                        </MudChip>
+                    }
+                    @if (AttentionCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled"
+                                 Icon="@Icons.Material.Filled.ReportProblem"
+                                 data-testid="overview-attention-count">
+                            @AttentionCount need attention
+                        </MudChip>
+                    }
+                </MudStack>
+
+                @if (_showBrokenReasons && BrokenCount > 0)
+                {
+                    <div class="verdict-reasons" data-testid="overview-broken-reasons">
+                        @foreach (var r in _routes.Where(RouteIsBroken))
+                        {
+                            @* The sentence is RouteHealth's, not this page's: it is
+                               the reason for the very condition that made the route
+                               count as broken above, and it is the same sentence the
+                               card prints. This list used to run its own ladder
+                               (BreakageOf), which could name a different fault from
+                               the one the count was derived from.
+
+                               `verdict` is NOT named `code`: inside a .razor file
+                               `@code` is the code-block directive, so `@code` in
+                               markup is a parse error rather than a variable
+                               reference. RouteCard.razor carries the same note. *@
+                            var verdict = RouteHealth.Verdict(r);
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2"
+                                      Class="verdict-reason mt-2">
+                                <span class="verdict-reason__route">@r.RouteId</span>
+                                <span class="verdict-reason__why">@verdict.Reason</span>
+                                @if (!string.IsNullOrEmpty(verdict.ErrorCode))
+                                {
+                                    <code class="verdict-reason__code">@verdict.ErrorCode</code>
+                                }
+                            </MudStack>
+                        }
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* Broken first, then anything needing attention, then healthy —
+           trouble must be visible without scrolling. OrderBy is stable, so
+           routes keep their API order inside each band. *@
+        @foreach (var route in _routes.OrderBy(HealthRank))
+        {
+            <MudItem xs="12" sm="6" lg="4" @key="route.RouteId">
+                <RouteCard Route="@route" LicenseStopNotice="@LicenseStopNotice"
+                           DataHaltedByLicense="@DataHaltedByLicense" />
+            </MudItem>
+        }
+    }
+</MudGrid>
+
+@code {
+    private RouteSummaryDto[]? _routes;
+    private string? _loadError;
+    private DateTime _lastUpdated = DateTime.MinValue;
+    private int _faultCount;
+    private LicenseStatusDto? _license;
+
+    /// <summary>
+    /// Sentence handed to every RouteCard when licensing is what decides whether
+    /// data flows, else <c>null</c>. Fetched once per refresh here rather than
+    /// per card — it is one gateway-wide fact, not a per-route one.
+    ///
+    /// Split by phase because the two are different situations and an operator
+    /// acts differently on each. Under tamper the sources are still reading, and
+    /// telling them collection had "stopped" while the same card reads "1,040
+    /// delivered · last value just now" would be contradicted by the row directly
+    /// beneath it. Once the ADR-0035 cutoff fires, collection really has stopped —
+    /// and then it is the only thing worth reading on the page, because every
+    /// card's device-shaped fault panel is describing a symptom of this.
+    ///
+    /// Ordered by which condition actually stopped the data: a version-restricted
+    /// gateway and a demo-exhausted one both report DataStopped, so the more
+    /// specific cause is tested first. Clock tamper leads because it is also the
+    /// one that can be true while data still flows.
+    /// </summary>
+    /// <summary>
+    /// True once licensing has torn collection down, so the per-source counters
+    /// on every card are frozen and should be presented as such. Deliberately
+    /// NOT the same test as <see cref="LicenseStopNotice"/> being non-null — that
+    /// is also true while a tampered gateway is still reading on demo time, when
+    /// the counters are very much still moving.
+    /// </summary>
+    /// Keyed on DataStopped ALONE, deliberately. Keying it on "unlicensed AND
+    /// stopped" left the recovery state unexplained: once the operator corrects
+    /// the clock or activates a licence the status returns to Valid, but the
+    /// supervisors are still down — StopDataAsync disposed the adapters, so
+    /// collection does not restart until the service does. The cards then showed
+    /// stopped endpoints with nothing saying why, which is the one state most
+    /// likely to be mistaken for a device fault, because the licence page now
+    /// reads perfectly healthy.
+    private bool DataHaltedByLicense => _license is { DataStopped: true };
+
+    private string? LicenseStopNotice
+    {
+        get
+        {
+            if (_license is null || (_license.IsValid && !_license.DataStopped))
+            {
+                return null;
+            }
+
+            // Recovered, but still down. The licence is good again and every
+            // licence surface says so, yet the supervisors were disposed by the
+            // cutoff and only a service restart brings them back. Without this the
+            // operator is left reading "Valid" on one page and stopped endpoints on
+            // another, with nothing connecting the two.
+            if (_license.IsValid)
+            {
+                return "Data reading stopped — collection was halted while this gateway was unlicensed. "
+                    + "The license is valid again; restart the service to resume reading and publishing.";
+            }
+
+            if (_license.ClockTampered)
+            {
+                return _license.DataStopped
+                    ? "Data reading stopped — the system clock was set back, so the license is not honoured. "
+                      + "Correct the system date and time, then restart the service to resume reading and publishing."
+                    : "Unlicensed — the system clock was set back, so the license is not honoured. "
+                      + "Data reading stops when the demo time runs out; correct the system date and time to restore it.";
+            }
+
+            if (_license.VersionRestricted)
+            {
+                return "Data reading stopped — this version is newer than the expired license covers. "
+                    + "Renew or upgrade on the License page, then restart the service to resume.";
+            }
+
+            if (_license.DataStopped)
+            {
+                return "Data reading stopped — the demo period ended and this gateway is not licensed. "
+                    + "Activate a license on the License page, then restart the service to resume.";
+            }
+
+            return null;
+        }
+    }
+    private CancellationTokenSource? _cts;
+    private Task? _pollLoop;
+
+    private string LastUpdatedLabel => _lastUpdated == DateTime.MinValue
+        ? "Loading…"
+        : $"Updated {_lastUpdated:HH:mm:ss}";
+
+    // ---- Health verdict --------------------------------------------------
+    // Every count here goes through RouteHealth. This page used to derive
+    // "broken" from the buffer and live errors while RouteCard derived it from
+    // adapter states alone, so a banner could read "1 of 2 routes is not
+    // delivering" above two green cards. One definition, one answer.
+
+    private int TotalRoutes => _routes?.Length ?? 0;
+
+    // A licensing halt breaks EVERY route, whatever the adapters last reported.
+    // The states in the snapshot are what the supervisors recorded on their way
+    // down, and a route re-added by a config apply after the halt is recorded
+    // Running by its own start path — so a halted gateway could show green cards
+    // under an "All routes running" banner while delivering nothing. The halt is
+    // gateway-wide, so it is applied here, where the counts the banner and the
+    // cards both read are produced, rather than in RouteHealth (which sees only
+    // one route DTO and knows nothing about licensing).
+    private bool RouteIsBroken(RouteSummaryDto r) =>
+        DataHaltedByLicense || RouteHealth.Level(r) == RouteHealthLevel.Down;
+
+    private int BrokenCount => _routes?.Count(RouteIsBroken) ?? 0;
+
+    // Under a halt every route is counted broken above, so nothing may also be
+    // counted as merely needing attention — the two bands are exclusive and the
+    // strip would otherwise double-count the same route.
+    private int AttentionCount => DataHaltedByLicense
+        ? 0
+        : _routes?.Count(r => RouteHealth.Level(r) == RouteHealthLevel.Degraded) ?? 0;
+
+    /// <summary>Reveals the per-route reasons under the verdict banner.</summary>
+    private bool _showBrokenReasons;
+
+    // The reason ladder that used to live here (BreakageOf) is now
+    // RouteHealth.Verdict. It was a SECOND ordering of the same conditions —
+    // counters, then source, then sinks, then route — evaluated independently of
+    // the one that decided the level, so the banner could count a route as
+    // broken for one reason and explain it with another. The card, this list and
+    // the footer now read one walk.
+
+    /// <summary>Sort key: broken (0) → needs attention (1) → healthy (2).</summary>
+    private static int HealthRank(RouteSummaryDto route) => RouteHealth.Level(route) switch
+    {
+        RouteHealthLevel.Down => 0,
+        RouteHealthLevel.Degraded => 1,
+        _ => 2,
+    };
+
+    // Green has to mean everything runs. A gateway with four unreachable
+    // devices under an amber strip was read as "not urgent" and skipped, so
+    // anything short of fully healthy paints the banner red.
+    private bool AllHealthy => BrokenCount == 0 && AttentionCount == 0;
+
+    private string VerdictHeadline => BrokenCount > 0
+        ? $"{BrokenCount} of {TotalRoutes} route{(TotalRoutes == 1 ? "" : "s")} {(BrokenCount == 1 ? "is" : "are")} not delivering data"
+        : AttentionCount > 0
+            ? $"{AttentionCount} of {TotalRoutes} route{(AttentionCount == 1 ? "" : "s")} need attention"
+            : $"All {TotalRoutes} route{(TotalRoutes == 1 ? "" : "s")} running";
+
+    // States the fact rather than issuing an instruction. A missing native
+    // driver or a broker Elpis administers is not fixable at the machine, and
+    // "fix these first" then reads as the software blaming the operator.
+    private string VerdictNextStep => BrokenCount > 0
+        ? "They are listed first below. Each card says what stopped and what to check."
+        : AttentionCount > 0
+            ? "Data is still moving, but a destination or buffer is unhealthy. Those routes are listed first."
+            : "Every route has a healthy source and destination. Nothing needs you right now.";
+
+    private string VerdictIcon =>
+        AllHealthy ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+
+    private Color VerdictColor => AllHealthy ? Color.Success : Color.Error;
+
+    // Both states say the same thing in their own colour. A plain grey outline
+    // for healthy read as an absent verdict rather than a positive one — the
+    // state where the operator most wants an unambiguous "nothing to do".
+    private string VerdictStyle =>
+        AllHealthy
+            ? "border:1px solid var(--mud-palette-success);"
+                + "border-left:4px solid var(--mud-palette-success);"
+                + "background:rgba(22,163,74,0.06);"
+            : "border:1px solid var(--mud-palette-error);"
+                + "border-left:4px solid var(--mud-palette-error);"
+                + "background:rgba(220,38,38,0.06);";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Synchronous SSR pre-render: fetch once so the static-rendered
+        // HTML has data. Don't start the polling loop here — that
+        // happens after first render on the interactive circuit.
+        await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        // Now we're inside the interactive Blazor Server circuit. Start
+        // the polling loop; it'll be cleanly cancelled when the
+        // component is disposed.
+        _cts = new CancellationTokenSource();
+        _pollLoop = PollLoopAsync(_cts.Token);
+        await Task.CompletedTask;
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync(ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on dispose
+        }
+    }
+
+    private async Task RefreshAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var routes = await HttpClient.GetFromJsonAsync<RouteSummaryDto[]>("/api/v1/routes", ct);
+            // Race-window guard: between awaits, navigation may have started
+            // disposing this component. Bail BEFORE InvokeAsync — otherwise
+            // we queue a render on a renderer that's about to vanish, and
+            // the queued render hits ObjectDisposedException inside
+            // ArrayBuilder.GrowBuffer (not catchable here — it happens on
+            // Blazor's dispatcher after our await returns).
+            if (ct.IsCancellationRequested) return;
+            _routes = routes ?? Array.Empty<RouteSummaryDto>();
+            _loadError = null;
+            _lastUpdated = DateTime.Now;
+
+            // Configuration-faults strip — best-effort. Old hosts without
+            // the registry endpoint silently report zero faults and the
+            // strip stays hidden. The events surface itself is the
+            // canonical place to read details (see /diagnostics).
+            try
+            {
+                var faults = await HttpClient.GetFromJsonAsync<ConfigurationFaultDto[]>(
+                    "/api/v1/diagnostics/configuration-faults", ct);
+                _faultCount = faults?.Length ?? 0;
+            }
+            catch
+            {
+                // Leave the previous count in place rather than flicker.
+            }
+
+            // License status — best-effort, same contract as the faults strip
+            // above. A failed read keeps the previous notice rather than blinking
+            // "data reading stopped" off and on between ticks.
+            try
+            {
+                _license = await HttpClient.GetFromJsonAsync<LicenseStatusDto>("/api/license/status", ct);
+            }
+            catch
+            {
+                // Keep the last known license state.
+            }
+
+            if (ct.IsCancellationRequested) return;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            // Token cancelled mid-await — dispose in flight; bail.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component scope torn down between ticks; let the loop exit.
+        }
+        catch (Exception ex)
+        {
+            if (ct.IsCancellationRequested) return;
+            _loadError = ex.Message;
+            try { await InvokeAsync(StateHasChanged); } catch (ObjectDisposedException) { /* ignore */ }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _cts?.Cancel();
+            if (_pollLoop is not null)
+            {
+                await _pollLoop;
+            }
+        }
+        catch
+        {
+            // best-effort
+        }
+        finally
+        {
+            _cts?.Dispose();
+        }
+    }
+}

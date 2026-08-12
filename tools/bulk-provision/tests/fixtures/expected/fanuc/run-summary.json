@@ -1,0 +1,30 @@
+{
+  "csv": "./samples/sample-fanuc.csv",
+  "csvFingerprint": "21fe28290691e7bc42fa0a48cf38f01920ff643277f756092d1c4520f0e41eb3",
+  "gatewayProvisioningId": "11111111-1111-1111-1111-111111111111",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "generatorVersion": "0.1.0",
+  "outputs": [
+    {
+      "configFingerprint": "9837a52945ea0c869c94205f8b111df8afd256150e5706ed791c9c08b7ffa206",
+      "deviceId": "cnc-001",
+      "file": "cnc-001.gateway.json",
+      "sha256": "6c55816715b4641829b993655dc77e6fd3734e909ea704fe2df4d0fb5a554085"
+    },
+    {
+      "configFingerprint": "1f1e02b84c71a3735e608a0b0aa8688e313875e22a377ff77dca41faf3ffbd10",
+      "deviceId": "cnc-002",
+      "file": "cnc-002.gateway.json",
+      "sha256": "dd1b59e5e2afa71f659d8160cf82f9b0e2877d4f46a0ab357cc648acf973aaba"
+    },
+    {
+      "configFingerprint": "5f5b3ed458f2c4254215eaf014d2b35864a2ec6dc62692f831c162477a831c2e",
+      "deviceId": "cnc-003",
+      "file": "cnc-003.gateway.json",
+      "sha256": "4fd966cdc6d1d4b2330f883c5ecfd439fe431af349853317f72d773ff4936354"
+    }
+  ],
+  "sidecar": "./samples/sample-fanuc.gateway.yml",
+  "templateId": "template-fanuc",
+  "templateSchemaVersion": 1
+}

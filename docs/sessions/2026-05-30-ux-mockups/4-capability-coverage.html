@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — Capability Coverage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Diagnostics</a> / Health checklist</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div class="icon">✅</div>
+        <div>
+            <h1>Health checklist</h1>
+            <div class="subtitle">
+                A one-page yes/no view: is every protocol on this gateway wired correctly?
+                Each row is a capability your adapters advertised — and a confirmation
+                that the runtime actually knows what to do with it.
+            </div>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Revision (round 2):</strong> rewrote for operator language. The
+        previous "Runtime consumer" code-reference column moved into a collapsible
+        "Advanced details" section per row. Default view answers
+        <em>"is anything missing?"</em> rather than <em>"which class implements this?"</em>
+    </div>
+
+    <div class="banner banner-success">
+        <span class="banner-icon">✓</span>
+        <div class="banner-text">
+            <strong>Everything looks good.</strong>
+            All 11 capabilities your adapters declared are honoured by the gateway.
+            Last verified at startup, 10:12:04 UTC. The gateway re-runs this check
+            on every restart — if anything is ever missing, startup will fail with
+            a clear error before this page would render.
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Source-side capabilities</h3>
+
+        <table class="data-table capability-table">
+            <thead>
+                <tr>
+                    <th style="width: 4%">&nbsp;</th>
+                    <th style="width: 22%">Capability</th>
+                    <th style="width: 30%">Used by</th>
+                    <th>What this means for you</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Polling</strong></td>
+                    <td>Modbus (2 sources), FOCAS2 (1), Brother HTTP (1), MTConnect (1)</td>
+                    <td>Your polling-mode sources read data on a timer. The gateway runs
+                    that timer for them. <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Subscription</strong></td>
+                    <td>OPC UA Client (1)</td>
+                    <td>Your OPC UA Client source receives push notifications from the
+                    server. The gateway forwards those into the pipeline.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Browse</strong></td>
+                    <td>OPC UA Client (1), FOCAS2 (1)</td>
+                    <td>The Add-source wizard can pull a tag list from the device instead
+                    of asking you to type NodeIds by hand.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Discovery</strong></td>
+                    <td>OPC UA Client (1)</td>
+                    <td>The wizard can find devices on the network rather than requiring
+                    a pre-known endpoint URL.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Quality flag</strong></td>
+                    <td>OPC UA Client (1), Modbus (2)</td>
+                    <td>Per-point quality (Good / Bad / Uncertain) is preserved through
+                    the pipeline. Downstream systems see the device's own quality
+                    signal. <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Test connection</strong></td>
+                    <td>OPC UA Client (1), Modbus (2), FOCAS2 (1), Brother HTTP (1)</td>
+                    <td>The wizard's "Test Connection" button works on these protocols.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr style="opacity: 0.6;">
+                    <td>—</td>
+                    <td><strong>Write-back</strong></td>
+                    <td>None of your sources use this yet</td>
+                    <td>For future adapters that can write values back to the device
+                    (e.g. PLC output coils). No source declares this capability today.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3 class="card-title">Destination-side capabilities</h3>
+
+        <table class="data-table capability-table">
+            <thead>
+                <tr>
+                    <th style="width: 4%">&nbsp;</th>
+                    <th style="width: 22%">Capability</th>
+                    <th style="width: 30%">Used by</th>
+                    <th>What this means for you</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Push delivery</strong></td>
+                    <td>MQTT (2 destinations), OPC UA Server (1)</td>
+                    <td>Each destination receives every point as it arrives. Your routes
+                    push data to all your destinations on every batch.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Pull delivery</strong></td>
+                    <td>OPC UA Server (1)</td>
+                    <td>External clients (like UaExpert) can read the latest value of any
+                    tag on demand. Used by the OPC UA Server destination.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Browse (server-side)</strong></td>
+                    <td>OPC UA Server (1)</td>
+                    <td>External OPC UA clients can browse the address space your
+                    OPC UA Server destination publishes.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+                <tr>
+                    <td><span class="dot dot-green"></span></td>
+                    <td><strong>Subscription (server-side)</strong></td>
+                    <td>OPC UA Server (1)</td>
+                    <td>External OPC UA clients can subscribe and receive live
+                    notifications from the OPC UA Server destination.
+                    <span style="color: #2e7d32;">Working.</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Collapsible engineer details -->
+    <details class="card" style="cursor: pointer;">
+        <summary style="font-weight: 500; font-size: 14px; padding: 0; cursor: pointer; user-select: none;">
+            🔧 Advanced details (for support engineers)
+        </summary>
+        <div style="margin-top: 12px;">
+            <p style="font-size: 13px; color: #424242; margin-top: 0;">
+                For each capability, the runtime code site that consumes adapters
+                advertising the flag. Useful when filing a support ticket or extending
+                the gateway with a new protocol.
+            </p>
+            <table class="data-table capability-table">
+                <thead>
+                    <tr>
+                        <th>Capability</th>
+                        <th>Enum value</th>
+                        <th>Runtime consumer (CONSUMED BY:)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Polling</td><td><code>SourceCapabilities.Polling</code></td><td><code>SourceSupervisor.RunPollLoopAsync</code></td></tr>
+                    <tr><td>Subscription</td><td><code>SourceCapabilities.Subscription</code></td><td><code>SourceSupervisor.RunSubscribeLoopAsync</code></td></tr>
+                    <tr><td>Browse (source)</td><td><code>SourceCapabilities.Browse</code></td><td><code>ITagBrowseService</code> consumers</td></tr>
+                    <tr><td>Discovery</td><td><code>SourceCapabilities.Discovery</code></td><td><code>OpcUaClientBrowseApiService</code></td></tr>
+                    <tr><td>Quality flag</td><td><code>SourceCapabilities.Quality</code></td><td><code>OpcUaQualityMapper</code> + route Quality transforms</td></tr>
+                    <tr><td>Test connection</td><td><code>SourceCapabilities.TestConnect</code></td><td><code>*TestConnectionApi</code> services</td></tr>
+                    <tr><td>Push delivery</td><td><code>SinkCapabilities.Push</code></td><td><code>RouteWorker → ISinkAdapter.PublishAsync</code></td></tr>
+                    <tr><td>Pull delivery</td><td><code>SinkCapabilities.Pull</code></td><td><code>SinkSessionPoller → ISinkAdapter.UpdateCurrentValuesAsync</code></td></tr>
+                    <tr><td>Browse (sink)</td><td><code>SinkCapabilities.Browse</code></td><td>External UA clients via published address space</td></tr>
+                    <tr><td>Subscription (sink)</td><td><code>SinkCapabilities.Subscription</code></td><td>External UA clients via published Subscription service</td></tr>
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 20px; font-size: 13px; color: #594ae2; text-transform: uppercase; letter-spacing: 0.06em;">Last self-check result</h4>
+            <div style="font-family: 'Roboto Mono', Consolas, monospace; font-size: 12px; background: #263238; color: #cfd8dc; padding: 12px; border-radius: 4px;">
+                <span style="color: #80cbc4;">info:</span> ElpisEdgeConnect.Host.CapabilityCoverage[0]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Capability coverage check: 11 flags verified (7 source, 4 sink). All have runtime handlers.<br>
+                <span style="color: #80cbc4;">info:</span> ElpisEdgeConnect.Host.CapabilityCoverage[0]<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Self-check duration: 8 ms.<br>
+            </div>
+
+            <p style="font-size: 12px; color: #757575; margin-top: 12px;">
+                <strong>If a capability ever has no runtime consumer</strong>, the host
+                will not start — it crashes with <code>STARTUP.CAPABILITY_UNHANDLED</code>.
+                This page would never render with a ⛔ row in production; that case
+                exists only in the source tree during transitional periods (a new
+                capability flag added without its runtime handler yet wired).
+            </p>
+        </div>
+    </details>
+
+    <div class="footer-help">
+        <span><strong>Health checklist</strong> updates only while this page is open
+        (60 s cooldown after you leave).</span>
+        <span><strong>This view runs cheaply</strong> — the heavy verification ran at
+        host startup; this page just reads the cached result.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

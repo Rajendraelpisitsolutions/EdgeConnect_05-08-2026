@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Elpis EdgeConnect — LicenseManager Architecture</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --ink:#e6edf3; --muted:#9aa7b4; --line:#30363d;
+    --load:#38bdf8;    /* sky   - load/verify pipeline */
+    --sig:#22d3ee;     /* cyan  - signature/crypto     */
+    --snap:#a78bfa;    /* violet- snapshot model       */
+    --valid:#34d399;   /* green - valid                */
+    --grace:#fbbf24;   /* amber - grace                */
+    --expired:#fb7185; /* rose  - expired              */
+    --notloaded:#8b98a5;/* grey - not loaded           */
+    --gate:#f472b6;    /* pink  - enforcement gate     */
+    --ui:#60a5fa;      /* blue  - UI/API layer         */
+    --warn:#c084fc;    /* purple- warnings             */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1360px;margin:0 auto;padding:28px 22px 60px}
+  header.page h1{margin:0;font-size:26px}
+  header.page h1 .accent{background:linear-gradient(90deg,var(--load),var(--snap),var(--gate));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  header.page p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:960px;line-height:1.55}
+  .meta{color:var(--muted);font-size:12px;margin-top:6px}
+  code{font-family:"Cascadia Code",Consolas,monospace;color:#c9d1d9;background:#0b1220;padding:1px 5px;border-radius:5px;font-size:11.5px}
+
+  h2.section{font-size:15px;margin:30px 0 12px;display:flex;align-items:center;gap:9px}
+  h2.section .n{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;background:var(--z);color:#07101c}
+  h2.section small{color:var(--muted);font-weight:400;font-size:12px}
+
+  /* horizontal step pipeline */
+  .pipe{display:flex;gap:0;align-items:stretch;overflow-x:auto;padding-bottom:6px}
+  .step{position:relative;min-width:150px;flex:1;background:var(--panel);border:1px solid var(--line);
+    border-top:3px solid var(--z,var(--load));border-radius:12px;margin:6px 20px 6px 0;padding:11px 12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.32)}
+  .step .k{font-size:10px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+  .step b{display:block;font-size:12.5px;margin:3px 0 3px;font-family:"Cascadia Code",Consolas,monospace;color:var(--z)}
+  .step small{color:var(--muted);font-size:10.5px;line-height:1.3;display:block}
+  .step .err{margin-top:7px;font-size:10px;color:var(--expired);border:1px solid rgba(251,113,133,.35);
+    border-radius:6px;padding:2px 6px;display:inline-block}
+  .step .arrow{position:absolute;top:50%;right:-19px;transform:translateY(-50%);z-index:4}
+  .pulse{stroke-dasharray:5 6;animation:dash 1.05s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-22}}
+
+  /* component map */
+  .map{display:grid;grid-template-columns:1.2fr .9fr .9fr;gap:14px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--z);border-radius:12px;padding:13px 15px}
+  .card.hub{border:1px solid var(--snap);box-shadow:0 0 0 1px rgba(167,139,250,.25),0 10px 26px rgba(0,0,0,.4);
+    background:linear-gradient(180deg,rgba(167,139,250,.08),transparent)}
+  .card h3{margin:0 0 4px;font-size:13.5px;font-family:"Cascadia Code",Consolas,monospace;color:var(--z)}
+  .card .role{color:var(--muted);font-size:11px;margin:0 0 8px}
+  .card ul{margin:0;padding-left:15px;color:var(--muted);font-size:11.5px;line-height:1.55}
+  .card ul b{color:var(--ink)}
+  .stack{display:flex;flex-direction:column;gap:14px}
+
+  /* lifecycle state machine */
+  .states{display:flex;flex-wrap:wrap;gap:14px;align-items:stretch}
+  .state{flex:1;min-width:210px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    border-top:4px solid var(--z);padding:12px 14px;position:relative}
+  .state h4{margin:0 0 3px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .state h4 .dot{width:11px;height:11px;border-radius:50%;background:var(--z);box-shadow:0 0 12px var(--z)}
+  .state .cond{color:var(--z);font-size:10.5px;font-family:"Cascadia Code",Consolas,monospace;margin:0 0 7px}
+  .state p{margin:0;color:var(--muted);font-size:11.5px;line-height:1.5}
+  .state .flow{margin-top:8px;font-size:10.5px;color:var(--muted)}
+  .state .tag{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:20px;margin-top:8px;
+    border:1px solid var(--z);color:var(--z)}
+
+  /* enforcement layers */
+  .layers{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .layer{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;border-top:3px solid var(--z)}
+  .layer h4{margin:0 0 6px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .layer .dot{width:10px;height:10px;border-radius:50%;background:var(--z)}
+  .layer ul{margin:0;padding-left:15px;color:var(--muted);font-size:11.5px;line-height:1.55}
+  .layer ul b{color:var(--ink)}
+  .layer code{font-size:10.5px}
+
+  .callouts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .callout{border:1px dashed var(--line);border-radius:12px;padding:12px 15px;font-size:12px;color:var(--muted);line-height:1.55;
+    background:linear-gradient(90deg,rgba(251,191,36,.06),transparent)}
+  .callout b{color:#fcd34d}
+  .callout.k2{background:linear-gradient(90deg,rgba(34,211,238,.06),transparent)}
+  .callout.k2 b{color:#67e8f9}
+
+  .errs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .errs .e{font-family:"Cascadia Code",Consolas,monospace;font-size:10.5px;color:var(--expired);
+    border:1px solid rgba(251,113,133,.35);border-radius:20px;padding:3px 9px}
+
+  footer.page{margin-top:28px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>LicenseManager — <span class="accent">Subsystem Architecture</span></h1>
+    <p>The licensing core: loads a single RSA-PSS/SHA-256 signed <code>license.json</code> fully offline,
+       verifies it against a public key embedded in the binary, freezes it into an immutable snapshot, and
+       exposes lock-free checks. Three layers enforce it — and the <b>data path is never blocked</b> by
+       licensing (locked decision&nbsp;#7).</p>
+    <div class="meta">Namespace <code>ElpisEdgeConnect.Core.Licensing</code> · Milestone B3 · verified against <code>Sony_Development</code>.</div>
+  </header>
+
+  <!-- SECTION 1: LOAD & VERIFY -->
+  <h2 class="section" style="--z:var(--load)"><span class="n">1</span>Load &amp; Verify pipeline <small>LoadFromFileAsync → LoadAsync · serialized by <code>_loadLock</code> · atomic snapshot swap</small></h2>
+  <div class="pipe">
+    <div class="step" style="--z:var(--load)"><div class="k">input</div><b>license.json</b><small>read UTF-8 stream</small>
+      <div class="err">LICENSE_FILE_NOT_FOUND</div>
+      <div class="arrow"><svg width="34" height="24"><path class="pulse" d="M2,12 H30" stroke="var(--load)" stroke-width="2.5" fill="none"/><path d="M24,6 L32,12 L24,18" stroke="var(--load)" stroke-width="2.5" fill="none"/></svg></div></div>
+    <div class="step" style="--z:var(--load)"><div class="k">step 1–2</div><b>JsonDocument.Parse</b><small>+ extract "signature"</small>
+      <div class="err">FILE_CORRUPT · SIGNATURE_INVALID</div>
+      <div class="arrow"><svg width="34" height="24"><path class="pulse" d="M2,12 H30" stroke="var(--load)" stroke-width="2.5" fill="none"/><path d="M24,6 L32,12 L24,18" stroke="var(--load)" stroke-width="2.5" fill="none"/></svg></div></div>
+    <div class="step" style="--z:var(--sig)"><div class="k">step 4</div><b>CanonicalJson</b><small>sort keys · drop signature · UTF-8 no BOM</small>
+      <div class="arrow"><svg width="34" height="24"><path class="pulse" d="M2,12 H30" stroke="var(--sig)" stroke-width="2.5" fill="none"/><path d="M24,6 L32,12 L24,18" stroke="var(--sig)" stroke-width="2.5" fill="none"/></svg></div></div>
+    <div class="step" style="--z:var(--sig)"><div class="k">step 5</div><b>SignatureValidator.Verify</b><small>RSA-PSS · SHA-256 · MGF1 · EmbeddedPublicKey</small>
+      <div class="err">SIGNATURE_INVALID</div>
+      <div class="arrow"><svg width="34" height="24"><path class="pulse" d="M2,12 H30" stroke="var(--sig)" stroke-width="2.5" fill="none"/><path d="M24,6 L32,12 L24,18" stroke="var(--sig)" stroke-width="2.5" fill="none"/></svg></div></div>
+    <div class="step" style="--z:var(--snap)"><div class="k">step 6</div><b>ParsePayload</b><small>required fields · ranges · dates → LicenseInfo</small>
+      <div class="err">FILE_CORRUPT</div>
+      <div class="arrow"><svg width="34" height="24"><path class="pulse" d="M2,12 H30" stroke="var(--snap)" stroke-width="2.5" fill="none"/><path d="M24,6 L32,12 L24,18" stroke="var(--snap)" stroke-width="2.5" fill="none"/></svg></div></div>
+    <div class="step" style="--z:var(--snap)"><div class="k">step 7–8</div><b>Evaluate + swap</b><small>ExpirationTracker · Volatile.Write snapshot · raise warning</small></div>
+  </div>
+  <div class="callout k2" style="margin-top:6px"><b>Fail-safe:</b> any exception preserves the previously-loaded snapshot — a bad reload never downgrades a running gateway. Reads (<code>Current</code>, <code>IsModuleEnabled</code>) are lock-free via <code>Volatile.Read</code> over a <code>FrozenDictionary</code>.</div>
+
+  <!-- SECTION 2: COMPONENT MAP -->
+  <h2 class="section" style="--z:var(--snap)"><span class="n">2</span>Component map <small>collaborators around the hub</small></h2>
+  <div class="map">
+    <div class="card hub" style="--z:var(--snap)">
+      <h3>LicenseManager : ILicenseManager</h3>
+      <p class="role">sealed · IDisposable · production impl</p>
+      <ul>
+        <li><b>State:</b> <code>_snapshot</code>, <code>_status</code>, <code>_remainingGrace</code></li>
+        <li><b>Reads (lock-free):</b> Current · Status · RemainingGrace</li>
+        <li><b>Checks:</b> IsModuleEnabled · IsFeatureEnabled · CheckInstanceLimit</li>
+        <li><b>Loads:</b> LoadFromFileAsync · LoadAsync <span style="color:#8b98a5">(serialized)</span></li>
+        <li><b>Tick()</b> — re-evaluate clock, raise boundary warnings</li>
+        <li><b>event</b> WarningRaised → <code>LicenseWarning</code></li>
+      </ul>
+    </div>
+    <div class="stack">
+      <div class="card" style="--z:var(--sig)">
+        <h3>LicenseSignatureValidator</h3>
+        <p class="role">RSA-PSS / SHA-256 / MGF1</p>
+        <ul><li>Verify(canonical, base64Sig)</li><li>loads <b>EmbeddedPublicKey.Pem</b></li><li>fingerprint pinned by test</li></ul>
+      </div>
+      <div class="card" style="--z:var(--sig)">
+        <h3>CanonicalJson</h3>
+        <p class="role">static · shared with LicenseGen</p>
+        <ul><li>CanonicalizeRoot(payload)</li><li>keys sorted · signature removed</li><li>signer + verifier can't drift</li></ul>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card" style="--z:var(--valid)">
+        <h3>LicenseExpirationTracker</h3>
+        <p class="role">static · pure</p>
+        <ul><li>Evaluate(now, expiresAt, policy)</li><li>→ status · remainingGrace · warnBoundary</li></ul>
+      </div>
+      <div class="card" style="--z:var(--grace)">
+        <h3>LicenseEnforcementPolicy</h3>
+        <p class="role">LOCKED defaults</p>
+        <ul><li>grace = <b>30 days</b></li><li>warn = <b>{30, 7, 1}</b> days</li></ul>
+      </div>
+      <div class="card" style="--z:var(--snap)">
+        <h3>LicenseInfo (frozen)</h3>
+        <p class="role">immutable record snapshot</p>
+        <ul><li>LicenseId · Customer · GatewayId · Edition</li><li>IssuedAt · ExpiresAt · Limits</li><li>Modules ⟨key→<b>Enabled/MaxInstances</b>⟩ · Features</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: LIFECYCLE -->
+  <h2 class="section" style="--z:var(--valid)"><span class="n">3</span>Lifecycle state machine <small>computed on every load and every <code>Tick()</code></small></h2>
+  <div class="states">
+    <div class="state" style="--z:var(--notloaded)">
+      <h4><span class="dot"></span>NotLoaded</h4>
+      <p class="cond">no successful load yet</p>
+      <p>Only an <b>empty</b> config is allowed (first-boot). Any source/sink/route is rejected.</p>
+      <span class="tag">→ Valid / Grace / Expired on load</span>
+    </div>
+    <div class="state" style="--z:var(--valid)">
+      <h4><span class="dot"></span>Valid</h4>
+      <p class="cond">now ≤ expiresAt</p>
+      <p>All checks active. Warnings raised at 30 / 7 / 1 days before expiry.</p>
+      <span class="tag">→ InGracePeriod when now &gt; expiresAt</span>
+    </div>
+    <div class="state" style="--z:var(--grace)">
+      <h4><span class="dot"></span>InGracePeriod</h4>
+      <p class="cond">expiresAt &lt; now &lt; +30d</p>
+      <p>Config changes <b>still allowed</b> with a warning attached. Data flow continues.</p>
+      <span class="tag">→ Expired at expiresAt + 30d</span>
+    </div>
+    <div class="state" style="--z:var(--expired)">
+      <h4><span class="dot"></span>Expired</h4>
+      <p class="cond">now ≥ expiresAt + 30d</p>
+      <p>Config changes <b>blocked</b>. <b>Data flow still continues</b> — never cut customer data to enforce licensing.</p>
+      <span class="tag">grace exhausted</span>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:14px"><b>Note:</b> a signature/parse failure does not transition an already-loaded manager — <code>LoadAsync</code> throws and the prior snapshot is retained (the format spec's <code>Invalid</code> case manifests as an exception, not a status change).</div>
+
+  <!-- SECTION 4: ENFORCEMENT -->
+  <h2 class="section" style="--z:var(--gate)"><span class="n">4</span>Three enforcement layers <small>where the fast-path checks are consumed</small></h2>
+  <div class="layers">
+    <div class="layer" style="--z:var(--gate)">
+      <h4><span class="dot"></span>① Packaging (build)</h4>
+      <ul><li>Per-edition installers decide which protocol <b>assemblies ship</b> at all</li><li>Starter / Professional / Enterprise</li></ul>
+    </div>
+    <div class="layer" style="--z:var(--valid)">
+      <h4><span class="dot"></span>② Runtime activation</h4>
+      <ul>
+        <li><b>DI-registration</b> — <code>Add{Protocol}SourcesFromGatewayConfig</code> calls <code>IsModuleEnabled</code> per source, skips cleanly when disabled <span style="color:#34d399">(live today)</span></li>
+        <li><b>LicenseGate</b> — config-apply walk: module enabled? instance caps? global limits? <span style="color:#fbbf24">(Stage 3 of ConfigurationValidator)</span></li>
+      </ul>
+    </div>
+    <div class="layer" style="--z:var(--ui)">
+      <h4><span class="dot"></span>③ UI / API</h4>
+      <ul>
+        <li><b>SourceProtocolPickerModel</b> — <code>RequiredLicenseModule</code> → tile Available vs Requires-Premium</li>
+        <li><b>Probe / browse / test-connection</b> API services gate on the module key</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callouts">
+    <div class="callout"><b>As-built nuance —</b> the host builds <code>ConfigurationManager</code> with the default validator, so the config-apply gate is currently <b>AllowAllLicenseGate</b>. Live enforcement today = the DI-registration check (②) + UI picker (③). The full <code>LicenseGate</code> is implemented &amp; unit-tested and drops straight in when config-time enforcement is switched on.</div>
+    <div class="callout k2"><b>Two module-key spellings —</b> DI + UI use <b>hyphenated</b> keys (<code>source-melsec</code>, from <code>LicenseModuleKeys</code>); <code>LicenseGate</code> builds <b>dotted</b> keys (<code>source.melsec</code>). Issue licenses with the hyphenated catalog keys today; reconcile before enabling the config-walk (ADR-worthy).</div>
+  </div>
+
+  <!-- ERROR CODES -->
+  <h2 class="section" style="--z:var(--expired)"><span class="n">!</span>Error codes <small>CoreErrors · thrown as LicenseException / surfaced as warnings</small></h2>
+  <div class="errs">
+    <span class="e">LICENSE_FILE_NOT_FOUND</span>
+    <span class="e">LICENSE_FILE_CORRUPT</span>
+    <span class="e">LICENSE_SIGNATURE_INVALID</span>
+    <span class="e">LICENSE_NOT_LOADED</span>
+    <span class="e">LICENSE_MODULE_DISABLED</span>
+    <span class="e">LICENSE_INSTANCE_LIMIT_REACHED</span>
+    <span class="e">LICENSE_GLOBAL_LIMIT_EXCEEDED</span>
+    <span class="e">LICENSE_EXPIRED</span>
+    <span class="e">LICENSE_GRACE_EXHAUSTED</span>
+    <span class="e">LICENSE_GATEWAY_MISMATCH · reserved</span>
+  </div>
+
+  <footer class="page">
+    Offline, RSA-signed, no phone-home. Public key embedded in binary; private key held externally (password manager → HSM in Phase 4).
+    Issuer: <code>tools/LicenseGen</code> (keygen · new). Companion doc: <code>docs/licensing/license-manager-architecture.md</code> · format spec: <code>docs/licensing/license-file-format.md</code>.
+  </footer>
+</div>
+</body>
+</html>

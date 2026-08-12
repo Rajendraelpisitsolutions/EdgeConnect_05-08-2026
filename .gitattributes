@@ -1,0 +1,44 @@
+# Treat binary assets as binary so autocrlf never rewrites their bytes.
+*.pdf binary
+*.pptx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# ── Chip 3 bulk-provision LF lock (v4 §3.F1) ──────────────────────────────
+# The deterministic-output contract in tools/bulk-provision/ relies on
+# byte-identical file comparison across hosts. Without these rules, git
+# core.autocrlf=true (Windows default) would silently convert LF → CRLF on
+# checkout, breaking the very test that's supposed to prove determinism.
+# Path-scoped to tools/bulk-provision/** so the lock doesn't touch the
+# rest of the repo's formatting conventions.
+tools/bulk-provision/**/*.ps1  text eol=lf
+tools/bulk-provision/**/*.psm1 text eol=lf
+tools/bulk-provision/**/*.psd1 text eol=lf
+tools/bulk-provision/**/*.json text eol=lf
+tools/bulk-provision/**/*.yml  text eol=lf
+tools/bulk-provision/**/*.yaml text eol=lf
+tools/bulk-provision/**/*.csv  text eol=lf
+tools/bulk-provision/**/*.md   text eol=lf
+tools/bulk-provision/**/*.txt  text eol=lf
+
+# ── Sparkplug B pinned-schema byte lock (K2 slice 1, ADR-0035 Rule 2) ─────
+# The vendored sparkplug_b.proto is pinned by SHA-256 in
+# docs/compliance/sparkplug-b-proto-provenance.md and asserted by
+# ProtoProvenanceTests; the vendored generated SparkplugB.g.cs is verified
+# byte-identical by tools/sparkplug-proto/regenerate.ps1 -Verify. CRLF
+# conversion on checkout would break both gates on a fresh clone.
+src/ElpisEdgeConnect.Sinks.SparkplugB/Protos/*.proto    text eol=lf
+src/ElpisEdgeConnect.Sinks.SparkplugB/Protobuf/*.g.cs   text eol=lf
+tools/sparkplug-proto/*.ps1                             text eol=lf
+
+# ── Chip 3 ValidateSidecar LF lock (v3 §7.G) ──────────────────────────────
+# Single-purpose CLI lives alongside ValidateConfig under tools/. Source
+# files stay LF for cross-platform consistency with the rest of the
+# bulk-provision tooling.
+tools/ValidateSidecar/**/*.cs     text eol=lf
+tools/ValidateSidecar/**/*.csproj text eol=lf

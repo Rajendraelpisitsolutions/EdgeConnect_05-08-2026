@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions.html
+  Purpose:     Static mockup of the /solutions hub — outcome-organized directory
+               of the 7 solutions. Faithful to page-solutions-hub-spec-v1.md.
+               Reuses styles.css + standardized nav/footer. (All 7 solution
+               pages now exist, so the spec's "coming soon" pills are dropped.)
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solutions — outcomes on the Industrial Intelligence Stack · Elpis</title>
+  <meta name="description" content="Seven solutions built on one Industrial Intelligence Ecosystem — edge connectivity, predictive maintenance, multi-site operations, brownfield modernization, CNC machining, precision manufacturing, OEM machine monitoring.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Solutions">
+  <meta property="og:description" content="Seven solutions built on one Industrial Intelligence Ecosystem — edge connectivity, predictive maintenance, multi-site operations, brownfield modernization, CNC machining, precision manufacturing, OEM machine monitoring.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Solutions">
+  <meta name="twitter:description" content="Seven solutions built on one Industrial Intelligence Ecosystem — edge connectivity, predictive maintenance, multi-site operations, brownfield modernization, CNC machining, precision manufacturing, OEM machine monitoring.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .pillar-link-card { text-decoration:none; color:inherit; display:block; height:100%; }
+    .capability-card__body { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .capability-card__explore { display:inline-block; margin-top: var(--space-4); color: var(--color-brand-teal); font-weight: var(--weight-semibold); font-size: var(--size-sm); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container">
+        <span class="eyebrow eyebrow--teal">SOLUTIONS · OUTCOMES ON THE INDUSTRIAL INTELLIGENCE STACK</span>
+        <h1 id="hero-heading" class="hero__headline">What customers come to Elpis to do.</h1>
+        <p class="hero__subhead" style="max-width:60ch;">
+          Seven solutions built on the same Industrial Intelligence Ecosystem. Pick the outcome that fits your operations — the underlying capabilities, hardware, and software are shared; the configuration, workflows, and outputs differ per outcome.
+        </p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Talk to an engineer <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 THE 7 SOLUTIONS -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="sol-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">SOLUTIONS</span>
+          <h2 id="sol-heading" class="heading-xl">Seven outcomes. One platform underneath.</h2>
+        </div>
+        <ul class="capability-grid">
+          <li><a href="solutions-edge-connectivity" class="pillar-link-card" aria-label="Edge Connectivity solution">
+            <article class="capability-card capability-card--p1">
+              <span class="capability-card__eyebrow">SOLUTION · EDGE CONNECTIVITY</span>
+              <h3 class="capability-card__title">One operational view across every controller on your floor</h3>
+              <p class="capability-card__body">For brownfield CNC, mixed-vendor floors, and OT consolidations. EdgeConnect + Edge Gateway + EREMOS V2 working together — without ripping out what you already have.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-predictive-maintenance" class="pillar-link-card" aria-label="Predictive Maintenance solution">
+            <article class="capability-card capability-card--p4">
+              <span class="capability-card__eyebrow">SOLUTION · PREDICTIVE MAINTENANCE</span>
+              <h3 class="capability-card__title">Detect failure signatures before downtime</h3>
+              <p class="capability-card__body">VAS for vibration analytics on rotating equipment + E-IDOS for hydraulic and lubrication oil-health diagnostics + EREMOS V2 incident workflows. Failure-mode detection, not just runtime tracking.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-multi-site-operations" class="pillar-link-card" aria-label="Multi-site Operations solution">
+            <article class="capability-card capability-card--p3">
+              <span class="capability-card__eyebrow">SOLUTION · MULTI-SITE OPERATIONS</span>
+              <h3 class="capability-card__title">One operational view across every plant</h3>
+              <p class="capability-card__body">For multi-plant operators consolidating utilization, OEE, and asset visibility across sites. mTracker captures equipment-level signals; EREMOS V2 aggregates across sites with consistent canonical vocabulary, OEE definitions, and alarm semantics.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-brownfield-modernization" class="pillar-link-card" aria-label="Brownfield Modernization solution">
+            <article class="capability-card capability-card--p1">
+              <span class="capability-card__eyebrow">SOLUTION · BROWNFIELD MODERNIZATION</span>
+              <h3 class="capability-card__title">Modernize the data layer without replacing the controllers</h3>
+              <p class="capability-card__body">For sites with PLCs that work but don't expose what the operations team needs. EdgeConnect reads native protocols; mDAQ captures the sensor-level signals the PLC doesn't cover.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-cnc-machining" class="pillar-link-card" aria-label="CNC Machining solution">
+            <article class="capability-card capability-card--p1">
+              <span class="capability-card__eyebrow">SOLUTION · CNC MACHINING</span>
+              <h3 class="capability-card__title">Mixed-vendor CNC floors on one operational view</h3>
+              <p class="capability-card__body">For shops running Fanuc + Brother + Mazak (or any combination of CNC controllers) — every controller speaks the same canonical CNC vocabulary at EREMOS V2. One operator view across every machine.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-precision-manufacturing" class="pillar-link-card" aria-label="Precision Manufacturing solution">
+            <article class="capability-card capability-card--p5">
+              <span class="capability-card__eyebrow">SOLUTION · PRECISION MANUFACTURING</span>
+              <h3 class="capability-card__title">OEE accountability across mixed-vendor production cells</h3>
+              <p class="capability-card__body">For precision-manufacturing operations with strict OEE accountability — auditable OEE definitions, persistent alarm workflows, and shift-report consistency across every cell. Same OEE math, every shift, every cell.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+          <li><a href="solutions-oem-machine-monitoring" class="pillar-link-card" aria-label="OEM Machine Monitoring solution">
+            <article class="capability-card capability-card--p3">
+              <span class="capability-card__eyebrow">SOLUTION · OEM MACHINE MONITORING</span>
+              <h3 class="capability-card__title">Ship connected equipment that customers actually accept</h3>
+              <p class="capability-card__body">For OEM machine builders embedding telemetry in shipped equipment — service-hours billing, warranty triggers, remote diagnostics, fewer truck rolls. Customer-controlled routing: the customer decides which signals route back to the OEM.</p>
+              <span class="capability-card__explore">Read the solution →</span>
+            </article></a></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §3 BRIDGE -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="bridge-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal-light">HOW SOLUTIONS COMPOSE</span>
+        <h2 id="bridge-heading" class="heading-xl" style="margin-top:var(--space-3);">Same building blocks. Different proportions.</h2>
+        <p style="font-size:var(--size-md); line-height:var(--line-body); color:var(--color-text-body-light); max-width:72ch; margin-top:var(--space-4);">
+          Each solution above composes from the 5 capability pillars in different proportions. <strong>The hardware and software pieces are the same; the configuration, workflows, and outputs differ.</strong> Brownfield Modernization is mostly Pillar 1 (Connectivity &amp; Edge) + Pillar 5 (Operational Intelligence). Predictive Maintenance is mostly Pillar 4 (Condition Monitoring) + Pillar 5. Multi-site Operations is Pillar 3 (Asset Intelligence) + Pillar 5 with cross-site aggregation.
+        </p>
+        <p style="margin-top:var(--space-5);"><a class="pillar-link" href="capabilities">See the 5-pillar view →</a></p>
+      </div>
+    </section>
+
+    <!-- §4 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title" style="font-size:var(--size-xl);font-weight:var(--weight-semibold);">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="/"><span class="eyebrow">PLATFORM</span><span class="cl-desc">Looking for the full vendor evaluation?</span></a>
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">The 5 building blocks every solution composes from.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us the outcome you're trying to deliver. We'll scope which solution fits.</h2>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Solutions%20engineering" class="btn btn--primary btn--lg">Talk to an engineer <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Architecture%20review" class="btn btn--secondary btn--lg">Request an architecture review</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

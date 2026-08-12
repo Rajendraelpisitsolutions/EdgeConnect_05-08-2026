@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/capabilities-data-acquisition.html
+  Purpose:     Static mockup of /capabilities/data-acquisition — Pillar 2 (mDAQ)
+               CapabilityDeepDive deep-dive. Inherits the 9-section structure
+               from the pattern-setter capabilities-connectivity-edge.html.
+               Faithful to page-capabilities-data-acquisition-spec-v1.md (LOCKED v2).
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       Protocol reality (P-G): FOCAS2/MTConnect/Brother HTTP/Modbus TCP/
+               OPC UA Client/S7 shipped today; MT-LINKi (REST) roadmap.
+               No fabricated specs — values lifted verbatim from the locked spec.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Acquisition — mDAQ for direct sensor reads · Elpis</title>
+  <meta name="description" content="mDAQ hardware for direct sensor acquisition without a PLC layer. Greenfield and PLC-bypass retrofit. 4-20 mA, 0-10 V, 24 V DC, Modbus RTU, DIN-rail mount.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/capabilities-data-acquisition">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Data Acquisition">
+  <meta property="og:description" content="mDAQ hardware for direct sensor acquisition without a PLC layer. Greenfield and PLC-bypass retrofit. 4-20 mA, 0-10 V, 24 V DC, Modbus RTU, DIN-rail mount.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/capabilities-data-acquisition">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Data Acquisition">
+  <meta name="twitter:description" content="mDAQ hardware for direct sensor acquisition without a PLC layer. Greenfield and PLC-bypass retrofit. 4-20 mA, 0-10 V, 24 V DC, Modbus RTU, DIN-rail mount.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-8); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .feature-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: var(--space-5); margin-top: var(--space-8); }
+    .feature-card { border:1px solid var(--color-border-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-bg-raised); border-top: 3px solid var(--color-brand-teal); }
+    .feature-card .eyebrow { display:block; color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); margin-bottom: var(--space-2); }
+    .feature-card h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+    .feature-card p { color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); }
+    .feature-card .ftr { display:block; margin-top: var(--space-3); color: var(--color-text-caption); font-size: var(--size-xs); font-weight: var(--weight-semibold); }
+    .feature-card a { color: var(--color-brand-teal); font-weight: var(--weight-semibold); text-decoration:none; font-size: var(--size-sm); }
+    .bom-list { margin-top: var(--space-6); max-width: 78ch; list-style:none; padding:0; }
+    .bom-list li { padding: var(--space-3) 0 var(--space-3) var(--space-6); border-bottom:1px solid var(--color-border-light-subtle); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .bom-list li::before { content:"✕"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .adj-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .adj-grid h3 { font-size: var(--size-sm); font-weight: var(--weight-semibold); color: var(--color-brand-teal-light); letter-spacing: var(--tracking-loose); text-transform:uppercase; margin-bottom: var(--space-3); }
+    .adj-grid ul { list-style:none; padding:0; }
+    .adj-grid li { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); padding: var(--space-1) 0; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-6); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">CAPABILITY · DATA ACQUISITION</span>
+        <h1 id="hero-heading" class="hero__headline">Capture industrial signals directly from sensors — when there is no PLC, or when you want to bypass the one you have.</h1>
+        <p class="hero__subhead" style="font-style:italic;">"What if I don't have a PLC, or I want to bypass it and read sensors directly?"</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Get hardware specifications <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Talk to an engineer about Data Acquisition</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §2 PRODUCTS IN THIS PILLAR -->
+    <section class="section" data-mode="dark" aria-labelledby="products-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow eyebrow--teal">PRODUCTS IN THIS PILLAR</span>
+          <h2 id="products-heading" class="section-title">The field-acquisition hardware for this pillar.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <span class="eyebrow">FIELD ACQUISITION HARDWARE</span>
+            <h3>mDAQ — General-purpose industrial data acquisition</h3>
+            <p>Ruggedized acquisition device that captures signals from industrial instruments — flow meters, pressure transmitters, level transmitters, temperature probes, vibration sensors, 4-20 mA loop-powered transducers — directly from the field, no PLC in the loop. 4 analog channels (0-10 V or 4-20 mA), 16-bit, 860 S/s. 8 × 24 V digital inputs + 8 × 24 V digital outputs. Modbus TCP / RTU acquisition. HTTPS / MQTT publish. 4G, Wi-Fi, GPS, optional Ethernet. −10 °C to +85 °C operating range. Optional battery backup for sites without continuous power. 180 × 150 × 60 mm rugged enclosure.</p>
+            <span class="ftr">HARDWARE APPLIANCE · 4 AI + 8 DI + 8 DO · 4G/WI-FI/GPS · 24 V DC</span>
+            <p style="margin-top:var(--space-3);"><a href="mdaq">See the mDAQ product page →</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §3 BOM ELIMINATION -->
+    <section class="section" data-mode="light" aria-labelledby="bom-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHAT THIS PILLAR ELIMINATES FROM YOUR BOM</span>
+          <h2 id="bom-heading" class="section-title">Data Acquisition is the field-replacement product — combine it with EdgeConnect and EREMOS V2 for a complete Elpis-only signal-to-dashboard path with no third-party hardware in the chain.</h2>
+        </div>
+        <ul class="bom-list">
+          <li>A standalone PLC purchased solely for sensor acquisition (when you don't actually need ladder-logic control)</li>
+          <li>A separate cellular modem and edge appliance (mDAQ has 4G / Wi-Fi / GPS / Ethernet built in)</li>
+          <li>A site-specific battery backup for power-loss continuity (optional onboard battery available)</li>
+          <li>A separate field-mountable signal-conditioning box for analog inputs</li>
+          <li>The custom wiring complexity that comes from stitching together discrete acquisition + comms + power components</li>
+          <li>Vendor coordination across 3-4 separate hardware suppliers for a single greenfield acquisition installation</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §4 STRATEGIC ADJACENCIES -->
+    <section class="section section--tight" data-mode="light" aria-labelledby="adj-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHO IT'S FOR · WHERE IT DEPLOYS</span></div>
+        <div class="adj-grid">
+          <div>
+            <h3>Buyers</h3>
+            <ul>
+              <li><strong>Plant engineer (greenfield)</strong> — designing acquisition from scratch; no legacy PLC to integrate</li>
+              <li><strong>Plant engineer (retrofit / PLC-bypass)</strong> — existing PLC doesn't expose the signals the team needs; mDAQ reads sensors directly</li>
+              <li><strong>OT Architect</strong> — evaluating mDAQ as the field-acquisition layer of a broader Elpis-only deployment</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Industries</h3>
+            <ul>
+              <li>Oil &amp; Gas (pipeline monitoring; surface flow, pressure, temperature)</li>
+              <li>Water &amp; Utilities (pump-station monitoring; flow + pressure analytics)</li>
+              <li>Manufacturing — process (flow / temperature / pressure on tank, reactor, distillation systems)</li>
+              <li>Mining &amp; Construction (heavy-equipment hydraulic signal acquisition)</li>
+              <li>Power &amp; Energy (substation auxiliary signals; instrumentation outside the main SCADA path)</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Deployment footprint</h3>
+            <ul>
+              <li>Operating across India and the Middle East</li>
+              <li>Offline-capable with optional battery — deployable at remote and unmanned sites (pipeline pump stations, mining outposts, well heads, off-grid water infrastructure) without continuous mains or network</li>
+              <li>Multi-site fleets: per-gateway identity established at first start; per-site binding clean from day one</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 WHERE IT FITS -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="fit-heading">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">WHERE IT FITS</span>
+          <h2 id="fit-heading" class="section-title">Data Acquisition is the field-acquisition layer of the Industrial Intelligence Stack.</h2>
+        </div>
+        <div class="callout">
+          <p><strong>How this differs from PLC-based data acquisition.</strong> If you already have a PLC and it already exposes the signals you need, read from the PLC — Connectivity &amp; Edge handles that pillar with Modbus TCP, S7, and OPC UA Client. mDAQ exists for the cases the PLC doesn't cover: <strong>greenfield installs with no PLC yet, PLC-bypass retrofits where the controller is locked or doesn't expose the signal you need, and direct-sensor reads where adding a PLC layer would be more expensive than acquiring the signal directly.</strong> mDAQ is purpose-built for <em>"the signal exists at the sensor and the PLC can't tell you about it."</em></p>
+        </div>
+        <p style="color:var(--color-text-body-light); font-size:var(--size-md); line-height:var(--line-body); max-width:80ch;">
+          Pillar 2 sits at the field edge — where physical signals first become digital. mDAQ captures sensor data directly from the field, then publishes via MQTT or HTTPS to Pillar 1 (Connectivity &amp; Edge) for integration with everything else on the floor. From there, Pillar 5 (Operational Intelligence) turns the signals into OEE / alarms / reports. mDAQ also serves as the hardware platform for Pillar 4 specialty analytics (VAS / vibration). One acquisition platform, multiple application paths.
+        </p>
+        <figure style="margin: var(--space-6) 0 0;">
+          <svg viewBox="0 0 960 150" width="100%" role="img" aria-label="Pillar 2 field-acquisition layer: field sensors feed mDAQ, which publishes via MQTT / HTTPS to EREMOS V2 and the rest of the stack.">
+            <defs><marker id="da-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker></defs>
+            <rect x="8" y="40" width="180" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="98" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="15" fill="#0F1419">Field sensors</text>
+            <text x="98" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">4-20 mA · 0-10 V · Modbus</text>
+            <line x1="192" y1="75" x2="246" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#da-arr)"/>
+            <rect x="250" y="30" width="220" height="90" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="360" y="62" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="15" fill="#0F1419">mDAQ</text>
+            <text x="360" y="84" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">direct sensor acquisition · no PLC</text>
+            <text x="360" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">timestamp · per-tag quality codes</text>
+            <line x1="474" y1="75" x2="528" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#da-arr)"/>
+            <rect x="532" y="40" width="180" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="622" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">MQTT · HTTPS</text>
+            <text x="622" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">publish to the stack</text>
+            <line x1="716" y1="75" x2="770" y2="75" stroke="#5E6B78" stroke-width="2" marker-end="url(#da-arr)"/>
+            <rect x="774" y="40" width="178" height="70" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="863" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#0F1419">EREMOS V2</text>
+            <text x="863" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#5E6B78">via Connectivity &amp; Edge</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">Pillar 2 is the field-edge acquisition layer. See the full Industrial Intelligence Stack → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §6 TRUST POSTURE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span><h2 id="trust-heading" class="section-title">No PLC in the trust chain.</h2></div>
+        <div class="trust-cue">
+          <p>mDAQ reads sensors directly — no PLC in the trust chain, no third-party gateway interpreting your signals before they reach you. Signals are timestamped at the device with per-tag quality codes that propagate end-to-end. Offline-capable with optional battery; air-gapped sites are first-class. Configuration changes captured in the hash-chained audit log on the EdgeConnect pipeline that mDAQ feeds.</p>
+        </div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §7 RELATED SOLUTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="rel-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED SOLUTIONS</span></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="solutions-edge-connectivity"><span class="eyebrow">SOLUTION · EDGE CONNECTIVITY</span><span class="cl-desc">How mDAQ + EdgeConnect + EREMOS V2 deliver a complete Elpis-only signal-to-dashboard path — no third-party hardware in the chain.</span></a>
+          <a class="crosslens-card" href="solutions-brownfield-modernization"><span class="eyebrow">SOLUTION · BROWNFIELD MODERNIZATION</span><span class="cl-desc">For plants with mixed-generation controllers — mDAQ bypasses the PLCs that can't expose what the team needs, while EdgeConnect integrates everything else.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §8 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How does this pillar fit the data flow?</span></a>
+          <a class="crosslens-card" href="solutions-edge-connectivity"><span class="eyebrow">SOLUTION · EDGE CONNECTIVITY</span><span class="cl-desc">The outcome-organised version of this pillar.</span></a>
+          <a class="crosslens-card" href="capabilities"><span class="eyebrow">CAPABILITIES</span><span class="cl-desc">Back to all 5 pillars.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §9 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your sensor list. We'll scope a BOM.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're scoping a greenfield install with no existing PLC infrastructure, or a retrofit where the existing PLC can't expose the signals you need — bring us the sensor list and we'll scope the BOM. Real hardware against real signals, not slideware.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=mDAQ%20hardware%20specifications" class="btn btn--primary btn--lg">Get hardware specifications <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Data%20Acquisition%20engineering" class="btn btn--secondary btn--lg">Talk to an engineer about Data Acquisition</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

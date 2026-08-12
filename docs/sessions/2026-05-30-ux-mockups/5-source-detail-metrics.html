@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Mockup — SourceDetail with adapter-specific metrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="_styles.css">
+</head>
+<body>
+
+<div class="app-bar">
+    <span class="app-bar-icon">EC</span>
+    <span class="app-bar-title">Connectivity Studio</span>
+    <span class="breadcrumb">/ <a href="#">Sources</a> / OPC-UA-Cli</span>
+</div>
+
+<div class="content">
+
+    <div class="page-header">
+        <div>
+            <h1 style="display: flex; align-items: center; gap: 12px;">
+                <span class="dot dot-green" style="width: 14px; height: 14px;"></span>
+                OPC-UA-Cli
+            </h1>
+            <div class="subtitle">
+                opcua-client &middot; on route
+                <a href="#">OPCCli2OPCServ</a>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-outlined">✏ Edit</button>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Revision (round 2):</strong> added the "Looking at" source picker so an
+        operator can jump between sources without going back to the sources list. The
+        same picker pattern lands on the Live Data Tap pages (Stream / Compare /
+        Inspect) — route picker there, source picker here.
+    </div>
+
+    <!-- Source picker -->
+    <div class="card">
+        <div class="toolbar">
+            <label style="display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: #757575; text-transform: uppercase; letter-spacing: 0.06em;">Looking at</span>
+                <select class="select" style="min-width: 360px;">
+                    <option>OPC-UA-Cli &nbsp; · &nbsp; opcua-client &nbsp; · &nbsp; ● Running</option>
+                    <option>Modbus-sim &nbsp; · &nbsp; modbus-tcp &nbsp; · &nbsp; ● Running</option>
+                    <option>Modbus-sim1 &nbsp; · &nbsp; modbus-tcp &nbsp; · &nbsp; ● Running</option>
+                    <option>FANUC-Cell-7 &nbsp; · &nbsp; focas2 &nbsp; · &nbsp; ● Running</option>
+                    <option>Brother-Press-2 &nbsp; · &nbsp; brother-http &nbsp; · &nbsp; ⚠ Degraded</option>
+                    <option>MTConnect-Lathe-1 &nbsp; · &nbsp; mtconnect &nbsp; · &nbsp; ● Running</option>
+                </select>
+            </label>
+            <span style="font-size: 11px; color: #757575;">
+                6 sources configured · switch without leaving the page
+            </span>
+            <div class="spacer"></div>
+            <a href="#" style="font-size: 12px;">← All sources</a>
+        </div>
+    </div>
+
+    <div class="mockup-note">
+        <strong>Mockup — task #54.</strong> Adds a per-protocol metrics panel below the
+        existing Activity / Errors / Tags cards. The exact metric the operator needed
+        during today's debugging (<code>notificationsReceived</code>) wasn't visible
+        before. Now it is. Protocol-aware so OPC UA Client surfaces 14 metrics;
+        Modbus / FOCAS2 surface their own sets.
+    </div>
+
+    <!-- The existing top cards stay -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="card">
+            <h3 class="card-title">📊 Activity</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.06em;">Points observed</div>
+                    <div style="font-size: 32px; font-weight: 500; margin-top: 4px;">5,604,128</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.06em;">Last point</div>
+                    <div style="font-size: 20px; font-weight: 500; margin-top: 4px;">52 ms ago</div>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="background: #e8f5e9; border-left: 4px solid #2e7d32;">
+            <h3 class="card-title">✓ No recent errors</h3>
+            <div style="font-size: 13px; color: #424242;">
+                This source has not reported any errors since the gateway started.
+            </div>
+        </div>
+    </div>
+
+    <!-- THE NEW PANEL (task #54) -->
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <h3 class="card-title" style="margin: 0;">🔬 Diagnostics — OPC UA Client</h3>
+            <span class="chip chip-info-outline">protocol-specific</span>
+            <div class="spacer"></div>
+            <span style="font-size: 11px; color: #757575;">live · updates every 5 s</span>
+        </div>
+
+        <div class="metric-group-title">Subscription</div>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Configured items</div>
+                <div class="metric-value">20</div>
+            </div>
+            <div class="metric-card success">
+                <div class="metric-label">Active items</div>
+                <div class="metric-value">20</div>
+                <div class="metric-detail">matches configured ✓</div>
+            </div>
+            <div class="metric-card success">
+                <div class="metric-label">Bad-status items</div>
+                <div class="metric-value">0</div>
+                <div class="metric-detail">no server-side rejections</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Subscriptions</div>
+                <div class="metric-value">1</div>
+                <div class="metric-detail">configured: 1 · active: 1</div>
+            </div>
+        </div>
+
+        <div class="metric-group-title">Hot-path counters</div>
+        <div class="metrics-grid">
+            <div class="metric-card success">
+                <div class="metric-label">Notifications received</div>
+                <div class="metric-value">5,604,128</div>
+            </div>
+            <div class="metric-card success">
+                <div class="metric-label">Dispatched</div>
+                <div class="metric-value">5,604,128</div>
+                <div class="metric-detail">100% — channel draining</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Dropped (backpressure)</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Dropped at shutdown</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Queue depth</div>
+                <div class="metric-value">12 <span style="font-size: 12px; color: #757575;">/ 1000</span></div>
+                <div class="metric-detail">1.2% of capacity</div>
+            </div>
+        </div>
+
+        <div class="metric-group-title">Reconnect</div>
+        <div class="metrics-grid">
+            <div class="metric-card muted">
+                <div class="metric-label">Via Transfer</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Via Recreate</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Failed</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Currently reconnecting</div>
+                <div class="metric-value" style="font-size: 16px; padding-top: 6px;">No</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Last successful</div>
+                <div class="metric-value" style="font-size: 14px; padding-top: 8px;">never</div>
+            </div>
+            <div class="metric-card muted">
+                <div class="metric-label">Last mode</div>
+                <div class="metric-value" style="font-size: 16px; padding-top: 6px;">Unknown</div>
+            </div>
+        </div>
+
+        <div class="metric-group-title">Hot reconfigure</div>
+        <div class="metrics-grid">
+            <div class="metric-card muted">
+                <div class="metric-label">Reconfigure count</div>
+                <div class="metric-value">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Currently reconfiguring</div>
+                <div class="metric-value" style="font-size: 16px; padding-top: 6px;">No</div>
+            </div>
+        </div>
+
+        <div class="metric-group-title">Connection</div>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Negotiated security</div>
+                <div class="metric-value" style="font-size: 14px; padding-top: 8px;">SignAndEncrypt</div>
+                <div class="metric-detail">Basic256Sha256 ✓ matches config</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Server state</div>
+                <div class="metric-value" style="font-size: 14px; padding-top: 8px;">Running</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 8px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+            <button class="btn btn-outlined">📡 Open Live Data Tap for this source</button>
+            <button class="btn btn-text">⟳ Force reconnect</button>
+            <div class="spacer"></div>
+            <a href="#" style="font-size: 12px; color: #757575;">Raw JSON · /api/v1/sources/OPC-UA-Cli/health</a>
+        </div>
+    </div>
+
+    <div class="footer-help">
+        <span><strong>Demand-driven:</strong> the runtime stops updating these metrics 60 s after you leave the page.</span>
+        <span><strong>Protocol-aware:</strong> Modbus / FOCAS2 / Brother HTTP show their own native metric groupings.</span>
+    </div>
+
+</div>
+
+</body>
+</html>

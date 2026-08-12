@@ -1,0 +1,51 @@
+<!--
+  ElpisEdgeConnect.Sources.Melsec: Mitsubishi MELSEC source adapter for the
+  EdgeConnect canonical pipeline. Slice 1 speaks SLMP / MC Protocol 3E binary
+  over TCP, read-only, against modern iQ-R / iQ-L / Q / L CPUs.
+
+  Per ADR-0033 the wire layer is HAND-ROLLED in pure C# with NO third-party
+  Mitsubishi/SLMP dependency (S7 could lean on Sharp7/MIT; MELSEC has no clean
+  MIT equivalent — HslCommunication's license is unsafe to ship). Other frame
+  modes / transports are config-accepted but validation-rejected in Slice 1.
+
+  Plan trail: docs/sessions/2026-06-30-melsec-source-adapter-plan-v1/v2/v3.md
+  Decision:   docs/decisions/0033-melsec-slmp-handrolled-slice1-scope.md
+  Licensing:  docs/licensing/module-catalog.md (source-melsec)
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sources.Melsec</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sources.Melsec</AssemblyName>
+    <Description>Mitsubishi MELSEC (SLMP / MC 3E binary) source adapter for Elpis EdgeConnect</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CA1720 (identifier contains type name): the MELSEC datatype/device
+      vocabulary uses Mitsubishi's exact names operators see in GX Works3.
+      CA1822/CA1848/CA1031: same suppressions as the S7 adapter, for the same
+      reasons (instance helpers, logging-perf, broad transport catch).
+    -->
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA1720</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sources.Melsec.Tests" />
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- No third-party Mitsubishi dependency by design (ADR-0033 Rule 1). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

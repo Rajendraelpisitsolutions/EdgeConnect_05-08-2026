@@ -1,0 +1,6 @@
+# bulk-provision MANIFEST.txt
+# generator: tools/bulk-provision/generate.ps1 v0.1.0
+
+6c55816715b4641829b993655dc77e6fd3734e909ea704fe2df4d0fb5a554085  cnc-001.gateway.json
+dd1b59e5e2afa71f659d8160cf82f9b0e2877d4f46a0ab357cc648acf973aaba  cnc-002.gateway.json
+4fd966cdc6d1d4b2330f883c5ecfd439fe431af349853317f72d773ff4936354  cnc-003.gateway.json

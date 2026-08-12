@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(git rev-list *)",
+      "Bash(git push *)",
+      "Bash(python -)",
+      "Bash(dotnet test *)",
+      "Read(//d/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/wwwroot/css/**)",
+      "Bash(cd \"D:/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/Components\" && grep -rn \"grid-toolbar\" --include=*.razor . | head -20)",
+      "Read(//d/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/Components/**)",
+      "Read(//d/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/Components/Shared/**)",
+      "Read(//d/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/Components/Pages/Onboarding/**)",
+      "Bash(R=\"D:/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management\"; echo \"=== REF RouteCard structure ===\"; grep -n \"<article\\\\|</article>\\\\|route-card\\\\|MudChip\\\\|pill\\\\|grid\" \"$R/Components/Pages/RouteCard.razor\" | head -50; echo; echo \"=== REF RouteCard size vs TARGET ===\"; wc -l \"$R/Components/Pages/RouteCard.razor\" \"d:/Work Backup/EdgeConnect_Sony_Development_Latest/src/ElpisEdgeConnect.Management/Components/Pages/RouteCard.razor\")",
+      "Read(//d/Work Backup/Rajendra Git/EdgeConnect_05-08-2026/src/ElpisEdgeConnect.Management/Components/Pages/**)"
+    ]
+  }
+}

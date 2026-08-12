@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Is EdgeConnect? Edge Data Collection for Mixed-Vendor Plants &middot; Elpis</title>
+  <meta name="description" content="EdgeConnect is a protocol-agnostic edge runtime that collects data from mixed-vendor controllers using FANUC FOCAS2, MTConnect, Brother HTTP, Modbus TCP, Siemens S7, and OPC UA Client, while also exposing mapped data through OPC UA Server and MQTT outputs.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/blog/what-is-edgeconnect">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="What Is EdgeConnect? Edge Data Collection for Mixed-Vendor Plants &middot; Elpis">
+  <meta property="og:description" content="EdgeConnect is a protocol-agnostic edge runtime that collects data from mixed-vendor controllers using FANUC FOCAS2, MTConnect, Brother HTTP, Modbus TCP, Siemens S7, and OPC UA Client, while also exposing mapped data through OPC UA Server and MQTT outputs.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/blog/what-is-edgeconnect">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What Is EdgeConnect? Edge Data Collection for Mixed-Vendor Plants &middot; Elpis">
+  <meta name="twitter:description" content="EdgeConnect is a protocol-agnostic edge runtime that collects data from mixed-vendor controllers using FANUC FOCAS2, MTConnect, Brother HTTP, Modbus TCP, Siemens S7, and OPC UA Client, while also exposing mapped data through OPC UA Server and MQTT outputs.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "What Is EdgeConnect? Edge Data Collection for Mixed-Vendor Plants",
+    "description": "A protocol-agnostic edge runtime for collecting and mapping data from mixed-vendor controllers.",
+    "datePublished": "2026-06-07",
+    "dateModified": "2026-06-07",
+    "author": { "@type": "Organization", "name": "Elpis IT Solutions" },
+    "publisher": { "@type": "Organization", "name": "Elpis IT Solutions", "logo": { "@type": "ImageObject", "url": "https://www.elpisitsolutions.com/assets/brand/favicon-512.png" } },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.elpisitsolutions.com/blog/what-is-edgeconnect" },
+    "image": "https://www.elpisitsolutions.com/assets/og-default.png"
+  }
+  </script>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="/assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="/platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="/eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="/architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="/security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="/capabilities" class="nav__item">Capabilities</a>
+          <a href="/solutions" class="nav__item">Solutions</a>
+          <a href="/industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="/mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="/mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="/vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="/e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="/services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="/services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="/services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="/services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main">
+
+    <section class="section article-hero" data-mode="dark-deep">
+      <div class="container container--narrow">
+        <p class="eyebrow"><a href="/blog/" class="article-hero__crumb">Industrial Intelligence Blog</a> &middot; Connectivity &amp; Edge</p>
+        <h1 class="article-hero__title">What Is EdgeConnect? Edge Data Collection for Mixed-Vendor Plants</h1>
+        <p class="article-hero__meta">7 June 2026 &middot; 5 min read</p>
+      </div>
+    </section>
+
+    <section class="section" data-mode="light">
+      <div class="container container--narrow article">
+        <img class="article__hero-img" src="/assets/blog/what-is-edgeconnect-hero.png" alt="Diagram: mixed-vendor controllers connecting to the EdgeConnect edge runtime" width="1600" height="900">
+
+        <p class="article__lead">Walk an established factory floor and you'll find an archaeology of controllers &mdash; a FANUC from 2009 next to a 2024 machining cell, a Siemens line, a few Brother machines, older presses fronted by a PLC. The data you want for OEE, downtime, and reporting sits inside every one of them. The trouble is that each speaks a different dialect, so "just get the data" quietly turns into several separate integration efforts &mdash; and each one can require ongoing maintenance the next time a controller is upgraded or its firmware changes.</p>
+
+        <h2>What EdgeConnect actually is</h2>
+        <p><a href="/edgeconnect">EdgeConnect</a> is a <strong>protocol-agnostic edge runtime</strong>. It runs close to the machines &mdash; on the plant floor, not in the cloud &mdash; and connects to each controller in its native protocol. <strong>On the collection side, EdgeConnect supports FANUC FOCAS2, MTConnect, Brother HTTP, Modbus TCP, Siemens S7, and OPC UA Client &mdash; reading from OPC UA-enabled systems &mdash; today. On the output side, it can publish mapped data onward through MQTT or expose it through EdgeConnect's own OPC UA Server. FANUC MT-LINKi REST is roadmap.</strong></p>
+        <p>As data is collected, <strong>supported readings are mapped into a canonical vocabulary at the edge, where the required values are available</strong> &mdash; before anything is routed onward. Where equivalent values are available, readings from different machines can be mapped into the same canonical signal vocabulary, so downstream systems don't have to understand each vendor's dialect individually.</p>
+        <p>EdgeConnect can then route the result onward through MQTT publishing or expose mapped data through its OPC UA Server, so existing SCADA, MES, HMI, historians, or other OPC UA clients can consume it &mdash; with one source able to fan out to multiple destinations independently.</p>
+
+        <h2>Where it applies</h2>
+        <p>Any mixed-vendor floor: CNC shops (FANUC, Brother, MTConnect-capable machines), Siemens-controlled lines (S7), older equipment fronted by a Modbus PLC, and OPC UA-capable devices. It's built for <strong>brownfield</strong> &mdash; the plant you already have, not a greenfield rebuild.</p>
+
+        <h2>Common mistakes teams make</h2>
+        <ul class="article__list">
+          <li><strong>Mapping too late.</strong> If you push raw, vendor-specific data downstream and try to make sense of it in the historian or cloud, every downstream system has to understand every protocol. Handling it once, at the edge, keeps that complexity in one place.</li>
+          <li><strong>Per-machine custom scripts.</strong> They often work in a demo and can become fragile on the floor, requiring maintenance that nobody planned to own.</li>
+          <li><strong>No buffering plan.</strong> Networks blip and machines power off. Without a buffering strategy, you can lose the data you needed most.</li>
+          <li><strong>Formatting data for one specific dashboard.</strong> Bake in a single destination and you may have to redo the work when the destination changes.</li>
+        </ul>
+
+        <h2>How Elpis approaches it</h2>
+        <p>EdgeConnect maps supported readings into a canonical model at the source, then runs a <strong>deterministic, replayable pipeline</strong> &mdash; the same input produces the same output, which is what makes the data auditable rather than a black box. <strong>Store-and-forward is designed to preserve data through supported outage scenarios where buffering is configured, and to make gaps visible instead of hiding them.</strong> Each gateway has its own identity, tied to a plant and site. It runs <em>beside</em> your existing SCADA, historian, MES, HMI, and PLC systems &mdash; feeding them clean signals, not replacing them. Where AI appears in the platform, it stays in decision-support, outside the data path; the pipeline itself remains deterministic.</p>
+
+        <h2>What to check before starting an edge connectivity project</h2>
+        <p>A short pre-project checklist saves a lot of rework:</p>
+        <ul class="article__list">
+          <li><strong>Controller list</strong> &mdash; every machine, by make and generation.</li>
+          <li><strong>Ethernet availability</strong> &mdash; which controllers are reachable on the network, and which need it added.</li>
+          <li><strong>Protocol availability</strong> &mdash; what each controller can actually expose (and whether the relevant option or interface is enabled).</li>
+          <li><strong>Tag / signal list</strong> &mdash; the specific values you need (e.g. run state, spindle speed, counts, alarms).</li>
+          <li><strong>Polling frequency</strong> &mdash; how often each value needs to be read.</li>
+          <li><strong>Buffering requirement</strong> &mdash; where outages must be tolerated and data preservation is required.</li>
+          <li><strong>Downstream destinations</strong> &mdash; where the data needs to go (broker, historian, dashboard, analytics).</li>
+        </ul>
+        <p>Read more in the <a href="/capabilities-connectivity-edge">Connectivity &amp; Edge capability overview</a>.</p>
+
+        <div class="article__cta">
+          <h3>See it on your own floor</h3>
+          <p>Explore the platform, or get in touch to walk through your controller mix.</p>
+          <div class="article__cta-actions">
+            <a href="/platform" class="btn btn--primary">Explore the platform</a>
+            <a href="/contact" class="btn btn--secondary">Contact us</a>
+          </div>
+        </div>
+
+        <p class="article__sig">Elpis IT Solutions builds an Industrial Intelligence Ecosystem &mdash; from shop-floor signal to enterprise decision. Operating across India and the Middle East.</p>
+
+      </div>
+    </section>
+
+  </main>
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="/assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="/edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="/eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="/edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="/mdaq" class="footer__link">mDAQ</a>
+          <a href="/mtracker" class="footer__link">mTracker</a>
+          <a href="/vas" class="footer__link">VAS</a>
+          <a href="/e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="/platform" class="footer__link">Platform</a>
+          <a href="/capabilities" class="footer__link">Capabilities</a>
+          <a href="/solutions" class="footer__link">Solutions</a>
+          <a href="/industries" class="footer__link">Industries</a>
+          <a href="/services" class="footer__link">Services</a>
+          <a href="/architecture" class="footer__link">Architecture</a>
+          <a href="/security" class="footer__link">Security</a>
+          <a href="/blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="/resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="/roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="/resources-brochures" class="footer__link">Brochures</a>
+          <a href="/resources" class="footer__link">Pitch deck</a>
+          <a href="/resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="/customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="/privacy" class="footer__link">Privacy</a>
+          <a href="/terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

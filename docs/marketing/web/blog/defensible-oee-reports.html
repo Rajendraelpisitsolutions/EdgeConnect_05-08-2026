@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Build Defensible OEE Reports &middot; Elpis</title>
+  <meta name="description" content="A defensible OEE report is one where each reported number can trace back to timestamped, sourced, quality-coded signals. How to build OEE reporting that can support management reviews and audit discussions.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/blog/defensible-oee-reports">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="How to Build Defensible OEE Reports &middot; Elpis">
+  <meta property="og:description" content="A defensible OEE report is one where each reported number can trace back to timestamped, sourced, quality-coded signals. How to build OEE reporting that can support management reviews and audit discussions.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/blog/defensible-oee-reports">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Build Defensible OEE Reports &middot; Elpis">
+  <meta name="twitter:description" content="A defensible OEE report is one where each reported number can trace back to timestamped, sourced, quality-coded signals. How to build OEE reporting that can support management reviews and audit discussions.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=8">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How to Build Defensible OEE Reports",
+    "description": "Building OEE reporting that can support management reviews and audit discussions.",
+    "datePublished": "2026-06-07",
+    "dateModified": "2026-06-07",
+    "author": { "@type": "Organization", "name": "Elpis IT Solutions" },
+    "publisher": { "@type": "Organization", "name": "Elpis IT Solutions", "logo": { "@type": "ImageObject", "url": "https://www.elpisitsolutions.com/assets/brand/favicon-512.png" } },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": "https://www.elpisitsolutions.com/blog/defensible-oee-reports" },
+    "image": "https://www.elpisitsolutions.com/assets/og-default.png"
+  }
+  </script>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+
+  <a href="#main" class="skip-to-content">Skip to content</a>
+
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="/assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="/platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="/eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="/architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="/security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="/capabilities" class="nav__item">Capabilities</a>
+          <a href="/solutions" class="nav__item">Solutions</a>
+          <a href="/industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="/mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="/mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="/vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="/e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="/services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="/services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="/services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="/services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="/services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main">
+
+    <section class="section article-hero" data-mode="dark-deep">
+      <div class="container container--narrow">
+        <p class="eyebrow"><a href="/blog/" class="article-hero__crumb">Industrial Intelligence Blog</a> &middot; Operational Intelligence</p>
+        <h1 class="article-hero__title">How to Build Defensible OEE Reports</h1>
+        <p class="article-hero__meta">7 June 2026 &middot; 5 min read</p>
+      </div>
+    </section>
+
+    <section class="section" data-mode="light">
+      <div class="container container--narrow article">
+        <img class="article__hero-img" src="/assets/blog/defensible-oee-reports-hero.png" alt="Diagram: an OEE report backed by traceable, quality-coded signals" width="800" height="600">
+
+        <p class="article__lead">The OEE number lands in a management review, and within two minutes it's under fire: <em>"that downtime wasn't our fault,"</em> <em>"that's not how we count scrap,"</em> <em>"where did that figure even come from?"</em> If you can't show the lineage behind each number, the meeting turns into an argument about the data instead of a decision about the floor. A report that can't be defended doesn't drive action.</p>
+
+        <h2>What "defensible" means</h2>
+        <p>A defensible report isn't a flattering one &mdash; it's one that <strong>survives scrutiny</strong>. Each reported figure should be traceable back to a specific, timestamped, sourced, quality-coded signal, and the rules that produced it are documented and consistently applied. Defensibility is about lineage and consistency, not about the number being high.</p>
+
+        <h2>What makes a report defensible</h2>
+        <ul class="article__list">
+          <li><strong>Traceability</strong> &mdash; each number traces to a named signal, from a specific machine, at a specific time.</li>
+          <li><strong>Timestamp discipline</strong> &mdash; consistent, reliable time across every source.</li>
+          <li><strong>Source identification</strong> &mdash; you can say which device and tag produced a value.</li>
+          <li><strong>Quality codes</strong> &mdash; a bad or stale reading is flagged, not silently averaged into the result.</li>
+          <li><strong>Documented state definitions</strong> &mdash; running, planned stop, unplanned stop, idle, setup, inspection &mdash; owned by you and written down.</li>
+          <li><strong>Consistent counting rules</strong> &mdash; good versus total, defined once and applied everywhere.</li>
+          <li><strong>Gap visibility</strong> &mdash; when data is missing, the report <em>shows the gap</em> rather than quietly filling it with an assumption.</li>
+          <li><strong>An audit trail</strong> &mdash; when a definition or rule changes, there's a record of what changed and when.</li>
+        </ul>
+
+        <h2>Where it applies</h2>
+        <p>Management OEE reviews, customer and quality audits, continuous-improvement programmes, and multi-site comparisons &mdash; where inconsistent definitions between sites are the fastest way to lose the room.</p>
+
+        <h2>Common mistakes teams make</h2>
+        <ul class="article__list">
+          <li><strong>Averaging over gaps.</strong> Filling missing data invisibly is the quickest way to lose trust the first time someone notices.</li>
+          <li><strong>Unrecorded manual adjustments.</strong> A "corrected" number with no record is indistinguishable from a fudged one.</li>
+          <li><strong>Definitions that drift or differ by site.</strong> The same word meaning different things in two plants makes comparison meaningless.</li>
+          <li><strong>Reports that show conclusions, not lineage.</strong> A chart with no way to trace its inputs is an assertion, not evidence.</li>
+        </ul>
+
+        <h2>How Elpis approaches it</h2>
+        <p>Canonical signals carry their <strong>source, timestamp, and quality code</strong>, so each reported number keeps its lineage. <strong>Store-and-forward is designed to preserve data through supported outage scenarios where buffering is configured, and to make gaps visible instead of hiding them.</strong> <a href="/eremos-v2">EREMOS V2</a> computes against your documented state and counting definitions, and the pipeline that produces the figures is <strong>deterministic and replayable</strong> &mdash; the same inputs yield the same outputs, which is what makes a report auditable rather than a black box. It runs <em>beside</em> your historian and MES, not as a replacement. See the <a href="/architecture">architecture</a> for how the data path stays traceable end to end.</p>
+
+        <h2>Where to start</h2>
+        <p>Pick one line and trace a single OEE number all the way back to its raw signals &mdash; wherever you can't, that's where defensibility breaks.</p>
+
+        <div class="article__cta">
+          <h3>See it on your own floor</h3>
+          <p>Explore the platform, or get in touch to walk through your machines and your definitions.</p>
+          <div class="article__cta-actions">
+            <a href="/platform" class="btn btn--primary">Explore the platform</a>
+            <a href="/contact" class="btn btn--secondary">Contact us</a>
+          </div>
+        </div>
+
+        <p class="article__sig">Elpis IT Solutions builds an Industrial Intelligence Ecosystem &mdash; from shop-floor signal to enterprise decision. Operating across India and the Middle East.</p>
+
+      </div>
+    </section>
+
+  </main>
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="/assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="/edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="/eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="/edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="/mdaq" class="footer__link">mDAQ</a>
+          <a href="/mtracker" class="footer__link">mTracker</a>
+          <a href="/vas" class="footer__link">VAS</a>
+          <a href="/e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="/platform" class="footer__link">Platform</a>
+          <a href="/capabilities" class="footer__link">Capabilities</a>
+          <a href="/solutions" class="footer__link">Solutions</a>
+          <a href="/industries" class="footer__link">Industries</a>
+          <a href="/services" class="footer__link">Services</a>
+          <a href="/architecture" class="footer__link">Architecture</a>
+          <a href="/security" class="footer__link">Security</a>
+          <a href="/blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="/resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="/roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="/resources-brochures" class="footer__link">Brochures</a>
+          <a href="/resources" class="footer__link">Pitch deck</a>
+          <a href="/resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="/customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="/privacy" class="footer__link">Privacy</a>
+          <a href="/terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

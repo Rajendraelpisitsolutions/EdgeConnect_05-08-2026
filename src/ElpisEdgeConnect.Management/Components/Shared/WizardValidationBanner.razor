@@ -1,0 +1,119 @@
+@*
+    WizardValidationBanner — shared validation-message banner primitive.
+    M.2d.1 deliverable per v2 plan §5.3; M.2d.4 wires the click side-effect.
+
+    Responsibilities:
+      * Render zero or more WizardValidationMessage entries with
+        severity-aware MudAlert styling.
+      * Multi-message bullet list rendering.
+      * On click of a message WITH FieldAnchor:
+          1. Invoke JS interop window.wizardValidation.scrollToFieldAnchor —
+             scrolls the referenced field into view and focuses it.
+             ADR-0015 Rule 5 (scroll-to-field).
+          2. Then fire OnMessageClick callback (telemetry / debugging
+             hook — consumers do NOT need to wire it for default
+             scroll/focus behaviour to work).
+      * Messages without FieldAnchor: rendered as non-clickable text
+        and trigger no interop.
+
+    Renders zero DOM when Messages is null or empty (ADR-0015 Rule 5
+    "no success state — absence is the signal").
+
+    Reference: docs/decisions/0015-wizard-contract.md Rule 5
+*@
+@inject IJSRuntime JS
+
+@if (Messages is { Count: > 0 })
+{
+    <MudAlert Severity="@MudSeverity"
+              Variant="Variant.Outlined"
+              Class="mb-4"
+              data-testid="wizard-validation-banner">
+        @if (Messages.Count == 1)
+        {
+            var m = Messages[0];
+            <span data-testid="wizard-validation-message"
+                  @onclick="@(() => OnMessageClickedAsync(m))"
+                  style="@(m.FieldAnchor is not null ? "cursor:pointer; text-decoration:underline;" : null)">
+                @m.Message
+            </span>
+        }
+        else
+        {
+            <ul style="margin:0; padding-left:1.2em;">
+                @foreach (var m in Messages)
+                {
+                    <li data-testid="wizard-validation-message"
+                        @onclick="@(() => OnMessageClickedAsync(m))"
+                        style="@(m.FieldAnchor is not null ? "cursor:pointer; text-decoration:underline;" : null)">
+                        @m.Message
+                    </li>
+                }
+            </ul>
+        }
+    </MudAlert>
+}
+
+@code {
+    /// <summary>Severity routed to MudAlert (Error / Warning / Info).</summary>
+    [Parameter] public WizardValidationSeverity Severity { get; set; } = WizardValidationSeverity.Error;
+
+    /// <summary>The messages to render. Null or empty produces zero DOM.</summary>
+    [Parameter] public IReadOnlyList<WizardValidationMessage>? Messages { get; set; }
+
+    /// <summary>
+    /// Fired AFTER the JS scroll/focus side-effect when a message with a
+    /// non-null <see cref="WizardValidationMessage.FieldAnchor"/> is
+    /// clicked. Optional — the banner's default scroll-to-field behaviour
+    /// works without consumers wiring this. Use for telemetry / debugging.
+    /// Not fired when FieldAnchor is null (a non-anchored message is
+    /// rendered as plain text and click is a no-op).
+    /// </summary>
+    [Parameter] public EventCallback<WizardValidationMessage> OnMessageClick { get; set; }
+
+    private Severity MudSeverity => Severity switch
+    {
+        WizardValidationSeverity.Warning => MudBlazor.Severity.Warning,
+        WizardValidationSeverity.Info => MudBlazor.Severity.Info,
+        _ => MudBlazor.Severity.Error,
+    };
+
+    private async Task OnMessageClickedAsync(WizardValidationMessage message)
+    {
+        if (message.FieldAnchor is null)
+        {
+            // No anchor → no scroll target → no-op. Banner renders the
+            // message as plain text; click is intentionally inert.
+            return;
+        }
+
+        // ADR-0015 Rule 5 — default scroll/focus side-effect, wired
+        // before any optional consumer callback so telemetry handlers
+        // observe the side-effect as a fait accompli.
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "wizardValidation.scrollToFieldAnchor",
+                message.FieldAnchor);
+        }
+        catch (JSException)
+        {
+            // Swallow JS-side errors (malformed selector, no element
+            // matched, etc.) — they MUST NOT surface as a Blazor circuit
+            // error. The JS helper itself is also defensive; this catch
+            // is the belt to its suspenders.
+        }
+        catch (InvalidOperationException)
+        {
+            // Pre-render circuit not yet connected. The banner only
+            // fires this on operator click, so this should be unreachable
+            // in production, but we guard anyway — clicks during a
+            // reconnecting circuit should not crash.
+        }
+
+        if (OnMessageClick.HasDelegate)
+        {
+            await OnMessageClick.InvokeAsync(message);
+        }
+    }
+}

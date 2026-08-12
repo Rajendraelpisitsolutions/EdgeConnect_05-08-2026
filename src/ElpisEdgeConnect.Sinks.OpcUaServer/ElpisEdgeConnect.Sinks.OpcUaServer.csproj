@@ -1,0 +1,57 @@
+<!--
+  ElpisEdgeConnect.Sinks.OpcUaServer: OPC UA Server sink adapter exposing
+  the gateway's canonical tag set as a browse-able OPC UA endpoint.
+
+  Phase 4 status:
+    * H.0 — contract design: configuration records, namespace policy.
+    * H.1 (this commit) — core implementation: OpcUaServerSinkAdapter,
+            OpcUaAddressSpaceBuilder, OpcUaNodeIdResolver,
+            OpcUaSessionTracker. Adds OPCFoundation package reference.
+    * H.2 — diagnostics + metrics integration.
+    * H.3 — end-to-end integration tests against a real UA client.
+
+  THIRD-PARTY LIBRARY LICENSING:
+    OPCFoundation.NetStandard.Opc.Ua.* is dual-licensed:
+      - GPL-2.0 (default; used for development + unit/integration testing)
+      - OPC Foundation Reciprocal Community License (RCL; required for
+        commercial binary distribution; granted to Corporate Members)
+    Customer-facing binary releases of this assembly are gated on the
+    OPC Foundation Corporate membership. See
+    docs/licensing/module-catalog.md § Third-party library licensing.
+
+  Reference: docs/PHASE4_EXECUTION_PLAN.md Milestone H
+             shared-knowledge/contracts/opcua-namespace-policy.md
+             docs/licensing/module-catalog.md (sink-opc-ua-server)
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Sinks.OpcUaServer</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.Sinks.OpcUaServer</AssemblyName>
+    <Description>OPC UA Server sink adapter for Elpis EdgeConnect</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA2007</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElpisEdgeConnect.Sinks.OpcUaServer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Server" Version="1.5.376.232" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Configuration" Version="1.5.376.232" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+  </ItemGroup>
+
+</Project>

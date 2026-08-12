@@ -1,0 +1,30 @@
+{
+  "csv": "./samples/sample-modbus.csv",
+  "csvFingerprint": "87136d3ed922e13ca000d52d6f6ab1a6aaabe8d36f235461db8e8fdb9f31a784",
+  "gatewayProvisioningId": "33333333-3333-3333-3333-333333333333",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "generatorVersion": "0.1.0",
+  "outputs": [
+    {
+      "configFingerprint": "0b824628a7c5552144c039b7f43b1f8384928c6f85ac204e7346111997743761",
+      "deviceId": "plc-001",
+      "file": "plc-001.gateway.json",
+      "sha256": "31cea5e14e35f299768693744c3bde9c06ade9bce8c4827fe971519d621dbe14"
+    },
+    {
+      "configFingerprint": "4bfbb00726992bed61acffabe76eb6b718004dd3696ae897bcfd7c0a86e4f375",
+      "deviceId": "plc-002",
+      "file": "plc-002.gateway.json",
+      "sha256": "a9dcea6abf66dc1377fe889ccc66bba81ac8582f4ef27e50ee025272795e47fb"
+    },
+    {
+      "configFingerprint": "7c3baedcf5ef8e229029774bb4822e2b5b96bf3fcc38073725ae4109f2a66c13",
+      "deviceId": "plc-003",
+      "file": "plc-003.gateway.json",
+      "sha256": "be2113b78a45e954e49a1c83a32e9c45b1ecb83acc37e582de68020343c0843e"
+    }
+  ],
+  "sidecar": "./samples/sample-modbus.gateway.yml",
+  "templateId": "template-modbus",
+  "templateSchemaVersion": 1
+}

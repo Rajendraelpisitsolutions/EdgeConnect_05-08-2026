@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Elpis EdgeConnect — WiX "Burn" bundle.
+  Wraps the MSI (installer/ElpisEdgeConnect.wxs -> publish/ElpisEdgeConnect.msi)
+  in a double-clickable setup .exe with a standard install UI. The .exe elevates,
+  shows progress, and chains the MSI.
+
+  Build (from repo root, after the MSI is built):
+    wix build installer/ElpisEdgeConnect.Bundle.wxs -arch x64 \
+      -ext WixToolset.BootstrapperApplications.wixext \
+      -o publish/ElpisEdgeConnect-Setup.exe
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <!-- Version is included in the Name so the setup wizard header + Add/Remove
+       Programs entry show it (the standard BA header renders [WixBundleName]).
+       Keep this in sync with Version below on each release. -->
+  <Bundle Name="Elpis EdgeConnect $(Version)"
+          Manufacturer="Elpis IT Solutions"
+          Version="$(Version)"
+          IconSourceFile="installer\elpis.ico"
+          UpgradeCode="c8f3d2b5-a04e-4d19-9b32-6a7e8f9d0c12">
+
+    <BootstrapperApplication>
+      <!-- Standard install UI: welcome + Install button + progress + finish.
+           LicenseUrl="" suppresses the license page (we have none to show here).
+           LogoFile puts the Elpis logo in the setup wizard header.
+
+           ThemeFile/LocalizationFile point at a VENDORED copy of WixStdBA's
+           stock "hyperlinkLicense" theme (installer\theme\, copied verbatim
+           from WiX v5.0.2) whose only change is Window/@IconFile="elpis.ico" —
+           that gives the wizard WINDOW its Elpis title-bar icon (the stock
+           compiled-in theme sets no window icon, so it showed the generic
+           default). WixStdBA renames these payloads to thm.xml / thm.wxl /
+           logo.png in the BA folder; the extra <Payload> below drops
+           elpis.ico alongside them so the theme's relative IconFile resolves.
+           Paths are relative to the repo root, where `wix build` is invoked. -->
+      <bal:WixStandardBootstrapperApplication Theme="hyperlinkLicense"
+                                              LicenseUrl=""
+                                              LogoFile="installer\elpis-logo.png"
+                                              ThemeFile="installer\theme\HyperlinkTheme.xml"
+                                              LocalizationFile="installer\theme\HyperlinkTheme.wxl" />
+      <!-- Window title-bar icon for the wizard, referenced by thm.xml as
+           IconFile="elpis.ico"; must land in the same BA folder as thm.xml. -->
+      <Payload Name="elpis.ico" SourceFile="installer\elpis.ico" />
+    </BootstrapperApplication>
+
+    <!-- "Complete delete" opt-in, surfaced as a checkbox on the wizard's
+         Modify page (installer\theme\HyperlinkTheme.xml). The Checkbox
+         control's @Name IS this variable, so ticking it flips 0 -> 1.
+         Overridable so it can also be driven from the command line:
+             ElpisEdgeConnect-Setup.exe /uninstall CompleteDelete=1 /quiet
+         Default 0 — an operator who clicks straight through keeps their data. -->
+    <Variable Name="CompleteDelete" Type="numeric" Value="0" bal:Overridable="yes" />
+
+    <Chain>
+      <!-- The self-contained apps already include the .NET runtime, so no
+           prerequisite packages are needed — just install the MSI. -->
+      <MsiPackage SourceFile="$(MsiPath)" Vital="yes">
+        <!-- Hand the choice to the MSI, which owns the actual removal rules.
+             Burn passes MsiProperty on every action for the package, so this
+             reaches the uninstall too — which is the only action where the
+             MSI does anything with it. -->
+        <MsiProperty Name="COMPLETEDELETE" Value="[CompleteDelete]" />
+      </MsiPackage>
+    </Chain>
+
+  </Bundle>
+</Wix>

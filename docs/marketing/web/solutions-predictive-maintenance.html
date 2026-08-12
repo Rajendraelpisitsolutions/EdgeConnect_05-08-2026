@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<!--
+  File:        docs/marketing/web/solutions-predictive-maintenance.html
+  Purpose:     Static mockup of /solutions/predictive-maintenance — a
+               SolutionPanel (§15) page following the CNC-machining
+               pattern-setter. Faithful to
+               page-solutions-predictive-maintenance-spec-v1.md (v2 LOCKED).
+               10 sections. Copy lifted verbatim from spec §3 + §1.4.
+  Version:     v1 (mockup for sign-off)  ·  Date: 2026-06-06
+  Notes:       HONESTY-CRITICAL — VAS feeds EREMOS V2 today; E-IDOS is a
+               standalone sensor-agnostic appliance with EREMOS V2 streaming
+               on the ROADMAP (dashed leg in §7 diagram). No outcome metrics
+               (proof-architecture). "Cut"/"reduce" verbs only — never
+               "eliminate"/"zero". E-IDOS sensor-agnostic (HYDAC/Parker/
+               MP Filter/Argo-Hytos named as proof, not competitors).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predictive Maintenance — VAS + E-IDOS + EREMOS V2 · Elpis</title>
+  <meta name="description" content="Vibration analytics on rotating equipment + hydraulic and lubrication oil-health diagnostics + incident workflows. In-house, AMC, or hybrid.">
+  <link rel="canonical" href="https://www.elpisitsolutions.com/solutions-predictive-maintenance">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Elpis IT Solutions">
+  <meta property="og:title" content="Predictive Maintenance">
+  <meta property="og:description" content="Vibration analytics on rotating equipment + hydraulic and lubrication oil-health diagnostics + incident workflows. In-house, AMC, or hybrid.">
+  <meta property="og:url" content="https://www.elpisitsolutions.com/solutions-predictive-maintenance">
+  <meta property="og:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Predictive Maintenance">
+  <meta name="twitter:description" content="Vibration analytics on rotating equipment + hydraulic and lubrication oil-health diagnostics + incident workflows. In-house, AMC, or hybrid.">
+  <meta name="twitter:image" content="https://www.elpisitsolutions.com/assets/og-default.png">
+
+  <meta name="theme-color" content="#0F1419">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <style>
+    .prose { max-width: 70ch; }
+    .section-head { margin-bottom: var(--space-6); }
+    .section-head .eyebrow { display:block; margin-bottom: var(--space-3); }
+    .section-title { font-size: var(--size-xl); font-weight: var(--weight-semibold); line-height: var(--line-snug); letter-spacing: var(--tracking-tight); }
+    .narr p { font-size: var(--size-md); line-height: var(--line-body); color: var(--color-text-body-light); max-width: 72ch; }
+    .narr p + p { margin-top: var(--space-5); }
+    .pullquote { border-left:3px solid var(--color-brand-teal); padding-left: var(--space-5); margin: var(--space-8) 0 0; font-size: var(--size-lg); font-weight: var(--weight-semibold); font-style:italic; color: var(--color-text-heading-light); max-width: 60ch; }
+    .callout { border-left:3px solid var(--color-brand-teal); padding: var(--space-4) var(--space-5); margin: var(--space-6) 0; background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 80ch; }
+    .callout p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin:0; }
+    .callout strong { color: var(--color-text-heading-light); }
+    .lead-p { margin-top: var(--space-5); max-width: 78ch; }
+    .lead-p strong { color: var(--color-text-heading-light); display:block; margin-bottom: var(--space-1); font-size: var(--size-md); }
+    .lead-p span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .roadmap-note { margin-top: var(--space-4); padding: var(--space-3) var(--space-5); border-left:3px solid var(--color-text-muted-light); background: var(--color-surface-light-secondary); border-radius:0 8px 8px 0; max-width: 78ch; }
+    .roadmap-note span { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); font-style:italic; }
+    .roadmap-note strong { color: var(--color-text-heading-light); font-style:normal; }
+    .anchor-line { margin: var(--space-6) 0; padding: var(--space-4) var(--space-5); border-left:4px solid var(--color-brand-teal); font-size: var(--size-lg); font-weight: var(--weight-bold); color: var(--color-text-heading-light); background: var(--color-surface-light-hero); }
+    .incl-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-8); margin-top: var(--space-6); }
+    .incl-grid h3 { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-3); }
+    .incl-grid h4 { font-size: var(--size-base); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin: var(--space-5) 0 var(--space-2); }
+    .incl-grid ul { list-style:none; padding:0; }
+    .incl-grid li { padding: var(--space-2) 0 var(--space-2) var(--space-6); position:relative; color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .incl-grid li::before { content:"›"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .incl-grid strong { color: var(--color-text-heading-light); }
+    .incl-grid .roadmap-note { margin: var(--space-3) 0; }
+    .faq { margin-top: var(--space-6); max-width: 80ch; }
+    .faq__item { padding: var(--space-5) 0; border-bottom:1px solid var(--color-border-light-subtle); }
+    .faq__q { font-size: var(--size-md); font-weight: var(--weight-semibold); color: var(--color-text-heading-light); margin-bottom: var(--space-2); }
+    .faq__a { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .faq__a strong { color: var(--color-text-heading-light); }
+    .out-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: var(--space-3) var(--space-8); margin-top: var(--space-6); list-style:none; padding:0; }
+    .out-grid li { padding-left: var(--space-6); position:relative; color: var(--color-text-muted-dark); font-size: var(--size-sm); line-height: var(--line-body); padding-bottom: var(--space-3); }
+    .out-grid li::before { content:"✓"; position:absolute; left:0; color: var(--color-brand-teal); font-weight: var(--weight-bold); }
+    .out-grid strong { color: #FFFFFF; }
+    .shapes { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .shape-step { border:1px solid var(--color-border-light-subtle); border-top:3px solid var(--color-brand-teal); border-radius:8px; padding: var(--space-5); background:#fff; }
+    .shape-step .lbl { color: var(--color-brand-teal); font-size: var(--size-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-loose); }
+    .shape-step p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); margin-top: var(--space-2); }
+    .trust-cue { border-left:2px solid var(--color-brand-teal); padding-left: var(--space-5); margin-top: var(--space-5); max-width: 80ch; }
+    .trust-cue p { color: var(--color-text-muted-light); font-size: var(--size-sm); line-height: var(--line-body); }
+    .trust-cue strong { color: var(--color-text-heading-light); }
+    .crosslens-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: var(--space-5); margin-top: var(--space-6); }
+    .crosslens-card { border:1px solid var(--color-border-light-subtle); border-radius:10px; padding: var(--space-6); background: var(--color-surface-light-hero); text-decoration:none; display:block; }
+    .crosslens-card .eyebrow { display:block; margin-bottom: var(--space-2); }
+    .crosslens-card .cl-desc { color: var(--color-text-body-light); font-size: var(--size-base); }
+    .deploy-note { margin-top: var(--space-6); color: var(--color-text-muted-light); font-size: var(--size-sm); font-style:italic; max-width: 80ch; }
+    .trust-strip { color: var(--color-text-muted-dark); font-size: var(--size-sm); font-style:italic; margin-top: var(--space-4); }
+    .pillar-link { color: var(--color-brand-teal-light); font-weight: var(--weight-semibold); text-decoration:none; }
+    [data-mode="dark"] .pillar-link, [data-mode="dark-deep"] .pillar-link { color: var(--color-brand-teal); }
+    .mock-banner { background: var(--color-brand-teal); color: var(--color-bg-deep); text-align:center; font-size: var(--size-sm); font-weight: var(--weight-semibold); padding: var(--space-2); }
+  </style>
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-FJTh8FzW7iL-DC2BCaMI3.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-to-content">Skip to content</a>
+  <header class="nav" data-mode="dark-deep" role="banner">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="/" class="nav__brand" aria-label="Elpis IT Solutions home">
+          <img src="assets/brand/elpis-logo-nav.png" alt="Elpis IT Solutions" class="nav__brand-logo" width="1068" height="165">
+        </a>
+                <nav class="nav__items" aria-label="Primary">
+          <div class="nav__dd">
+            <a href="platform" class="nav__item nav__dd-trigger" aria-haspopup="true">Platform<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edgeconnect" class="nav__dd-link">EdgeConnect<span>Protocol-agnostic edge runtime</span></a></li>
+              <li><a href="eremos-v2" class="nav__dd-link">EREMOS V2<span>Operational intelligence layer</span></a></li>
+              <li><a href="architecture" class="nav__dd-link">Architecture<span>The Industrial Intelligence Stack</span></a></li>
+              <li><a href="security" class="nav__dd-link">Security<span>Security model &amp; trust</span></a></li>
+            </ul>
+          </div>
+          <a href="capabilities" class="nav__item">Capabilities</a>
+          <a href="solutions" class="nav__item">Solutions</a>
+          <a href="industries" class="nav__item">Industries</a>
+          <div class="nav__dd">
+            <a href="/#hardware-heading" class="nav__item nav__dd-trigger" aria-haspopup="true">Hardware<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="edge-gateway" class="nav__dd-link">Edge Gateway<span>Turnkey DIN-rail edge appliance</span></a></li>
+              <li><a href="mdaq" class="nav__dd-link">mDAQ<span>Ruggedized acquisition unit</span></a></li>
+              <li><a href="mtracker" class="nav__dd-link">mTracker<span>Equipment utilization tracker</span></a></li>
+              <li><a href="vas" class="nav__dd-link">VAS<span>Vibration Analyser System</span></a></li>
+              <li><a href="e-idos" class="nav__dd-link">E-IDOS<span>Hydraulic &amp; lubrication monitor</span></a></li>
+            </ul>
+          </div>
+          <div class="nav__dd">
+            <a href="services" class="nav__item nav__dd-trigger" aria-haspopup="true">Services<svg class="nav__dd-caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <ul class="nav__dd-menu">
+              <li><a href="services/aveva-scada-integration" class="nav__dd-link">AVEVA SCADA Integration<span>Authorised AVEVA Member SI</span></a></li>
+              <li><a href="services/embedded-design" class="nav__dd-link">Embedded Design<span>Firmware &amp; device software</span></a></li>
+              <li><a href="services/hardware-design" class="nav__dd-link">Hardware Design<span>Industrial electronics</span></a></li>
+              <li><a href="services/data-analytics-ai" class="nav__dd-link">Data Analytics &amp; AI<span>Analytics &amp; ML solutions</span></a></li>
+            </ul>
+          </div>
+          <a href="/blog/" class="nav__item">Blog</a>
+        </nav>
+        <a href="/contact" class="btn btn--primary btn--sm nav__cta">Book a discovery call <span class="arrow" aria-hidden="true">&rarr;</span></a>
+        <button class="nav__mobile-toggle" aria-label="Open menu" aria-expanded="false">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- §1 HERO -->
+    <section class="section hero" data-mode="dark-deep" aria-labelledby="hero-heading">
+      <div class="container container--narrow">
+        <span class="eyebrow eyebrow--teal">SOLUTION · PREDICTIVE MAINTENANCE</span>
+        <h1 id="hero-heading" class="hero__headline">Detect failure signatures before downtime — not after.</h1>
+        <p class="hero__subhead">Vibration analytics on rotating equipment, oil-health diagnostics on hydraulic and lubrication systems, and incident workflows your maintenance team actually uses. Run it in-house, deliver it through an AMC channel, or both — on the same platform.</p>
+        <div class="cta-group">
+          <a href="#cta" class="btn btn--primary btn--lg">Bring us your most-watched asset <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#cta" class="btn btn--secondary btn--lg">Book a scoping call</a>
+        </div>
+        <p class="trust-strip">Live today: VAS vibration analytics on rotating equipment, streaming into EREMOS V2 incident workflows. E-IDOS hydraulic and lubrication oil-health diagnostics run as a standalone appliance today; EREMOS V2 streaming is on the roadmap.</p>
+      </div>
+    </section>
+
+    <!-- §2 THE CUSTOMER PAIN -->
+    <section class="section" data-mode="light" aria-labelledby="pain-heading">
+      <div class="container prose narr">
+        <div class="section-head"><span class="eyebrow">THE PAIN</span><h2 id="pain-heading" class="section-title">Most maintenance programs sit between reactive and calendar-based. Neither is predictive.</h2></div>
+        <p>Most maintenance programs sit somewhere between reactive and calendar-based. Reactive means waiting for the bearing to seize, the hydraulic pump to fail, the lubrication system to contaminate to the point that production stops. Calendar-based means swapping filters and servicing components at fixed intervals — whether the oil is degraded or not, whether the bearing is worn or not. Both work. Neither is predictive.</p>
+        <p>The teams that want to move beyond either pattern usually face the same three problems: (1) the condition data exists at the asset but doesn't reach the maintenance team in time to act, (2) when alerts do arrive they're noisy enough that the team starts ignoring them, (3) when AMC providers are part of the maintenance program, signal routing between the customer's operations and the AMC's service team is either over-shared or under-shared. The promise of "predictive maintenance" gets diluted by tooling that doesn't survive the operational reality.</p>
+        <p>The teams that succeed do something different. They instrument the assets that matter most. They read the actual condition signatures — vibration spectra on rotating equipment, particle contamination and water saturation on hydraulic and lubrication oil. They build incident workflows the team trusts. They route signals deliberately when AMC providers are in the loop. That's what this page is about.</p>
+        <p class="pullquote">"They read the actual condition signatures — and build incident workflows the team trusts."</p>
+      </div>
+    </section>
+
+    <!-- §3 HOW ELPIS SOLVES THIS -->
+    <section class="section" data-mode="light-tinted" aria-labelledby="solve-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">HOW ELPIS SOLVES THIS</span></div>
+        <div class="callout">
+          <p><strong>How this differs from calendar-based preventive maintenance.</strong> Calendar-based PM replaces oil filters at fixed intervals whether the oil is degraded or not, services bearings on a schedule whether they're worn or not. Predictive maintenance reads the actual condition signatures — vibration spectra on rotating equipment, particle contamination counts (ISO 4406 / NAS 1638) and water saturation on hydraulic and lubrication systems — and triggers maintenance when the signature crosses a threshold the maintenance team defines. <strong>Same maintenance team. Same workflows. Different trigger.</strong> The platform doesn't replace your CMMS or your maintenance discipline; it gives them a better trigger signal to act on.</p>
+        </div>
+        <div class="lead-p"><strong>Read what the asset is actually telling you.</strong><span>VAS (Vibration Analyser System) runs on <code>mDAQ</code> hardware mounted at the rotating equipment — pumps, motors, gearboxes, fans, compressors, conveyors, structural components — and captures vibration spectra continuously. E-IDOS (Hydraulic &amp; Lubrication Condition Monitoring) is a <strong style="display:inline">standalone sensor-agnostic appliance</strong> that measures particle contamination, water saturation, and oil flow on hydraulic and lubrication systems — supporting HYDAC, Parker, MP Filter, and Argo-Hytos sensors. Both run online (continuous monitoring) and offline (spot-check / portable mode) per the maintenance team's preference. See the underlying capability story → <a class="pillar-link" href="capabilities-condition-monitoring">/capabilities/condition-monitoring</a>.</span></div>
+        <div class="lead-p"><strong>Turn signals into workflows your team actually uses.</strong><span>Raw condition data is noise without a trigger discipline. EREMOS V2 builds the persistent alarm and incident workflow layer on top of the VAS signal stream today — thresholds you define per asset, alarm escalation that survives shift handoffs, incident records that close out with operator notes and resolution detail. The signal becomes an incident; the incident becomes a workflow; the workflow becomes an audit trail. See the underlying capability story → <a class="pillar-link" href="capabilities-operational-intelligence">/capabilities/operational-intelligence</a>.</span></div>
+        <div class="roadmap-note"><span><strong>Honest framing —</strong> E-IDOS streaming integration into EREMOS V2 is near-term roadmap. <strong>Today</strong> E-IDOS operates as a standalone reliability instrument with on-board HMI, thermal printer, BLE Android app, and email reports — the maintenance team reads condition data at the appliance, prints reports, and acts on alarms locally. The VAS-and-E-IDOS-together signal-stream story above describes the integrated end-state we are building toward; VAS-side incident workflows are live in EREMOS V2 today.</span></div>
+        <p class="anchor-line">Same maintenance team. Same workflows. Different trigger.</p>
+        <div class="lead-p"><strong>Deploy the shape that fits how you operate.</strong><span>All three shapes start the same way: rank assets by criticality (downtime cost × consequence × likelihood) and instrument the top tier first. Then pick the shape that fits your maintenance program.</span></div>
+        <div class="shapes">
+          <div class="shape-step"><span class="lbl">SHAPE 1 — IN-HOUSE</span><p>VAS + E-IDOS direct to your in-house maintenance team, VAS signals route to your EREMOS V2 tenant.</p></div>
+          <div class="shape-step"><span class="lbl">SHAPE 2 — AMC-DELIVERED</span><p>VAS + E-IDOS deployed by your AMC provider, VAS signals route to the AMC operations team (under a customer-authorized routing scope).</p></div>
+          <div class="shape-step"><span class="lbl">SHAPE 3 — HYBRID</span><p>In-house and AMC providers share VAS signals via customer-controlled routing, where the customer decides which signals route back to the AMC for which assets.</p></div>
+        </div>
+        <div class="lead-p"><strong>No new monitoring stack to learn.</strong><span>The same platform that runs your <a class="pillar-link" href="capabilities-connectivity-edge">connectivity-edge</a> for protocol integration, your <a class="pillar-link" href="capabilities-data-acquisition">data-acquisition</a> for direct-sensor reads, and your <a class="pillar-link" href="capabilities-operational-intelligence">operational-intelligence</a> for OEE and alarms — that's the same platform running predictive maintenance. Condition signatures arrive at EREMOS V2 in the same canonical vocabulary as everything else. Maintenance teams that already use the platform for OEE or alarms learn no new tool.</span></div>
+      </div>
+    </section>
+
+    <!-- §4 WHAT'S INCLUDED -->
+    <section class="section" data-mode="light" aria-labelledby="incl-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">WHAT'S INCLUDED</span></div>
+        <p class="deploy-note" style="margin-top:0;">The EdgeConnect peer is not used for predictive maintenance — the Acquisition peer (mDAQ + VAS + E-IDOS) carries the floor-side of this solution. See the architecture below.</p>
+        <div class="incl-grid">
+          <div>
+            <h3>From Hardware</h3>
+            <h4>mDAQ (the acquisition platform that runs VAS)</h4>
+            <ul>
+              <li><strong>Ruggedized acquisition hardware</strong> mounted at the rotating equipment, running the VAS analytics — 4 analog channels (0-10 V or 4-20 mA), 16-bit, 860 S/s.</li>
+              <li><strong>Offline operation</strong> with optional battery backup for remote / unmanned sites (pipeline pump stations, mining outposts, off-grid water infrastructure).</li>
+              <li><strong>4G / Wi-Fi / optional Ethernet</strong> for signal delivery back to EREMOS V2 — see <a class="pillar-link" href="capabilities-data-acquisition">/capabilities/data-acquisition</a> for full hardware specs.</li>
+            </ul>
+            <h4>VAS (vibration analytics on rotating equipment, runs on mDAQ)</h4>
+            <ul>
+              <li><strong>Continuous vibration spectra capture</strong> on rotating machinery (pumps, motors, gearboxes, fans, compressors), conveyors, and structural components.</li>
+              <li><strong>Failure-signature thresholds</strong> per asset (defined by your maintenance team).</li>
+              <li><strong>Online + offline modes</strong> — continuous monitoring or spot-check via portable deployment.</li>
+              <li><strong>Equipment-class library</strong> for common rotating-equipment failure modes (bearing issues, imbalance, misalignment, looseness, and cracks).</li>
+            </ul>
+            <h4>E-IDOS (standalone sensor-agnostic appliance for hydraulic + lubrication oil-health)</h4>
+            <div class="roadmap-note"><span><strong>Honest framing —</strong> E-IDOS today operates as a standalone reliability instrument; signaling integration with EREMOS V2 is near-term roadmap. The features below describe what E-IDOS does at the appliance today.</span></div>
+            <ul>
+              <li><strong>Standalone sensor-agnostic appliance</strong> — NOT mDAQ-based. Its own hardware platform with on-board HMI, thermal printer, BLE Android app, and email reports.</li>
+              <li><strong>Particle contamination monitoring</strong> logged to ISO 4406 and NAS 1638 cleanliness standards.</li>
+              <li><strong>Water saturation + oil flow measurement</strong> in both online and offline states.</li>
+              <li><strong>Sensor-agnostic input</strong> — HYDAC, Parker, MP Filter, Argo-Hytos all supported.</li>
+              <li><strong>Oil-health failure-mode coverage</strong> for common hydraulic and lubrication failure modes — particle contamination, water ingress, lubrication breakdown / oil degradation, additive depletion.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>From EREMOS V2 (incident workflows)</h3>
+            <ul>
+              <li><strong>Persistent alarm state</strong> that survives shift handoffs (alarm doesn't disappear when the operator who saw it goes home) — fed by VAS signals today; E-IDOS streaming integration is near-term roadmap.</li>
+              <li><strong>Incident workflow</strong> — alarm → triage → assigned-to → resolution → closure, with operator notes at each step.</li>
+              <li><strong>Customer-controlled routing</strong> for AMC channel deployments (you decide which signals route to which AMC provider for which assets).</li>
+              <li><strong>Audit-ready configuration history</strong> — every threshold change and routing change captured with actor identity and timestamp.</li>
+            </ul>
+            <p class="deploy-note">Product surfaces: <a class="pillar-link" href="vas">VAS</a> · <a class="pillar-link" href="e-idos">E-IDOS</a> · <a class="pillar-link" href="eremos-v2">EREMOS V2</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 COMMON QUESTIONS -->
+    <section class="section" data-mode="light" aria-labelledby="faq-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">COMMON QUESTIONS</span><h2 id="faq-heading" class="section-title">What maintenance teams ask before scoping a predictive program.</h2></div>
+        <div class="faq">
+          <div class="faq__item"><p class="faq__q">Does this replace our CMMS?</p><p class="faq__a">No. EREMOS V2's incident workflows are operational — alarm triage, assigned-to, resolution. Your CMMS stays as the system of record for work-order management, spare-parts inventory, maintenance scheduling, and labor tracking. EREMOS V2 publishes incident records that your CMMS can ingest via API or webhook — the maintenance team works in the CMMS they already use, with a better-triggered incident stream feeding it.</p></div>
+          <div class="faq__item"><p class="faq__q">What does "predictive" actually mean here?</p><p class="faq__a">Threshold-based detection on real condition signatures — vibration spectra crossing failure-mode thresholds, particle contamination counts exceeding ISO 4406 cleanliness limits, water saturation passing the equipment-class limit. The maintenance team defines the thresholds; the platform monitors continuously and triggers when the signature crosses. This is not "AI predicts what will fail" — it's "the asset is telling you the bearing is degrading, here's the threshold you set, here's the alert." Honest framing matters: predictive vs reactive is a workflow improvement, not a machine-learning claim.</p></div>
+          <div class="faq__item"><p class="faq__q">How do we onboard an AMC provider into this?</p><p class="faq__a">Customer-controlled routing. You define which assets the AMC provider sees signals from, which thresholds they can configure, and which incident workflows they can act on. Per-tenant isolation in EREMOS V2 means the AMC provider sees only what you authorize — not your full operations. The AMC provider deploys VAS + E-IDOS on the assets under their contract, signals route into a scope you control, and the AMC team uses the same EREMOS V2 incident workflows your in-house team would.</p></div>
+          <div class="faq__item"><p class="faq__q">What if our hydraulic system uses sensors that aren't HYDAC?</p><p class="faq__a">E-IDOS is sensor-agnostic on the contamination input side — HYDAC, Parker, MP Filter, and Argo-Hytos are all supported today. The hardware reads the sensor; the analytics happen in E-IDOS regardless of the sensor brand. If you have a sensor that isn't on the supported list, scope that with engineering during the architecture review — the integration pattern is well-understood and additions are common. Where existing sensors don't support the failure modes you need to detect, the scoping call covers a sensor-fitness review — adding accelerometers on critical bearings, or installing an in-line particle counter on a hydraulic return-line, is a small mechanical project we can scope alongside the analytics deployment.</p></div>
+          <div class="faq__item"><p class="faq__q">Can we run this on assets in plants without internet?</p><p class="faq__a">Yes. Same offline-first posture as the rest of the platform. <strong>VAS</strong> runs on mDAQ hardware with optional battery backup; condition data buffers locally and forwards when connectivity returns. <strong>E-IDOS</strong> is a standalone appliance — its offline capability is built into the appliance itself: the built-in HMI and on-board thermal printer mean the maintenance technician can read condition data and print a report without any network at all, and the BLE Android app + email reports cover signal delivery patterns when network is partially available. Plants on isolated OT VLANs install both products the same way as plants with internet.</p></div>
+          <div class="faq__item"><p class="faq__q">How should we roll this out — bottom-up by asset, or top-down by plant?</p><p class="faq__a">Bottom-up by asset, sized to criticality. Start with the assets where unscheduled downtime hurts most — the critical pump, the high-utilization gearbox, the hydraulic system that takes a production line down when it loses cleanliness. Instrument those first, build the threshold + incident workflow discipline on a small number of assets the team trusts, then scale out. Top-down rollouts (instrument every asset in the plant at once) usually generate alert noise the maintenance team learns to ignore — and that's the failure mode that kills predictive programs.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 OUTCOMES -->
+    <section class="section" data-mode="dark" aria-labelledby="out-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow eyebrow--teal">OUTCOMES YOU CAN HOLD US TO</span><h2 id="out-heading" class="section-title">What changes when this lands.</h2></div>
+        <ul class="out-grid">
+          <li><strong>Cut unscheduled downtime on rotating equipment and hydraulic systems</strong> — failure signatures detected on the pump, motor, gearbox, fan, compressor, or hydraulic system before the failure event; maintenance acts on threshold-crossings, not on failure events</li>
+          <li><strong>Cut emergency dispatches on AMC-served assets</strong> — AMC providers act on condition signatures arriving via customer-authorized routing, not on customer phone calls after downtime starts</li>
+          <li><strong>Incident workflows that survive shift handoffs</strong> — persistent alarm state and resolution audit trail mean the night-shift incident closes out cleanly even when the day-shift team takes over</li>
+          <li><strong>Maintenance discipline ranked by asset criticality</strong> — the bottom-up rollout pattern means you instrument the highest-criticality assets first and build threshold + workflow discipline there before scaling out</li>
+          <li><strong>Customer-controlled AMC channel routing</strong> — AMC providers see only what you authorize, per asset, with full audit</li>
+          <li><strong>Audit-ready configuration history</strong> — every threshold change, every routing change, every workflow assignment captured with actor identity and timestamp</li>
+          <li><strong>No new monitoring stack to learn</strong> — same platform as operational-intelligence for OEE and alarms; maintenance teams that use the platform for OEE already know how to read it</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- §7 ARCHITECTURE FOR THIS SOLUTION -->
+    <section class="section" data-mode="light-tinted" id="architecture" aria-labelledby="arch-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">ARCHITECTURE FOR THIS SOLUTION</span><h2 id="arch-heading" class="section-title">How the pieces compose for predictive maintenance.</h2></div>
+        <figure style="margin:0;">
+          <svg viewBox="0 0 980 170" width="100%" role="img" aria-label="Predictive maintenance: rotating machinery and hydraulic systems feed the Acquisition peer; mDAQ runs VAS for vibration and E-IDOS is a standalone appliance for oil-health. VAS streams to EREMOS V2 incident workflows today; E-IDOS streaming to EREMOS V2 is roadmap, shown dashed. CMMS and AMC channel consume via customer-controlled routing.">
+            <defs>
+              <marker id="pm-arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#5E6B78"/></marker>
+              <marker id="pm-arr-dash" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8A96A2"/></marker>
+            </defs>
+            <!-- Col 1: Floor -->
+            <rect x="8" y="40" width="172" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="94" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13.5" fill="#0F1419">Rotating equipment</text>
+            <text x="94" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">pumps · motors · gearboxes</text>
+            <text x="94" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">+ hydraulic systems</text>
+            <line x1="184" y1="85" x2="236" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <!-- Col 2: Acquisition peer -->
+            <rect x="240" y="28" width="230" height="114" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="355" y="52" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="14" fill="#0F1419">Acquisition peer</text>
+            <text x="355" y="74" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">mDAQ runs VAS — vibration</text>
+            <text x="355" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">E-IDOS — standalone appliance</text>
+            <text x="355" y="110" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">oil-health · HMI · printer · app</text>
+            <text x="355" y="128" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">online + offline</text>
+            <!-- VAS leg: live -->
+            <line x1="470" y1="72" x2="556" y2="72" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <text x="513" y="64" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#00A0E0">VAS — TODAY</text>
+            <!-- E-IDOS leg: roadmap, dashed -->
+            <line x1="470" y1="106" x2="556" y2="106" stroke="#8A96A2" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#pm-arr-dash)"/>
+            <text x="513" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#8A96A2">E-IDOS — ROADMAP</text>
+            <!-- Col 3: EREMOS V2 -->
+            <rect x="560" y="28" width="206" height="114" rx="10" fill="#EAF7FD" stroke="#00A0E0" stroke-width="2"/>
+            <text x="663" y="58" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="14" fill="#0F1419">EREMOS V2</text>
+            <text x="663" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">persistent alarm state</text>
+            <text x="663" y="98" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">incident workflows</text>
+            <text x="663" y="116" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">customer-controlled routing</text>
+            <line x1="766" y1="85" x2="818" y2="85" stroke="#5E6B78" stroke-width="2" marker-end="url(#pm-arr)"/>
+            <!-- Col 4: Customer Enterprise -->
+            <rect x="822" y="40" width="150" height="90" rx="8" fill="#FFFFFF" stroke="#A8B3BD"/>
+            <text x="897" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13" fill="#0F1419">CMMS</text>
+            <text x="897" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#5E6B78">+ AMC channel</text>
+            <text x="897" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#00A0E0">FEEDS, NOT REPLACING</text>
+          </svg>
+          <figcaption class="deploy-note" style="text-align:center;">For predictive maintenance, Col 2 is the Acquisition peer (mDAQ + VAS + E-IDOS); the EdgeConnect peer is not required for this solution. VAS streams to EREMOS V2 today; the E-IDOS → EREMOS V2 leg is near-term roadmap (shown dashed). See the full peer-architecture story → <a class="pillar-link" href="architecture">/architecture</a></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- §8 TRUST CUE -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="trust-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">TRUST POSTURE</span></div>
+        <div class="trust-cue"><p><strong>Customer-controlled routing for AMC channel deployments.</strong> When AMC providers are part of your maintenance program, they see only the signals you authorize, for the assets they're contracted on. Per-tenant isolation in EREMOS V2 makes this enforceable by design — not a configuration discipline you have to maintain.</p></div>
+        <div class="trust-cue"><p><strong>Offline-first operation, including air-gapped plants.</strong> VAS + E-IDOS + mDAQ deploy in plants on isolated OT VLANs the same way they deploy in plants with internet access. License validates locally — no phone-home. Condition data buffers locally and forwards when connectivity returns.</p></div>
+        <div class="trust-cue"><p>The platform is trusted in environments where data discipline is non-negotiable — including defense and space-agency programs, and AMC engagements across India and the Middle East.</p></div>
+        <p class="deploy-note">Read the full operational trust posture → <a class="pillar-link" href="security">/security</a></p>
+      </div>
+    </section>
+
+    <!-- §9 CROSS-LENS -->
+    <section class="section section--tight" data-mode="light-tinted" aria-labelledby="xlens-heading">
+      <div class="container">
+        <div class="section-head"><span class="eyebrow">RELATED</span><h2 id="xlens-heading" class="section-title">Looking for the same thing from another angle?</h2></div>
+        <div class="crosslens-grid">
+          <a class="crosslens-card" href="capabilities-condition-monitoring"><span class="eyebrow">CAPABILITY · CONDITION MONITORING</span><span class="cl-desc">The underlying capability — VAS + E-IDOS as Pillar 4.</span></a>
+          <a class="crosslens-card" href="architecture"><span class="eyebrow">ARCHITECTURE</span><span class="cl-desc">How the building blocks connect into one stack.</span></a>
+          <a class="crosslens-card" href="solutions"><span class="eyebrow">SOLUTIONS</span><span class="cl-desc">Back to the full solutions directory.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- §10 FINAL CTA -->
+    <section class="section" data-mode="dark-deep" id="cta" aria-labelledby="cta-heading">
+      <div class="container" style="text-align:center;">
+        <span class="eyebrow eyebrow--teal">NEXT STEP</span>
+        <h2 id="cta-heading" class="hero__headline" style="font-size:var(--size-2xl);margin-top:var(--space-3);">Bring us your most-watched asset. We'll scope what predictive looks like for it.</h2>
+        <p class="hero__subhead" style="margin-left:auto;margin-right:auto;max-width:64ch;">Whether you're running in-house maintenance, delivering through an AMC channel, or building a hybrid program — start with the asset where unscheduled downtime hurts most. We'll scope the VAS + E-IDOS + incident-workflow shape that fits it, with deployment economics that reflect the real shape of your program.</p>
+        <div class="cta-group" style="justify-content:center;">
+          <a href="mailto:contact@elpisitsolutions.com?subject=Predictive%20maintenance%20scoping" class="btn btn--primary btn--lg">Bring us your most-watched asset <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="mailto:contact@elpisitsolutions.com?subject=Predictive%20maintenance%20scoping%20call" class="btn btn--secondary btn--lg">Book a scoping call</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__inner">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <img src="assets/brand/elpis-logo-transparent.png" alt="Elpis IT Solutions" class="footer__brand-logo" width="1068" height="260">
+          <p class="footer__tagline">Industrial Intelligence Ecosystem.</p>
+          <p class="footer__tagline">From shop floor signal to enterprise decision.</p>
+          <a href="https://www.elpisitsolutions.com" class="footer__link" style="margin-top: var(--space-3)">www.elpisitsolutions.com</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">SOFTWARE</p>
+          <a href="edgeconnect" class="footer__link">EdgeConnect</a>
+          <a href="eremos-v2" class="footer__link">EREMOS V2</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">HARDWARE</p>
+          <a href="edge-gateway" class="footer__link">Edge Gateway</a>
+          <a href="mdaq" class="footer__link">mDAQ</a>
+          <a href="mtracker" class="footer__link">mTracker</a>
+          <a href="vas" class="footer__link">VAS</a>
+          <a href="e-idos" class="footer__link">E-IDOS</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">EXPLORE</p>
+          <a href="platform" class="footer__link">Platform</a>
+          <a href="capabilities" class="footer__link">Capabilities</a>
+          <a href="solutions" class="footer__link">Solutions</a>
+          <a href="industries" class="footer__link">Industries</a>
+          <a href="services" class="footer__link">Services</a>
+          <a href="architecture" class="footer__link">Architecture</a>
+          <a href="security" class="footer__link">Security</a>
+          <a href="blog/" class="footer__link">Blog</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">RESOURCES</p>
+          <a href="resources-datasheets" class="footer__link">Datasheets</a>
+          <a href="roi-calculator" class="footer__link">ROI calculator</a>
+          <a href="resources-brochures" class="footer__link">Brochures</a>
+          <a href="resources" class="footer__link">Pitch deck</a>
+          <a href="resources-whitepapers" class="footer__link">Whitepapers</a>
+        </div>
+        <div class="footer__col">
+          <p class="footer__col-title">COMPANY</p>
+          <a href="customers" class="footer__link">Customers</a>
+          <a href="/contact" class="footer__link">Contact</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+      <div class="footer__offices">
+        <div><span class="off-city">Bengaluru — HQ</span>No. 102/1, 3rd Floor, Outer Ring Road, Kamadhenu Nagar, B Narayanapura, Mahadevapura, Bengaluru, Karnataka 560016, India</div>
+        <div><span class="off-city">Pune</span>UrbanLiv Properties LLP, 15th Floor, Nandan Probiz, Laxman Nagar, Baner, Balewadi High Street, Pune 411045, Maharashtra, India</div>
+        <div><span class="off-city">USA</span>Matthews, North Carolina 28105, USA</div>
+      </div>
+      <div class="footer__legal">
+        <p>© 2026 Elpis IT Solutions Pvt Ltd. All rights reserved.</p>
+        <div class="footer__legal-links">
+          <a href="privacy" class="footer__link">Privacy</a>
+          <a href="terms" class="footer__link">Terms</a>
+          <a href="https://www.linkedin.com/company/2769487" class="footer__link" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="/nav.js?v=1" defer></script>
+</body>
+</html>

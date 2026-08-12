@@ -1,0 +1,42 @@
+<!--
+  ElpisEdgeConnect.LeakHarness: long-running soak-test driver. Boots a
+  real host via the production composition root with mock adapters,
+  drives load at a configurable rate, and samples memory, GC, and
+  diagnostics counters into a CSV artifact.
+
+  Lifecycle:
+    Phase 1 gate: 4-hour kickoff run
+    v1 ship gate: 7-day continuous run
+
+  See docs/phase1-exit/leak-harness-csv-schema.md for usage, CSV schema,
+  and the pass/fail criteria for the Phase 1 exit kickoff run.
+
+  Reference: PHASE1_EXECUTION_PLAN.md Milestone D5
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.LeakHarness</RootNamespace>
+    <AssemblyName>ElpisEdgeConnect.LeakHarness</AssemblyName>
+    <Description>Long-running leak/soak harness for the EdgeConnect host.</Description>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1822;CA1848</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Host\ElpisEdgeConnect.Host.csproj" />
+    <ProjectReference Include="..\ElpisEdgeConnect.MockAdapters\ElpisEdgeConnect.MockAdapters.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

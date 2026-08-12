@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Management.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.10" />
+    <!--
+      bUnit for the M.2d.1 shared wizard primitives.
+
+      Established repo pattern is POCO view-model + Razor shell + pure xUnit
+      tests (see ReloadOutcomePanelModelTests, LayoutChromeModelTests, etc.).
+      The M.2d.1 primitives (WizardShell, WizardSection, WizardActions,
+      WizardValidationBanner, WizardWatchSlot) are rendering-heavy
+      components whose contract is conditional rendering + slot composition
+      — there's no extractable POCO logic to test.
+
+      bUnit is the minimum-viable tool to verify "renders nothing when
+      LoadError is set", "renders ChildContent in the right slot", "renders
+      zero DOM when Available=false", etc. Confined to this M.2d.1
+      component test surface; pre-existing POCO tests remain pure xUnit.
+    -->
+    <PackageReference Include="bunit" Version="1.31.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Management\ElpisEdgeConnect.Management.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Core\ElpisEdgeConnect.Core.csproj" />
+    <!--
+      Sources.Focas2 reference is test-only: lets Focas2SourceWizardModelTests
+      run the headline roundtrip parity test (wizard.BuildSourceInstance() →
+      Focas2SourceConfiguration.FromSourceInstance(...) must reproduce an
+      equivalent typed config). The Modbus wizard tests pin field names by
+      string match only; the FOCAS2 plan (v3 §8.1 test #3) calls this the
+      "headline parity test" and benefits from the stronger guarantee.
+    -->
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sources.Focas2\ElpisEdgeConnect.Sources.Focas2.csproj" />
+    <!--
+      Sources.S7 reference is test-only (M.2b.2): lets S7ProbeServiceTests
+      implement a fake IS7Client and S7SourceWizardModelTests run the
+      BuildSourceInstance() → S7SourceConfiguration.FromSourceInstance(...)
+      parity roundtrip against the real typed config.
+    -->
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sources.S7\ElpisEdgeConnect.Sources.S7.csproj" />
+    <!--
+      Sink assembly references: required by HydrateFromExisting edit-mode tests
+      that use MqttPublishMode, OpcUaSecurityMode, OpcUaUserTokenPolicy enums
+      defined in the respective sink assemblies.
+    -->
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sinks.Mqtt\ElpisEdgeConnect.Sinks.Mqtt.csproj" />
+    <ProjectReference Include="..\..\src\ElpisEdgeConnect.Sinks.OpcUaServer\ElpisEdgeConnect.Sinks.OpcUaServer.csproj" />
+  </ItemGroup>
+
+</Project>

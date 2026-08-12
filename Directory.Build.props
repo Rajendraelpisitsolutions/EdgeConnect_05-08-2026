@@ -1,0 +1,50 @@
+<Project>
+  <!--
+    Repository-wide product version. Imported automatically by every project in
+    the solution (MSBuild walks up for the nearest Directory.Build.props).
+
+    Keep this in sync with the installer version in installer/*.wxs, which are
+    built with  -d Version=<this>  (see the build recipe in those files). Bumping
+    a release = change this one value and pass the same to `wix build`.
+  -->
+  <PropertyGroup>
+    <Version>2.1.0.1</Version>
+    <FileVersion>2.1.0.1</FileVersion>
+    <InformationalVersion>2.1.0.1</InformationalVersion>
+  </PropertyGroup>
+
+  <!--
+    Company + copyright metadata stamped into EVERY Elpis assembly (AssemblyCompany
+    / AssemblyCopyright). Imported by every project via this repo-wide props file,
+    so all Elpis DLLs and EXEs carry the same copyright without per-project edits.
+  -->
+  <PropertyGroup>
+    <Company>Elpis IT Solutions</Company>
+    <Product>Elpis EdgeConnect</Product>
+    <Copyright>Copyright © 2026 Elpis IT Solutions</Copyright>
+  </PropertyGroup>
+
+  <!--
+    Offline builds.
+
+    .NET 8's NuGet Audit contacts api.nuget.org on every restore. When that host
+    is unreachable — a factory laptop with no internet, a gateway on an isolated
+    OT network, a plane — it emits NU1900 ("Error occurred while getting package
+    vulnerability data"). Because this repo builds with TreatWarningsAsErrors,
+    that turned an ordinary offline build into 13 hard errors across every
+    project, with nothing wrong in the code.
+
+    NU1900 is demoted back to a warning rather than silenced, and the audit
+    itself stays ON. This is deliberate:
+      * NuGetAudit=false would disable the vulnerability scan outright, which
+        is a real loss whenever the machine IS online.
+      * NoWarn=NU1900 would hide the message entirely, so nobody would ever
+        learn the scan had not run.
+    Demoting keeps the scan, keeps the notice visible, and stops "the internet
+    is down" from being indistinguishable from "the code is broken".
+    Genuine findings (NU1901-NU1904) are untouched and still fail the build.
+  -->
+  <PropertyGroup>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

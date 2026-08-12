@@ -1,0 +1,27 @@
+<!--
+  ModbusRtuSimulator — a standalone, dependency-free Modbus RTU-over-TCP slave.
+  Listens on a TCP port and answers Modbus RTU read frames (FC01-FC04) with
+  CRC16-correct responses, so the real FluentModbus-backed RTU client
+  (FluentModbusRtuClient over TcpModbusRtuSerialPort) can be exercised end to
+  end over a socket — distinct from the unit tests, which feed canned frames.
+
+  Pure C# sockets + hand-rolled RTU framing/CRC; no FluentModbus dependency.
+  Register values are deterministic (holding/input[addr] = 1000 + addr; coils/
+  discrete alternate by address) so integration assertions are exact.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ElpisEdgeConnect.Tools.ModbusRtuSimulator</RootNamespace>
+    <AssemblyName>ModbusRtuSimulator</AssemblyName>
+    <Description>Dependency-free Modbus RTU-over-TCP slave for end-to-end RTU transport testing.</Description>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>8.0-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1822;CA1848;CA1031;CA1303</NoWarn>
+  </PropertyGroup>
+
+</Project>

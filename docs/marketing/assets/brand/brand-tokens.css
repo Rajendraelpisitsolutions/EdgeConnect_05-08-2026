@@ -1,0 +1,319 @@
+/*
+ * File:        docs/marketing/assets/brand/brand-tokens.css
+ * Purpose:     CSS custom properties translated from BRAND_TOKENS.md v1.
+ *              Single source of truth for all design system component
+ *              styling. The Angular team consumes this file directly;
+ *              Tailwind config reads from these variables.
+ * Companion:   BRAND_TOKENS.md (source of truth, human-readable)
+ *              design-system-v1.md (which components consume which tokens)
+ * Source spec: docs/marketing/assets/brand/BRAND_TOKENS.md v1
+ *              LOCKED 2026-05-24
+ * Version:     v1
+ * Date:        2026-05-25
+ * Status:      DRAFT — pending user + ChatGPT review pass.
+ *
+ * Naming convention:
+ *   --color-{purpose}-{variant}    color tokens
+ *   --space-{step}                  spacing tokens (4px base scale)
+ *   --size-{step}                   font-size scale
+ *   --weight-{name}                 font weights
+ *   --line-{name}                   line-height tokens
+ *   --motion-{name}                 transition timing tokens
+ *   --radius-{name}                 border-radius scale
+ *
+ * Hard rule: no component CSS contains raw hex values. Every color reference
+ * resolves to a custom property declared here.
+ */
+
+:root {
+  /* ===================================================================
+   *  COLORS
+   * =================================================================*/
+
+  /* --- Brand accent (the only accent across the system) ----------- */
+  --color-brand-teal: #00A0E0;
+  --color-brand-teal-light: #0080BC;  /* darker variant — passes WCAG AA on light bg */
+
+  /* --- Five-pillar restrained tonal palette (poster + capability accents) ---
+   * Used ONLY for CapabilityCard accent lines and ProofBand pillar markers.
+   * Never for body text, never for backgrounds, never decoratively.
+   * Sourced from architecture-diagram-v2-poster.svg §13.2. */
+  --color-pillar-1: #00A0E0;   /* Connectivity & Edge  (= brand-teal) */
+  --color-pillar-2: #4FBBC9;   /* Data Acquisition */
+  --color-pillar-3: #7AB5C6;   /* Asset Intelligence */
+  --color-pillar-4: #5C9DB5;   /* Condition Monitoring */
+  --color-pillar-5: #1A8FC2;   /* Operational Intelligence */
+
+  /* --- Dark canvas (default marketing-asset surface) -------------- */
+  --color-bg-deep: #0F1419;            /* deepest background */
+  --color-bg-default: #1A1F26;         /* default canvas */
+  --color-bg-raised: #1E2329;          /* slight elevation cue (flat — no shadow) */
+  --color-surface-hero: #272C33;       /* hero containers (solid; gradient retired per spec v3 §13.3) */
+  --color-surface-secondary: #3A4049;  /* secondary containers */
+
+  --color-border-subtle: #4A5560;
+  --color-border-strong: #5E6B78;
+
+  /* --- Light canvas (override palette) ---------------------------- */
+  --color-bg-light-deep: #F4F6F9;
+  --color-bg-light-default: #FAFBFC;
+  --color-surface-light-hero: #FFFFFF;
+  --color-surface-light-secondary: #EEF1F5;
+  --color-border-light-subtle: #D5DCE3;
+  --color-border-light-strong: #A8B3BD;
+
+  /* --- Text colors ----------------------------------------------- */
+  --color-text-body-dark: #E8ECF1;
+  --color-text-muted-dark: #A8B3BD;
+  --color-text-heading-dark: #FFFFFF;
+  --color-text-caption-dark: #C8D0D8;
+
+  --color-text-body-light: #1A1F26;
+  --color-text-muted-light: #5E6B78;
+  --color-text-heading-light: #0F1419;
+
+  /* --- Focus / interactive state -------------------------------- */
+  --color-focus-ring: var(--color-brand-teal);
+  --color-focus-ring-light: var(--color-brand-teal-light);
+
+
+  /* ===================================================================
+   *  SPACING (4px base scale)
+   * =================================================================*/
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+  --space-40: 160px;
+  --space-48: 192px;
+
+
+  /* ===================================================================
+   *  TYPOGRAPHY
+   * =================================================================*/
+
+  /* --- Font stacks --------------------------------------------- */
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI Variable',
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* No serif. No mono outside code blocks (Phase 4 docs portal only). */
+
+  /* --- Weights (three only) ------------------------------------- */
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Size scale (modular ratio ~1.25) ------------------------- */
+  --size-xs: 0.75rem;     /* 12px */
+  --size-sm: 0.875rem;    /* 14px */
+  --size-base: 1rem;      /* 16px — body floor */
+  --size-md: 1.125rem;    /* 18px */
+  --size-lg: 1.5rem;      /* 24px */
+  --size-xl: 2rem;        /* 32px */
+  --size-2xl: 2.5rem;     /* 40px */
+  --size-3xl: 3.5rem;     /* 56px */
+  --size-4xl: 4.5rem;     /* 72px */
+
+  /* --- Line height --------------------------------------------- */
+  --line-tight: 1.1;
+  --line-snug: 1.2;
+  --line-comfortable: 1.4;
+  --line-body: 1.6;
+
+  /* --- Letter spacing ------------------------------------------ */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-loose: 0.04em;
+  --tracking-eyebrow: 0.18em;
+
+
+  /* ===================================================================
+   *  MOTION (premium-industrial: restrained, never theatrical)
+   * =================================================================*/
+  --motion-fast: 120ms;
+  --motion-default: 180ms;
+  --motion-slow: 280ms;
+  --motion-easing: cubic-bezier(0.2, 0.8, 0.2, 1);  /* ease-out, snappy */
+
+  /* No motion lives longer than 320ms anywhere on the marketing surface. */
+
+
+  /* ===================================================================
+   *  BORDER RADIUS (angular industrial: small, deliberate)
+   * =================================================================*/
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-default: 4px;     /* default for buttons, cards, inputs */
+  --radius-md: 6px;
+  --radius-lg: 10px;         /* large containers (architecture panel) */
+  --radius-pill: 9999px;     /* reserved — chips/labels only, not buttons */
+
+
+  /* ===================================================================
+   *  CONTAINER WIDTHS
+   * =================================================================*/
+  --container-narrow: 960px;
+  --container-default: 1280px;
+  --container-wide: 1440px;
+}
+
+
+/* ===================================================================
+ *  REDUCED MOTION (a11y — required)
+ * =================================================================*/
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-default: 0ms;
+    --motion-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* ===================================================================
+ *  TOKEN ALIASES — semantic shortcuts
+ *
+ *  These let component CSS reference semantic names without restating
+ *  the mode (dark/light). Components flip the alias at the SectionShell
+ *  level by toggling a [data-mode] attribute on the wrapper.
+ * =================================================================*/
+
+[data-mode="dark"] {
+  --bg: var(--color-bg-default);
+  --bg-deep: var(--color-bg-deep);
+  --bg-raised: var(--color-bg-raised);
+  --surface: var(--color-surface-hero);
+  --surface-secondary: var(--color-surface-secondary);
+  --border: var(--color-border-subtle);
+  --border-strong: var(--color-border-strong);
+  --text-body: var(--color-text-body-dark);
+  --text-muted: var(--color-text-muted-dark);
+  --text-heading: var(--color-text-heading-dark);
+  --accent: var(--color-brand-teal);
+}
+
+[data-mode="light"],
+[data-mode="light-tinted"] {
+  --bg: var(--color-bg-light-default);
+  --bg-deep: var(--color-bg-light-deep);
+  --bg-raised: var(--color-bg-light-default);
+  --surface: var(--color-surface-light-hero);
+  --surface-secondary: var(--color-surface-light-secondary);
+  --border: var(--color-border-light-subtle);
+  --border-strong: var(--color-border-light-strong);
+  --text-body: var(--color-text-body-light);
+  --text-muted: var(--color-text-muted-light);
+  --text-heading: var(--color-text-heading-light);
+  --accent: var(--color-brand-teal-light);
+}
+
+[data-mode="light-tinted"] {
+  --bg: var(--color-bg-light-deep);
+}
+
+[data-mode="dark-deep"] {
+  --bg: var(--color-bg-deep);
+  --bg-deep: var(--color-bg-deep);
+  --bg-raised: var(--color-bg-default);
+  --surface: var(--color-surface-hero);
+  --surface-secondary: var(--color-surface-secondary);
+  --border: var(--color-border-subtle);
+  --border-strong: var(--color-border-strong);
+  --text-body: var(--color-text-body-dark);
+  --text-muted: var(--color-text-muted-dark);
+  --text-heading: var(--color-text-heading-dark);
+  --accent: var(--color-brand-teal);
+}
+
+
+/*
+ * Usage notes for the Angular team
+ * --------------------------------
+ *
+ * 1. Import this file once in styles.scss (root):
+ *      @import 'assets/brand/brand-tokens.css';
+ *
+ * 2. Configure Tailwind to read from these variables. In tailwind.config.ts:
+ *
+ *      theme: {
+ *        extend: {
+ *          colors: {
+ *            brand: {
+ *              teal: 'var(--color-brand-teal)',
+ *              tealLight: 'var(--color-brand-teal-light)',
+ *            },
+ *            bg: {
+ *              DEFAULT: 'var(--bg)',
+ *              deep: 'var(--bg-deep)',
+ *              raised: 'var(--bg-raised)',
+ *            },
+ *            surface: {
+ *              DEFAULT: 'var(--surface)',
+ *              secondary: 'var(--surface-secondary)',
+ *            },
+ *            border: {
+ *              DEFAULT: 'var(--border)',
+ *              strong: 'var(--border-strong)',
+ *            },
+ *            text: {
+ *              body: 'var(--text-body)',
+ *              muted: 'var(--text-muted)',
+ *              heading: 'var(--text-heading)',
+ *            },
+ *            accent: 'var(--accent)',
+ *          },
+ *          spacing: {
+ *            1: 'var(--space-1)',
+ *            2: 'var(--space-2)',
+ *            ...
+ *          },
+ *          fontFamily: { sans: 'var(--font-sans)' },
+ *          fontSize: { ... },
+ *          borderRadius: { ... },
+ *          transitionDuration: {
+ *            fast: 'var(--motion-fast)',
+ *            default: 'var(--motion-default)',
+ *            slow: 'var(--motion-slow)',
+ *          },
+ *          transitionTimingFunction: {
+ *            DEFAULT: 'var(--motion-easing)',
+ *          },
+ *        },
+ *      },
+ *
+ * 3. Components flip mode by setting data-mode on the SectionShell wrapper:
+ *
+ *      <section data-mode="dark"> ... </section>
+ *      <section data-mode="light"> ... </section>
+ *
+ *    The aliased tokens (--bg, --text-body, --accent, etc.) resolve
+ *    correctly without any component-level conditional logic.
+ *
+ * 4. Never inline a hex value inside a component. If you find yourself
+ *    typing #XXXXXX, stop — either add a token here or use an existing one.
+ *
+ * 5. Anti-patterns this file enforces:
+ *    - Material color tokens (do not import any Material palette)
+ *    - Multi-accent color systems (brand teal is the only accent)
+ *    - Shadow scales (premium-industrial = flat surfaces)
+ *    - Custom rounded-pill button shapes (radius-pill reserved for chips)
+ */

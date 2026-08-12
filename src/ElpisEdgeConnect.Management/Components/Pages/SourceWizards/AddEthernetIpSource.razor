@@ -1,0 +1,762 @@
+@*
+    Add / Edit Allen-Bradley EtherNet/IP source wizard (multi-protocol pilot v2.1, MVP slice).
+
+    Two modes:
+      * Add  — @page "/sources/new/ethernet-ip" entry. BuildNewSourceDraft + drafts API.
+      * Edit — rendered from SourceEditRouter. PUT /api/v1/sources/{instanceId}.
+
+    MVP is a MANUAL tag-address editor (Modbus / S7 playbook), not a UDT browse flow.
+    The CPU-family default path is applied on family change so the ControlLogix
+    "1,0" front-port default is never silently missing. Per-tag scan rates drive
+    polling. Test Read issues one read of the selected tag (read-only).
+
+    Reference: docs/sessions/2026-05-28-multi-protocol-pilot-plan-v2.1.md §3.1, §5.2
+*@
+@page "/sources/new/ethernet-ip"
+@using System.Linq
+@using System.Net
+@using ElpisEdgeConnect.Core.Adapters
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") EtherNet/IP source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.Lan"
+             Title="@(_isEdit ? $"Edit EtherNet/IP source — {_model.InstanceId}" : "Add EtherNet/IP source")"
+             Subtitle="Enter the Allen-Bradley controller connection and the tags to read. Examples: Program:MainProgram.Speed, MyDint, Conveyor.Running."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             Embedded="@EmbeddedMode"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Source">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Source id (immutable in Edit)" : "Source id *")"
+                              HelperText="@(_isEdit ? "Source id is immutable once the source exists." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true" Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Source name"
+                              HelperText="Shown across the Studio; defaults to the source id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="4">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("plc")">plc</MudSelectItem>
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("meter")">meter</MudSelectItem>
+                    <MudSelectItem Value="@("rtu")">rtu</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="4">
+                <MudNumericField @bind-Value="_model.PollIntervalMs" Label="Poll interval (ms)" Min="50" Max="600000"
+                                 HelperText="How often EdgeConnect reads this controller." Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="Controller connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="_model.Host" Label="Controller host / IP *"
+                              HelperText="IP address or hostname of the Ethernet port."
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect @bind-Value="_model.CpuFamily" @bind-Value:after="OnCpuFamilyChanged"
+                           Label="CPU family" Variant="Variant.Outlined">
+                    @foreach (var fam in EthernetIpSourceWizardModel.CpuFamilies)
+                    {
+                        <MudSelectItem Value="@fam">@fam</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="_model.Path" Label="CIP path"
+                              HelperText="Logix front port: 1,0. Embedded-port families: blank."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+
+        <div role="status" aria-live="polite">
+        @if (_readProbe is not null)
+        {
+            <MudAlert Severity="@(_readProbe.Success ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined" Class="mt-3" data-testid="ethernetip-probe-result">
+                <strong>@_readProbe.Message</strong>
+                @if (_readProbe.Success)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">in @_readProbe.ElapsedMs ms.</MudText>
+                }
+            </MudAlert>
+        }
+        </div>
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    Defaults are production-safe. Adjust only if your controller documentation calls for non-standard values.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.ConnectTimeoutMs" Label="Connect timeout (ms)" Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.RequestTimeoutMs" Label="Request timeout (ms)" Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxTransactionRetries" Label="Max retries" Min="0" Max="10" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.CircuitBreakerThreshold" Label="Breaker threshold" Min="1" Max="50" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)" Min="0" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)" Min="0" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="@($"Tags ({_model.Tags.Count})")">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddTag" Style="text-transform:none;">Add tag</MudButton>
+        </MudStack>
+
+        @if (_model.Tags.Count == 0)
+        {
+            <MudPaper Outlined="true" Class="pa-6" data-testid="ethernetip-empty-tags">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1">No tags yet.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddTag" Style="text-transform:none;">Add your first tag</MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Bordered="false" Style="overflow:auto;">
+                <thead>
+                    <tr><th>Name</th><th>Address</th><th>Datatype</th><th>Scan (ms)</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < _model.Tags.Count; i++)
+                {
+                    var idx = i;
+                    var tag = _model.Tags[idx];
+                    var rowIssues = EthernetIpSourceWizardModel.ValidateTag(tag);
+                    var nameError = rowIssues.FirstOrDefault(iss => iss.Path == "Name");
+                    var addressError = rowIssues.FirstOrDefault(iss => iss.Path == "Address");
+                    var datatypeError = rowIssues.FirstOrDefault(iss => iss.Path == "Datatype");
+                    var selected = _selectedTagIndex == idx;
+                    <tr style="@(selected ? "background:var(--mud-palette-action-default-hover);" : null)"
+                        @onclick="@(() => SelectTag(idx))">
+                        <td>
+                            <MudTextField @bind-Value="tag.Name" Variant="Variant.Text" Margin="Margin.Dense"
+                                          Error="@(nameError is not null)" ErrorText="@nameError?.Message" />
+                        </td>
+                        <td>
+                            @*
+                                No DebounceInterval here (unlike the S7 address field): the suggestion
+                                reads the whole NAME, and a mid-typing snapshot of "Temp_Count" is
+                                "Temp" — which would fill REAL and then, correctly, refuse to correct
+                                itself. Binding on commit means the suggestion sees the finished name.
+                            *@
+                            <MudTextField @bind-Value="tag.Address" @bind-Value:after="@(() => OnTagAddressChanged(tag))"
+                                          Variant="Variant.Text" Margin="Margin.Dense" Class="mono"
+                                          Error="@(addressError is not null)" ErrorText="@addressError?.Message"
+                                          UserAttributes="@(new Dictionary<string, object?> { ["aria-label"] = "EtherNet/IP address" })" />
+                            @*
+                                Say what the reading of the name produced — the S7 wizard's
+                                "Address suggests…" caption, plus the half it never needed: an
+                                explicit "could not tell". Both are guidance, never errors, so
+                                they stay secondary-coloured and never reach Validate(). The
+                                slot keeps its height whether or not a note is in it, so a note
+                                appearing mid-typing never nudges the grid row.
+                            *@
+                            <div style="min-height:16px;">
+                                @if (SuggestionApplied(tag))
+                                {
+                                    <span data-testid="ethernetip-datatype-suggested" style="@NoteStyle">
+                                        @EthernetIpSourceWizardModel.DatatypeSuggestedNote
+                                    </span>
+                                }
+                                else if (EthernetIpSourceWizardModel.DatatypeCannotBeInferred(tag))
+                                {
+                                    <span data-testid="ethernetip-datatype-not-inferred" style="@NoteStyle">
+                                        @EthernetIpSourceWizardModel.DatatypeNotInferredNote
+                                    </span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            @* Clearable — clearing hands the row back to the address-driven suggestion. *@
+                            <MudSelect T="string" @bind-Value="tag.Datatype" @bind-Value:after="@(() => OnTagDatatypeChanged(tag))"
+                                       Variant="Variant.Text" Margin="Margin.Dense" Clearable="true"
+                                       Error="@(datatypeError is not null)" ErrorText="@datatypeError?.Message">
+                                @foreach (var dt in EthernetIpSourceWizardModel.Datatypes)
+                                {
+                                    <MudSelectItem Value="@dt">@dt</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td>
+                            <MudNumericField @bind-Value="tag.ScanRateMs" Min="50" Max="600000" Step="50"
+                                             Variant="Variant.Text" Margin="Margin.Dense" />
+                        </td>
+                        <td>@RenderStatus(rowIssues.Count)</td>
+                        <td>
+                            <MudStack Row="true" Spacing="0" AlignItems="AlignItems.Center">
+                                <MudButton Variant="Variant.Text" Size="Size.Small" Style="text-transform:none;"
+                                           OnClick="@(() => ToggleMore(tag))">@(_moreExpanded.Contains(tag) ? "Less" : "More")</MudButton>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                               aria-label="@($"Remove tag {tag.Name}")"
+                                               OnClick="@(() => RemoveTag(idx))" />
+                            </MudStack>
+                        </td>
+                    </tr>
+                    @if (_moreExpanded.Contains(tag))
+                    {
+                        <tr>
+                            <td></td>
+                            <td colspan="5">
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="4" md="3"><MudTextField @bind-Value="tag.Unit" Label="Unit" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                                    <MudItem xs="4" md="3"><MudNumericField T="double?" @bind-Value="tag.Scale" Label="Scale" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                                    <MudItem xs="4" md="3"><MudNumericField T="double?" @bind-Value="tag.Offset" Label="Offset" Variant="Variant.Outlined" Margin="Margin.Dense" /></MudItem>
+                                </MudGrid>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Style="text-transform:none;"
+                           Disabled="@(!CanTestRead())" OnClick="TestReadAsync"
+                           data-testid="ethernetip-test-read-btn">Test selected tag read</MudButton>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@TestReadHint()</MudText>
+            </MudStack>
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        <WizardSection Index="4" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled source to have a route).
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited" Label="Route id *"
+                                      HelperText="Auto-suggested from source id; edit to override." Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name" HelperText="Defaults to route id." Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add one first, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool" Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId" Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+    }
+    </ChildContent>
+    <Footer>
+        @* ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode (parent owns Save/Cancel). *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           SaveLabel="Save changes"
+                           CanSave="@CanSave()"
+                           Busy="@_busy" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in the Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions with the built source (or null).</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    private EthernetIpSourceWizardModel _model = new();
+    private bool _hydrated;
+    private string? _lastNotifiedSignature;
+
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private bool _busy;
+
+    private EthernetIpProbeResultDto? _readProbe;
+    private int? _selectedTagIndex;
+    private readonly HashSet<EthernetIpTagWizardRow> _moreExpanded = new();
+
+    // Rows whose datatype the wizard filled in from the tag name. Tracked here
+    // rather than derived by re-running the suggestion, so a hydrated source
+    // whose saved datatype happens to match the reading is never captioned as a
+    // guess — that value was a decision, and saying otherwise would be a lie
+    // about provenance.
+    private readonly HashSet<EthernetIpTagWizardRow> _suggestedDatatypes = new();
+
+    // Quiet by construction: caption-sized, secondary colour, never the error
+    // palette — this renders once per grid row and must not shout.
+    private const string NoteStyle =
+        "display:block;font-size:11px;line-height:16px;color:var(--mud-palette-text-secondary);";
+
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "ethernetip.instance-id.duplicate", "InstanceId", _instanceIdError, "#field-instance-id"));
+        }
+        foreach (var issue in _model.Validate().Errors)
+        {
+            messages.Add(new WizardValidationMessage(issue.Code, issue.Path ?? string.Empty, issue.Message, null));
+        }
+        return messages;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = EthernetIpSourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _hydrated = true;
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different source id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+        if (!_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnCpuFamilyChanged() => _model.Path = EthernetIpSourceWizardModel.DefaultPathFor(_model.CpuFamily);
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void AddTag() => _model.Tags.Add(new EthernetIpTagWizardRow());
+
+    private void RemoveTag(int index)
+    {
+        if (index < 0 || index >= _model.Tags.Count) return;
+        var row = _model.Tags[index];
+        _moreExpanded.Remove(row);
+        _suggestedDatatypes.Remove(row);
+        _model.Tags.RemoveAt(index);
+        if (_selectedTagIndex == index) _selectedTagIndex = null;
+        else if (_selectedTagIndex > index) _selectedTagIndex--;
+    }
+
+    private void SelectTag(int index) => _selectedTagIndex = index;
+
+    /// <summary>
+    /// Fill the datatype from what the tag NAME reads as — the only signal we
+    /// have. EtherNet/IP cannot be asked: there is no browse here, element size
+    /// cannot separate DINT from REAL, and Test Read takes the datatype as an
+    /// input rather than reporting it. So this is a suggestion from a naming
+    /// convention, never a claim about the controller.
+    /// <para>
+    /// Suggest, never coerce (same contract as the S7 wizard): the cell is
+    /// filled ONLY while it is still empty, so a deliberate choice — including
+    /// one hydrated from an existing source — can never be overwritten.
+    /// Clearing the cell opts back in.
+    /// </para>
+    /// </summary>
+    private void OnTagAddressChanged(EthernetIpTagWizardRow row)
+    {
+        if (EthernetIpSourceWizardModel.TryApplyDatatypeSuggestion(row))
+        {
+            _suggestedDatatypes.Add(row);
+        }
+        else if (string.IsNullOrWhiteSpace(row.Datatype))
+        {
+            // Nothing was read out of the name and the cell is still empty —
+            // the row has no suggested value to caption. The "could not tell"
+            // note takes over, derived from the row itself.
+            _suggestedDatatypes.Remove(row);
+        }
+    }
+
+    /// <summary>
+    /// The operator touched the datatype cell, so whatever is in it is theirs —
+    /// drop the "suggested" caption. Only the select's own ValueChanged reaches
+    /// here; filling the cell from code (the suggestion above) does not, which
+    /// is what keeps the caption on a genuinely suggested value.
+    /// </summary>
+    private void OnTagDatatypeChanged(EthernetIpTagWizardRow row) => _suggestedDatatypes.Remove(row);
+
+    /// <summary>True when this row's datatype was filled by the address-driven
+    /// suggestion and is still the value in the cell.</summary>
+    private bool SuggestionApplied(EthernetIpTagWizardRow row) =>
+        _suggestedDatatypes.Contains(row) && !string.IsNullOrWhiteSpace(row.Datatype);
+
+    private void ToggleMore(EthernetIpTagWizardRow row)
+    {
+        if (!_moreExpanded.Remove(row)) _moreExpanded.Add(row);
+    }
+
+    private static RenderFragment RenderStatus(int errorCount) => builder =>
+    {
+        var (text, color) = errorCount > 0
+            ? ("✗ Error", "var(--mud-palette-error)")
+            : ("✓ Valid", "var(--mud-palette-success)");
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "style", $"color:{color};font-weight:600;font-size:12px;");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private bool CanTestRead()
+    {
+        if (_busy || _selectedTagIndex is not { } i || i < 0 || i >= _model.Tags.Count) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        return EthernetIpSourceWizardModel.ValidateTag(_model.Tags[i]).Count == 0;
+    }
+
+    private string TestReadHint()
+    {
+        if (_selectedTagIndex is not { } i || i < 0 || i >= _model.Tags.Count)
+        {
+            return "Select a tag row to test one read.";
+        }
+        var row = _model.Tags[i];
+        if (EthernetIpSourceWizardModel.ValidateTag(row).Count > 0)
+        {
+            return "The selected row has errors — fix them to test it.";
+        }
+        return $"Reads {row.Address} ({row.Name}) once, read-only — does not save.";
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        if (string.IsNullOrWhiteSpace(_model.Host)) return false;
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return _model.Validate().IsValid;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: the Onboarding flow owns Save.
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    /// <summary>ADR-0016 Rule 4 — fire OnInstanceBuilt on validity transitions.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; }
+        }
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: the Onboarding flow owns Cancel.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+    private async Task TestReadAsync()
+    {
+        if (!CanTestRead() || _selectedTagIndex is not { } i) return;
+        var row = _model.Tags[i];
+        _busy = true;
+        _readProbe = null;
+        try
+        {
+            var request = new
+            {
+                host = _model.Host,
+                path = _model.Path,
+                cpuFamily = _model.CpuFamily,
+                address = row.Address,
+                datatype = row.Datatype,
+                connectTimeoutMs = _model.ConnectTimeoutMs,
+            };
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/ethernetip/test-read", request);
+            _readProbe = await resp.Content.ReadFromJsonAsync<EthernetIpProbeResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Test read failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String && ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Save failed: {await resp.Content.ReadAsStringAsync()}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status ? $" (reload: {status})" : string.Empty;
+            Snackbar.Add($"Source '{updatedSource.InstanceId}' updated{reloadHint}.", Severity.Success);
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            var newSource = _model.BuildSourceInstance();
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

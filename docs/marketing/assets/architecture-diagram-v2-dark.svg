@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  File:        docs/marketing/assets/architecture-diagram-v2-dark.svg
+  Purpose:     Master architecture diagram v2 — Industrial Intelligence Stack.
+               Replaces architecture-diagram-v1-dark.svg.
+  Spec:        docs/marketing/architecture-diagram-spec-v3.md
+  Tokens:      docs/marketing/assets/brand/BRAND_TOKENS.md v1
+  Positioning: docs/marketing/industrial-intelligence-ecosystem-positioning-v3.md
+  Version:     v2 dark master, rev3 (peer architecture per Elpis sketch)
+  Date:        2026-05-25
+
+  rev2 → rev3 changes (per Elpis whiteboard sketch + bi-directional correction):
+    Replaces the rev2 sidecar layout with a PEER architecture:
+
+      Floor → ┬→ EdgeConnect ─────────────→ ┐
+              │       ↕ (bi-directional)     ├→ EREMOS V2 → Your Enterprise
+              └→ Acquisition ───────────────→ ┘
+
+    EdgeConnect and Acquisition are PEERS (both in column 2, stacked
+    vertically). Floor feeds BOTH (two parallel arrows). Both publish
+    to EREMOS V2 (two parallel teal arrows). They cooperate
+    bi-directionally between themselves.
+
+    This is architecturally more accurate than rev2's sidecar:
+      - mDAQ can publish via MQTT/HTTPS directly to EREMOS V2
+      - E-IDOS will publish directly to EREMOS V2 (roadmap)
+      - EdgeConnect reads controllers directly via native protocols
+      - They cooperate when deployed together (EdgeConnect normalizes
+        Acquisition outputs; EdgeConnect can configure Acquisition
+        devices)
+
+  Token map:
+    bg.default          #1A1F26
+    surface.hero        #2A2F36  (gradient to #232830)
+    surface.secondary   #3A4049
+    border.subtle       #4A5560
+    border.strong       #5E6B78
+    text.body           #E8ECF1
+    text.muted          #A8B3BD
+    text.heading        #FFFFFF
+    text.caption        #C8D0D8
+    brand.teal          #00A0E0
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 2400 1600"
+     width="2400" height="1600"
+     font-family="Inter, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+  <defs>
+    <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#2A2F36"/>
+      <stop offset="100%" stop-color="#232830"/>
+    </linearGradient>
+
+    <marker id="arrowGrey"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#5E6B78"/>
+    </marker>
+
+    <!-- Bi-directional marker using auto-start-reverse so the same shape
+         works on both ends of a line, flipped 180° on the start. -->
+    <marker id="arrowGreyBoth"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#5E6B78"/>
+    </marker>
+
+    <marker id="arrowTeal"
+            viewBox="0 0 16 16" refX="14" refY="8"
+            markerWidth="16" markerHeight="16"
+            markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 0 L 16 8 L 0 16 Z" fill="#00A0E0"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2400" height="1600" fill="#1A1F26"/>
+
+  <!-- ============ Title row ============ -->
+  <text x="1200" y="172" text-anchor="middle"
+        font-size="32" font-weight="600" fill="#00A0E0"
+        letter-spacing="6">INDUSTRIAL INTELLIGENCE STACK</text>
+  <text x="1200" y="216" text-anchor="middle"
+        font-size="18" font-style="italic" fill="#C8D0D8">
+    Field signal to enterprise insight — five capabilities, one ecosystem.
+  </text>
+
+  <!-- ============================================================
+       LAYOUT (rev3 peer architecture):
+
+         Col 1 — Floor                  x=120-600    TERTIARY tall
+         Col 2 — STACKED                x=680-1160   TWO HEROES
+            EdgeConnect (top)              y=280-720
+            Acquisition (bottom)           y=820-1300
+         Col 3 — EREMOS V2              x=1240-1720  HERO tall
+         Col 4 — Your Enterprise        x=1800-2280  TERTIARY tall
+
+         Floor and EREMOS V2 are receiving/sending at two y heights
+         (matching the two stacked Elpis blocks).
+       ============================================================ -->
+
+  <!-- ============ Col 1: FLOOR (tertiary, outline-only, tall) ============ -->
+  <g id="floor">
+    <rect x="120" y="280" width="480" height="1020" rx="10"
+          fill="none" stroke="#4A5560" stroke-width="1.5"/>
+
+    <text x="360" y="318" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#A8B3BD"
+          letter-spacing="3">INDUSTRIAL ENVIRONMENT</text>
+
+    <text x="360" y="370" text-anchor="middle"
+          font-size="28" font-weight="600" fill="#E8ECF1">Your floor</text>
+
+    <line x1="170" y1="412" x2="550" y2="412"
+          stroke="#4A5560" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <!-- Six items, single-column vertical list (tall column has room) -->
+    <g font-size="20" fill="#E8ECF1">
+      <g transform="translate(180 460)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <circle cx="14" cy="14" r="10"/>
+          <circle cx="14" cy="14" r="4" fill="#A8B3BD"/>
+        </g>
+        <text x="46" y="22">Sensors</text>
+      </g>
+      <g transform="translate(180 540)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="0" y="3" width="28" height="22" rx="2"/>
+        </g>
+        <g fill="#A8B3BD">
+          <circle cx="6"  cy="11" r="2"/>
+          <circle cx="14" cy="11" r="2"/>
+          <circle cx="22" cy="11" r="2"/>
+          <rect x="4" y="17" width="20" height="2"/>
+        </g>
+        <text x="46" y="22">PLCs</text>
+      </g>
+      <g transform="translate(180 620)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="0" y="3" width="28" height="22" rx="3"/>
+          <line x1="4"  y1="10" x2="24" y2="10"/>
+          <line x1="4"  y1="14" x2="18" y2="14"/>
+          <line x1="4"  y1="18" x2="22" y2="18"/>
+        </g>
+        <text x="46" y="22">CNCs</text>
+      </g>
+      <g transform="translate(180 700)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <circle cx="14" cy="14" r="10"/>
+          <line x1="14" y1="5"  x2="14" y2="23"/>
+          <line x1="5"  y1="14" x2="23" y2="14"/>
+        </g>
+        <text x="46" y="22">Hydraulic systems</text>
+      </g>
+      <g transform="translate(180 780)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <circle cx="14" cy="14" r="10"/>
+          <line x1="14" y1="4"  x2="14" y2="8"/>
+          <line x1="14" y1="20" x2="14" y2="24"/>
+          <line x1="4"  y1="14" x2="8"  y2="14"/>
+          <line x1="20" y1="14" x2="24" y2="14"/>
+          <circle cx="14" cy="14" r="3" fill="#A8B3BD"/>
+        </g>
+        <text x="46" y="22">Rotating machinery</text>
+      </g>
+      <g transform="translate(180 860)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="0" y="2" width="28" height="24" rx="2"/>
+          <line x1="6" y1="10" x2="22" y2="10"/>
+          <line x1="6" y1="16" x2="18" y2="16"/>
+          <line x1="6" y1="22" x2="22" y2="22"/>
+        </g>
+        <text x="46" y="22">Energy meters</text>
+      </g>
+    </g>
+
+    <!-- Bottom hint -->
+    <text x="360" y="1238" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">CUSTOMER-OWNED</text>
+  </g>
+
+  <!-- ============ Col 2 TOP: EdgeConnect (HERO) ============ -->
+  <g id="edgeconnect">
+    <rect x="680" y="280" width="480" height="440" rx="10"
+          fill="#272C33" stroke="#5E6B78" stroke-width="1.5"/>
+
+    <rect x="710" y="298" width="36" height="3" fill="#00A0E0"/>
+
+    <text x="920" y="334" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#00A0E0"
+          letter-spacing="3">CONNECTIVITY &amp; EDGE</text>
+
+    <text x="920" y="386" text-anchor="middle"
+          font-size="32" font-weight="700" fill="#FFFFFF">EdgeConnect</text>
+    <text x="920" y="416" text-anchor="middle"
+          font-size="16" font-style="italic" fill="#A8B3BD">Industrial edge runtime</text>
+
+    <line x1="720" y1="448" x2="1120" y2="448"
+          stroke="#4A5560" stroke-width="1"/>
+
+    <!-- Native protocols (direct from controllers) -->
+    <text x="720" y="478" font-size="12" font-weight="600" fill="#00A0E0"
+          letter-spacing="2.5">NATIVE PROTOCOLS — DIRECT FROM CONTROLLERS</text>
+    <text x="720" y="504" font-size="16" fill="#E8ECF1">FOCAS2 · MT-LINKi · MTConnect · Brother HTTP · Modbus TCP</text>
+
+    <!-- Edge Gateway (companion appliance) -->
+    <g transform="translate(720 538)">
+      <circle cx="5" cy="14" r="4" fill="#00A0E0"/>
+      <text x="20" y="20" font-size="18" font-weight="600" fill="#FFFFFF">Edge Gateway</text>
+      <text x="170" y="20" font-size="14" fill="#A8B3BD">Linux appliance · PLC bridge</text>
+    </g>
+
+    <!-- Integration contracts -->
+    <line x1="720" y1="590" x2="1120" y2="590"
+          stroke="#4A5560" stroke-width="0.6" stroke-dasharray="3 3"/>
+    <text x="720" y="614" font-size="11" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">INTEGRATION CONTRACTS</text>
+    <text x="720" y="640" font-size="15" fill="#E8ECF1">MQTT broker · OPC UA Server</text>
+
+    <!-- Bottom hint -->
+    <text x="920" y="680" text-anchor="middle"
+          font-size="12" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">PROTOCOL-AGNOSTIC · STORE-AND-FORWARD</text>
+    <text x="920" y="704" text-anchor="middle"
+          font-size="12" font-weight="600" fill="#00A0E0"
+          letter-spacing="2">THREE-WAY DIAGNOSTICS</text>
+  </g>
+
+  <!-- ============ Col 2 BOTTOM: Acquisition (HERO, with OPTIONAL pill) ============ -->
+  <g id="acquisition">
+    <rect x="680" y="820" width="480" height="480" rx="10"
+          fill="#272C33" stroke="#5E6B78" stroke-width="1.5"/>
+
+    <rect x="710" y="838" width="36" height="3" fill="#00A0E0"/>
+
+    <!-- OPTIONAL pill badge — top-right of block, matches PER PLANT pill convention from v1.
+         Pairs with the (absent) OPTIONAL on EdgeConnect to communicate that the
+         peer architecture is asymmetric on deployment necessity: EdgeConnect is
+         the backbone, Acquisition is the augmentation. Positioned at top-right
+         corner so it doesn't displace the section label or any subsequent text. -->
+    <g transform="translate(1038 830)">
+      <rect x="0" y="0" width="100" height="22" rx="11"
+            fill="#1A1F26" stroke="#00A0E0" stroke-width="1"/>
+      <text x="50" y="15" text-anchor="middle"
+            font-size="10" font-weight="600" fill="#00A0E0"
+            letter-spacing="2.5">OPTIONAL</text>
+    </g>
+
+    <text x="920" y="874" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#00A0E0"
+          letter-spacing="3">ACQUISITION &amp; MONITORING</text>
+
+    <text x="920" y="908" text-anchor="middle"
+          font-size="22" font-weight="700" fill="#FFFFFF">Elpis Hardware</text>
+    <text x="920" y="932" text-anchor="middle"
+          font-size="13" font-style="italic" fill="#A8B3BD">Deploy when you need sensor-direct or specialty acquisition</text>
+
+    <line x1="720" y1="960" x2="1120" y2="960"
+          stroke="#4A5560" stroke-width="1"/>
+
+    <!-- General acquisition + asset intelligence -->
+    <g transform="translate(720 984)">
+      <rect x="0" y="4" width="4" height="20" fill="#00A0E0"/>
+      <text x="20" y="20" font-size="19" font-weight="600" fill="#FFFFFF">mDAQ</text>
+      <text x="120" y="20" font-size="14" fill="#A8B3BD">General-purpose acquisition</text>
+    </g>
+    <g transform="translate(720 1018)">
+      <rect x="0" y="4" width="4" height="20" fill="#00A0E0"/>
+      <text x="20" y="20" font-size="19" font-weight="600" fill="#FFFFFF">mTracker</text>
+      <text x="120" y="20" font-size="14" fill="#A8B3BD">Asset utilization telemetry</text>
+    </g>
+
+    <!-- Sub-grouping divider for CONDITION MONITORING -->
+    <line x1="720" y1="1060" x2="1120" y2="1060"
+          stroke="#4A5560" stroke-width="0.6" stroke-dasharray="3 3"/>
+    <text x="720" y="1082" font-size="11" font-weight="600" fill="#00A0E0"
+          letter-spacing="2.5">CONDITION MONITORING</text>
+
+    <g transform="translate(720 1102)">
+      <rect x="0" y="4" width="4" height="20" fill="#00A0E0"/>
+      <text x="20" y="20" font-size="19" font-weight="600" fill="#FFFFFF">VAS</text>
+      <text x="120" y="20" font-size="14" fill="#A8B3BD">Vibration analysis</text>
+    </g>
+    <g transform="translate(720 1136)">
+      <rect x="0" y="4" width="4" height="20" fill="#00A0E0"/>
+      <text x="20" y="20" font-size="19" font-weight="600" fill="#FFFFFF">E-IDOS</text>
+      <text x="120" y="20" font-size="14" fill="#A8B3BD">Oil health intelligence</text>
+    </g>
+
+    <!-- Bottom hint -->
+    <text x="920" y="1218" text-anchor="middle"
+          font-size="12" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">SENSOR-AGNOSTIC · BUILT BY ELPIS</text>
+    <text x="920" y="1246" text-anchor="middle"
+          font-size="12" font-weight="600" fill="#00A0E0"
+          letter-spacing="2">SUPPORTS HYDAC · PARKER · MP FILTER · ARGO-HYTOS</text>
+  </g>
+
+  <!-- ============ Col 3: EREMOS V2 (HERO, tall) ============ -->
+  <g id="intelligence">
+    <rect x="1240" y="280" width="480" height="1020" rx="10"
+          fill="#272C33" stroke="#5E6B78" stroke-width="1.5"/>
+
+    <rect x="1270" y="298" width="36" height="3" fill="#00A0E0"/>
+
+    <text x="1480" y="334" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#00A0E0"
+          letter-spacing="3">INTELLIGENCE</text>
+
+    <text x="1480" y="396" text-anchor="middle"
+          font-size="36" font-weight="700" fill="#FFFFFF">EREMOS V2</text>
+    <text x="1480" y="428" text-anchor="middle"
+          font-size="17" font-style="italic" fill="#A8B3BD">Industrial intelligence</text>
+
+    <line x1="1280" y1="462" x2="1680" y2="462"
+          stroke="#4A5560" stroke-width="1"/>
+
+    <!-- Feature list -->
+    <g id="intel-features">
+      <g transform="translate(1280 502)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Multi-tenant analytics</text>
+      </g>
+      <g transform="translate(1280 552)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">OEE via Segments</text>
+      </g>
+      <g transform="translate(1280 602)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Persistent alarms + incidents</text>
+      </g>
+      <g transform="translate(1280 652)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Configurable alerting</text>
+      </g>
+      <g transform="translate(1280 702)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Reports — PDF · Excel</text>
+      </g>
+      <g transform="translate(1280 752)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Tool-life · tag mapping</text>
+      </g>
+      <g transform="translate(1280 802)">
+        <rect x="0" y="6" width="4" height="14" fill="#00A0E0"/>
+        <text x="20" y="20" font-size="20" fill="#E8ECF1">Asset tree — PLANT to SUB_EQUIPMENT</text>
+      </g>
+    </g>
+
+    <!-- Bottom hint -->
+    <text x="1480" y="1218" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">ONE TENANT · MANY PLANTS</text>
+    <text x="1480" y="1246" text-anchor="middle"
+          font-size="13" font-weight="600" fill="#00A0E0"
+          letter-spacing="2">MULTI-VENDOR FLEETS</text>
+  </g>
+
+  <!-- ============ Col 4: YOUR ENTERPRISE (tertiary, outline-only, tall) ============ -->
+  <g id="enterprise">
+    <rect x="1800" y="280" width="480" height="1020" rx="10"
+          fill="none" stroke="#4A5560" stroke-width="1.5"/>
+
+    <text x="2040" y="318" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#A8B3BD"
+          letter-spacing="3">CONSUMPTION</text>
+
+    <text x="2040" y="370" text-anchor="middle"
+          font-size="28" font-weight="600" fill="#E8ECF1">Your enterprise</text>
+
+    <line x1="1850" y1="412" x2="2230" y2="412"
+          stroke="#4A5560" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <!-- Six items, single-column vertical list -->
+    <g font-size="20" fill="#E8ECF1">
+      <g transform="translate(1850 460)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <circle cx="14" cy="10" r="8"/>
+          <path d="M 2 26 Q 14 16 26 26"/>
+        </g>
+        <text x="46" y="22">Operations team</text>
+      </g>
+      <g transform="translate(1850 540)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <path d="M 4 6 L 12 14 L 4 22"/>
+          <line x1="20" y1="14" x2="28" y2="14"/>
+          <circle cx="22" cy="9" r="3"/>
+        </g>
+        <text x="46" y="22">Maintenance · Reliability</text>
+      </g>
+      <g transform="translate(1850 620)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="0" y="4" width="28" height="20" rx="2"/>
+          <rect x="4" y="8" width="20" height="12"/>
+        </g>
+        <text x="46" y="22">SCADA · MES · HMI</text>
+      </g>
+      <g transform="translate(1850 700)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="0" y="4" width="24" height="20" rx="2"/>
+          <line x1="4"  y1="10" x2="20" y2="10"/>
+          <line x1="4"  y1="14" x2="20" y2="14"/>
+          <line x1="4"  y1="18" x2="14" y2="18"/>
+        </g>
+        <text x="46" y="22">Management dashboards</text>
+      </g>
+      <g transform="translate(1850 780)">
+        <g stroke="#A8B3BD" stroke-width="1.8" fill="none" stroke-linejoin="round">
+          <path d="M 8 18 Q 0 18 0 12 Q 0 6 6 6 Q 8 0 14 0 Q 22 0 24 6 Q 30 6 30 12 Q 30 18 22 18 L 8 18 Z" transform="translate(0 -2)"/>
+        </g>
+        <text x="46" y="22">Cloud · AWS · Azure</text>
+      </g>
+      <g transform="translate(1850 860)">
+        <g stroke="#A8B3BD" stroke-width="1.6" fill="none">
+          <rect x="6" y="2" width="16" height="26" rx="2"/>
+          <line x1="14" y1="24" x2="14" y2="24.5"/>
+        </g>
+        <text x="46" y="22">Mobile · multi-site</text>
+      </g>
+    </g>
+
+    <!-- Bottom hint -->
+    <text x="2040" y="1238" text-anchor="middle"
+          font-size="14" font-weight="600" fill="#A8B3BD"
+          letter-spacing="2">USE WHAT YOU ALREADY RUN</text>
+  </g>
+
+  <!-- ============ Arrows ============ -->
+
+  <!-- Arrow 1: Floor → EdgeConnect (grey, horizontal at EdgeConnect vertical center) -->
+  <line x1="606" y1="500" x2="676" y2="500"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+  <text x="641" y="486" text-anchor="middle"
+        font-size="11" font-weight="600" fill="#A8B3BD"
+        letter-spacing="1.5">DIRECT</text>
+
+  <!-- Arrow 2: Floor → Acquisition (grey, horizontal at Acquisition vertical center) -->
+  <line x1="606" y1="1060" x2="676" y2="1060"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+  <text x="641" y="1046" text-anchor="middle"
+        font-size="11" font-weight="600" fill="#A8B3BD"
+        letter-spacing="1.5">SENSOR</text>
+
+  <!-- Arrow 3: EdgeConnect ↕ Acquisition (BI-DIRECTIONAL vertical in the gap between blocks).
+       Acquisition can feed EdgeConnect for normalization/routing; EdgeConnect can
+       configure/orchestrate Acquisition devices. Bi-directional via auto-start-reverse marker. -->
+  <line x1="920" y1="724" x2="920" y2="816"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-start="url(#arrowGreyBoth)"
+        marker-end="url(#arrowGreyBoth)"/>
+  <text x="942" y="776" text-anchor="start"
+        font-size="11" font-weight="600" fill="#A8B3BD"
+        letter-spacing="1.5">COOPERATE</text>
+
+  <!-- Arrow 4: EdgeConnect → EREMOS V2 (TEAL emphasized — Elpis value path #1) -->
+  <line x1="1166" y1="500" x2="1236" y2="500"
+        stroke="#00A0E0" stroke-width="2.5"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- Arrow 5: Acquisition → EREMOS V2 (TEAL emphasized — Elpis value path #2) -->
+  <line x1="1166" y1="1060" x2="1236" y2="1060"
+        stroke="#00A0E0" stroke-width="2.5"
+        marker-end="url(#arrowTeal)"/>
+
+  <!-- Arrow 6: EREMOS V2 → Your Enterprise (grey, output) -->
+  <line x1="1726" y1="790" x2="1796" y2="790"
+        stroke="#5E6B78" stroke-width="2.5"
+        marker-end="url(#arrowGrey)"/>
+
+  <!-- ============ Open-integration tagline + descriptive caption ============ -->
+  <!-- Tagline crystallizes the dual-path interoperability story —
+       reinforces what the DIRECT and SENSOR arrow labels show visually. -->
+  <text x="1200" y="1376" text-anchor="middle"
+        font-size="13" font-weight="600" fill="#00A0E0"
+        letter-spacing="3">DIRECT BROWNFIELD CONNECTIVITY  ·  INTEGRATED ACQUISITION  ·  ONE PLATFORM</text>
+
+  <!-- Descriptive caption (verbatim per spec v3 §4.2, 22pt brightened per ChatGPT) -->
+  <g id="caption" font-size="22" font-weight="400" font-style="italic"
+     fill="#E8ECF1" text-anchor="middle">
+    <text x="1200" y="1416">
+      One Acquisition layer at every plant. One Intelligence layer aggregating many sites.
+    </text>
+    <text x="1200" y="1452">
+      Standard MQTT and OPC UA make the integration interoperable with whatever else you run.
+    </text>
+  </g>
+
+</svg>

@@ -1,0 +1,143 @@
+@*
+    Shared destructive-delete confirmation. One dialog for Sources, Destinations
+    and Routes, so "am I about to break production?" is answered the same way
+    wherever the operator presses the red bin.
+
+    Replaces DialogService.ShowMessageBox at those three call sites. The message
+    box could not carry a destructive button treatment — its confirm action
+    rendered as plain text, identical in weight to Cancel — and it forced every
+    consequence into one run-on paragraph.
+
+    Four things this puts on screen that the message box could not:
+       * WHAT is being deleted, as its own labelled block. Instance ids differ by
+         one character ("ModbusTesting1" / "ModbusTesting11"); a name buried
+         mid-sentence is a name that gets skimmed.
+       * The consequence, in its own sentence.
+       * The cascade as a LIST, not an appended clause. Deleting a destination
+         can remove routes; that has to be countable at a glance.
+       * That the action is reversible, stated calmly and last — reassurance
+         belongs after the warning, not competing with it.
+
+    Confirm is Filled/Error and carries the bin icon; Cancel stays a plain text
+    button. The destructive action must never be the quietest thing in the row.
+
+    Geometry (width 560px, no min-height, trimmed vertical rhythm) lives in
+    wwwroot/css/site.css under .confirm-delete — the class hooks below are the
+    contract between the two files, so renaming one without the other silently
+    unstyles the dialog.
+*@
+
+<MudDialog Class="confirm-delete">
+    <TitleContent>
+        <div class="confirm-delete__head">
+            <span class="confirm-delete__icon" aria-hidden="true">
+                <MudIcon Icon="@Icons.Material.Filled.DeleteForever" />
+            </span>
+            <div class="confirm-delete__head-text">
+                <MudText Typo="Typo.h6" Class="confirm-delete__title">@Title</MudText>
+                <MudText Typo="Typo.body2" Class="confirm-delete__subtitle">
+                    Review what this affects before you confirm.
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="confirm-delete__body">
+            @* The target block. Deliberately the visual anchor of the dialog:
+               the single most common delete accident is deleting the right KIND
+               of thing with the wrong id. *@
+            <div class="confirm-delete__target">
+                <span class="confirm-delete__target-kind">@EntityKind.ToUpperInvariant()</span>
+                <span class="confirm-delete__target-name">@EntityName</span>
+            </div>
+
+            <p class="confirm-delete__consequence">@Consequence</p>
+
+            @if (Impacts is { Count: > 0 })
+            {
+                <section class="confirm-delete__impacts" data-testid="confirm-delete-impacts">
+                    <h3 class="confirm-delete__impacts-head">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" aria-hidden="true" />
+                        @(ImpactsLabel ?? "This also removes")
+                    </h3>
+                    <ul class="confirm-delete__impacts-list">
+                        @foreach (var impact in Impacts)
+                        {
+                            <li>@impact</li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            @* Reassurance last and quiet — it is true, but it must not read as
+               permission to skip the rest. *@
+            <div class="confirm-delete__reversible">
+                <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-hidden="true" />
+                <span>Reversible — you can roll back from <strong>Config → History</strong>.</span>
+            </div>
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Size="Size.Large"
+                   Class="confirm-delete__cancel"
+                   data-testid="confirm-delete-cancel">
+            Cancel
+        </MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.DeleteForever"
+                   OnClick="Submit"
+                   Class="confirm-delete__confirm"
+                   data-testid="confirm-delete-confirm">
+            @ConfirmLabel
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// Shared presentation for every delete confirmation, so the three call
+    /// sites cannot drift apart. BackdropClick is disabled deliberately: a
+    /// stray click outside a destructive dialog should not dismiss it — the
+    /// operator has to choose Cancel or Delete.
+    /// </summary>
+    public static readonly DialogOptions Options = new()
+    {
+        // ExtraSmall is the floor MudBlazor is asked for; site.css then pins the
+        // dialog to 560px. The width is not settable from here — MudBlazor
+        // applies its size class to the same element, at equal specificity, so
+        // the override has to live in the stylesheet to win reliably.
+        MaxWidth = MaxWidth.ExtraSmall,
+        FullWidth = true,
+        BackdropClick = false,
+        CloseOnEscapeKey = true,
+    };
+
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Dialog heading, e.g. "Delete destination".</summary>
+    [Parameter] public string Title { get; set; } = "Delete";
+
+    /// <summary>Kind label above the name, e.g. "Destination". Rendered uppercase.</summary>
+    [Parameter] public string EntityKind { get; set; } = string.Empty;
+
+    /// <summary>Instance id of the thing being deleted, e.g. "ModbusTesting11".</summary>
+    [Parameter] public string EntityName { get; set; } = string.Empty;
+
+    /// <summary>What happens the moment this is confirmed, in one sentence.</summary>
+    [Parameter] public string Consequence { get; set; } = string.Empty;
+
+    /// <summary>Cascade lines — one per knock-on removal. Null or empty hides the list.</summary>
+    [Parameter] public IReadOnlyList<string>? Impacts { get; set; }
+
+    /// <summary>Heading above <see cref="Impacts"/>. Defaults to "This also removes".</summary>
+    [Parameter] public string? ImpactsLabel { get; set; }
+
+    /// <summary>Confirm button text. Defaults to "Delete".</summary>
+    [Parameter] public string ConfirmLabel { get; set; } = "Delete";
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}

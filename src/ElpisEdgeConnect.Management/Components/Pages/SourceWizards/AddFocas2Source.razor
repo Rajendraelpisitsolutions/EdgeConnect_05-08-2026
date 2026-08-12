@@ -1,0 +1,874 @@
+@*
+    Add / Edit FOCAS2 source wizard (M.2b.3 + M.2d.2 step 8).
+
+    Two modes:
+      * Add mode (default; @page "/sources/new/focas2") — operator
+        creates a new FOCAS2 source. WizardConfigMerger.BuildNewSourceDraft
+        + POST /api/v1/config/drafts.
+      * Edit mode — rendered from SourceEditRouter with EditMode +
+        HydratedConfig parameters. WizardConfigMerger.BuildUpdatedSourceDraft
+        via PUT /api/v1/sources/{instanceId} (sub-step 8.5 endpoint).
+        Routes preserved per M.2d.2 v2 §5.5 invariant.
+
+    Three FOCAS2-specific concerns the shared template doesn't cover:
+
+      1. HIERARCHICAL DATA-POINT GROUP PICKER (not per-tag rows). FOCAS2
+         tags are discovered from the controller, not declared. Default
+         = "Collect all" → empty dataPoints; switching to "Limit to
+         specific groups" lets the operator tick category checkboxes
+         that emit prefix/exact paths recognised by
+         Focas2SourceAdapter.CollectAll.
+
+      2. BROWSE CONTROLLER probe — the wizard's Test Connection slot
+         renders as "Browse Controller" (WizardActions.TestConnectionLabel
+         override). The result panel (rich axes / tag count / series /
+         type info) stays wizard-local inside Section 4 because the
+         shared TestConnectionSlot only owns the button. The probe uses
+         a FORCED override config (single attempt, ≤8s timeout) per the
+         M.2b.3 Locked S contract.
+
+      3. DUP-IP:Port WARNING — when the operator types an IP:Port that
+         matches an existing FOCAS2 source, a warning fires but doesn't
+         block Save (Add mode only; in Edit mode this source is the
+         entry being matched, so the warning is suppressed).
+
+    Reference: docs/sessions/2026-05-22-m2d2-steps-8-10-plan-v2.md §3.3,
+               docs/sessions/2026-05-17-mp2b3-focas2-wizard-plan-v3.md
+*@
+@page "/sources/new/focas2"
+@using System.Net
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ElpisEdgeConnect.Management.Options.ManagementOptions Options
+
+<PageTitle>@(_isEdit ? "Edit" : "Add") FOCAS2 source · Connectivity Studio</PageTitle>
+
+@if (_staleEditMismatch is not null)
+{
+    <StaleEditWarningBanner BaseVersionId="@_staleEditMismatch.BaseVersionId"
+                            CurrentVersionId="@_staleEditMismatch.CurrentVersionId"
+                            ChangedSinceUtc="@_staleEditMismatch.ChangedSinceUtc"
+                            OnReload="@OnReloadAfterStale" />
+}
+
+<WizardShell Icon="@Icons.Material.Filled.PrecisionManufacturing"
+             Title="@(_isEdit ? $"Edit FOCAS2 source — {_model.InstanceId}" : "Add FOCAS2 source")"
+             Subtitle="Configure a Fanuc CNC source. Use Browse Controller to confirm reachability before saving."
+             BackHref="@(_isEdit ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}" : "/sources/new")"
+             Embedded="@EmbeddedMode"
+             IsLoading="@(_loading && !_isEdit)"
+             LoadError="@_loadError">
+    <ChildContent>
+    @* M.2d.4 / ADR-0015 Rule 5 — cumulative validation surface. *@
+    <WizardValidationBanner Messages="@BuildValidationMessages()" />
+
+    <WizardSection Index="1" Title="Device identity">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.InstanceId" @bind-Value:after="OnInstanceIdChanged"
+                              Label="@(_isEdit ? "Instance id (immutable in Edit)" : "Instance id *")"
+                              HelperText="@(_isEdit ? "Instance id is immutable once the source exists. Delete and re-add to rename." : "Unique. Letters, digits, dot, hyphen, underscore.")"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Disabled="@_isEdit"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-instance-id" })" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceId" Label="Device id"
+                              HelperText="Operator-readable; defaults to instance id if empty."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.DeviceName" Label="Device name"
+                              HelperText="Display name shown in lists and tooltips."
+                              Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect @bind-Value="_model.DeviceClass" Label="Device class" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("cnc")">cnc</MudSelectItem>
+                    <MudSelectItem Value="@("other")">other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField @bind-Value="_model.PollIntervalMs" Label="Poll interval (ms)"
+                                 HelperText="1000 ms is typical for production CNCs."
+                                 Min="100" Max="60000" Step="100" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+        @if (!_isEdit && _instanceIdError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">@_instanceIdError</MudAlert>
+        }
+    </WizardSection>
+
+    <WizardSection Index="2" Title="Connection">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_model.IpAddress" @bind-Value:after="OnConnectionChanged"
+                              Label="IP address *"
+                              HelperText="CNC controller IP (e.g. 192.168.1.101)"
+                              Error="@(_ipAddressError is not null)"
+                              ErrorText="@_ipAddressError"
+                              Variant="Variant.Outlined" Immediate="true"
+                              UserAttributes="@(new Dictionary<string, object?> { ["id"] = "field-ip-address" })" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="_model.Port" @bind-Value:after="OnConnectionChanged"
+                                 Label="Port" Min="1" Max="65535"
+                                 HelperText="Default 8193" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField @bind-Value="_model.TimeoutSeconds" Label="Timeout (s)"
+                                 HelperText="Runtime connect timeout. Browse uses its own short timeout."
+                                 Min="1" Max="120" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSwitch @bind-Value="_model.KeepAlive" Label="Keep alive"
+                           Color="Color.Primary" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                    On = one handle reused across polls (~5 ms each). Off = open + close per poll (~20-50 ms).
+                </MudText>
+            </MudItem>
+        </MudGrid>
+
+        @if (!_isEdit && _dupIpWarning is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3">
+                @_dupIpWarning
+            </MudAlert>
+        }
+
+        <MudExpansionPanels Elevation="0" Class="mt-3">
+            <MudExpansionPanel Text="Advanced — runtime backoff">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3" Style="display:block;">
+                    Defaults are production-safe. Adjust only if your network or controller documentation calls for non-standard values.
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.InitialBackoffMs" Label="Initial backoff (ms)"
+                                         HelperText="Wait before the first reconnect after a failure."
+                                         Min="100" Max="60000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxBackoffMs" Label="Max backoff (ms)"
+                                         HelperText="Cap on exponential reconnect backoff."
+                                         Min="1000" Max="600000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.BackoffMultiplier" Label="Backoff multiplier"
+                                         HelperText="Applied between consecutive connect failures."
+                                         Min="1.0" Max="10.0" Step="0.1" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudNumericField @bind-Value="_model.MaxConnectRetries" Label="Max connect retries"
+                                         HelperText="Per connect attempt, before backing off."
+                                         Min="1" Max="20" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </WizardSection>
+
+    <WizardSection Index="3" Title="Data points">
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+            <strong>Status data is always collected when connected.</strong>
+            Selected groups limit the OPTIONAL FOCAS2 collections (Axes, Spindle, Alarms, etc.) —
+            Status (run state, mode, emergency stop, alarm flag) runs unconditionally at the adapter layer.
+        </MudAlert>
+
+        <MudRadioGroup @bind-Value="_dataPointsMode" T="string">
+            <MudRadio Value="@("collectAll")" Color="Color.Primary">
+                <MudText Typo="Typo.body1">Collect all available data</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Empty <code>dataPoints</code> — every collector runs. Recommended for new deployments.
+                </MudText>
+            </MudRadio>
+            <MudRadio Value="@("selective")" Color="Color.Primary">
+                <MudText Typo="Typo.body1">Limit to specific groups</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Only the groups you tick will be collected. Useful for bandwidth-constrained sites.
+                </MudText>
+            </MudRadio>
+        </MudRadioGroup>
+
+        @if (_dataPointsMode == "selective")
+        {
+            <MudGrid Spacing="2" Class="mt-2 ml-6">
+                @foreach (var group in Focas2SourceWizardModel.DataPointGroups)
+                {
+                    var localKey = group.Key;
+                    <MudItem xs="12" md="6">
+                        <MudCheckBox T="bool"
+                                     Value="@_model.SelectedGroupKeys.Contains(localKey)"
+                                     ValueChanged="@((bool on) => ToggleGroup(localKey, on))"
+                                     Color="Color.Primary"
+                                     Dense="true">
+                            <MudText Typo="Typo.body2"><strong>@group.DisplayName</strong></MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Description</MudText>
+                        </MudCheckBox>
+                    </MudItem>
+                }
+            </MudGrid>
+            @if (_model.SelectedGroupKeys.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                    No optional groups selected. Only Status data will be collected at runtime.
+                </MudAlert>
+            }
+        }
+    </WizardSection>
+
+    <WizardSection Index="4" Title="Browse Controller"
+                   Description="Use the Browse Controller button in the footer to run a one-shot probe. The probe ignores the runtime timeout and retry values — it uses a FORCED single attempt with an 8 s ceiling so it completes inside the 15 s probe budget. No configuration is saved until you click Save.">
+
+        @if (_browseResult is { } r)
+        {
+            if (r.Success)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mt-1">
+                    <MudText Typo="Typo.body1" Class="mb-1">
+                        <strong>Discovered @r.TagCount tags</strong> in @r.ElapsedMs ms.
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        Axes: <strong>@(r.AxisNames.Count > 0 ? string.Join(", ", r.AxisNames) : "(none reported)")</strong>
+                        @if (!string.IsNullOrWhiteSpace(r.CncSeries))
+                        {
+                            <text> · Series: <strong>@r.CncSeries</strong></text>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(r.CncType))
+                        {
+                            <text> · Type: <strong>@r.CncType</strong></text>
+                        }
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                        ProbeId: <code>@r.ProbeId</code>
+                    </MudText>
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-1">
+                    <MudText Typo="Typo.body1" Class="mb-1">
+                        <strong>Probe failed.</strong> @r.ErrorMessage
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display:block;">
+                        ErrorCode: <code>@r.ErrorCode</code> · ProbeId: <code>@r.ProbeId</code>
+                    </MudText>
+                    @if (r.ValidationErrors.Count > 0)
+                    {
+                        <ul style="margin:0.5rem 0 0 1.2rem;">
+                            @foreach (var issue in r.ValidationErrors)
+                            {
+                                <li>
+                                    <code>@issue.Code</code>
+                                    @if (!string.IsNullOrWhiteSpace(issue.Path))
+                                    {
+                                        <text> at <code>@issue.Path</code></text>
+                                    } : @issue.Message
+                                </li>
+                            }
+                        </ul>
+                    }
+                </MudAlert>
+            }
+            @if (r.Warnings.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                    Warnings: @string.Join(", ", r.Warnings)
+                </MudAlert>
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Click <em>Browse Controller</em> in the footer to run the probe.
+            </MudText>
+        }
+    </WizardSection>
+
+    @if (!_isEdit)
+    {
+        @* Wiring section is Add-mode only — Edit never mutates routes
+           per v2 §5.5 invariant. *@
+        <WizardSection Index="5" Title="Wire data into a route">
+            <MudRadioGroup @bind-Value="_wiringChoice" T="string">
+                <MudRadio Value="@("none")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Do not wire yet</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Source will be created as <strong>DISABLED</strong> (Core requires every enabled
+                        source to have a route). Edit the source in JSON and add a route to activate.
+                    </MudText>
+                </MudRadio>
+                <MudRadio Value="@("newRoute")" Color="Color.Primary">
+                    <MudText Typo="Typo.body1">Create a new route</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        A new route is added linking this enabled source to one or more destinations.
+                    </MudText>
+                </MudRadio>
+            </MudRadioGroup>
+
+            @if (_wiringChoice == "newRoute")
+            {
+                <MudGrid Spacing="2" Class="mt-2 ml-6">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeId" @bind-Value:after="OnRouteIdEdited"
+                                      Label="Route id *"
+                                      HelperText="Auto-suggested from instance id; edit to override."
+                                      Variant="Variant.Outlined" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_routeName" Label="Route name"
+                                      HelperText="Display name; defaults to route id."
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="_bufferMode" Label="Buffer mode" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("StoreAndForward")">Store and forward (durable)</MudSelectItem>
+                            <MudSelectItem Value="@("InMemory")">In memory (lossy on restart)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_bufferMaxDepth" Label="Buffer max depth"
+                                         Min="100" Max="1000000" Step="1000" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach to destinations *</MudText>
+                        @if (_availableSinks.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                                No destinations are configured. Add at least one destination before creating a route, or choose "Do not wire yet".
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            @foreach (var sinkId in _availableSinks)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedSinkIds.Contains(sinkId)"
+                                             ValueChanged="@((bool on) => ToggleSink(sinkId, on))"
+                                             Label="@sinkId"
+                                             Color="Color.Primary" Dense="true" />
+                            }
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+        </WizardSection>
+
+        @* ──── Draft summary preview (Add mode only) ──── *@
+        <MudPaper Elevation="0" Class="pa-4 mb-3"
+                  Style="border:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-background-grey);">
+            <MudText Typo="Typo.subtitle2" Style="font-weight:500;" Class="mb-2">Summary of changes</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1">When you save, EdgeConnect will:</MudText>
+            <ul style="margin:0; padding-left:1.4rem;">
+                <li>
+                    <strong>Add source:</strong> @(string.IsNullOrWhiteSpace(_model.InstanceId) ? "(not yet named)" : _model.InstanceId)
+                    @if (!string.IsNullOrWhiteSpace(_model.IpAddress))
+                    {
+                        <text> (focas2, @_model.IpAddress:@_model.Port)</text>
+                    }
+                    @if (_wiringChoice == "none")
+                    {
+                        <text> — </text><strong style="color:var(--mud-palette-warning);">created DISABLED</strong>
+                    }
+                    else
+                    {
+                        <text> — enabled</text>
+                    }
+                </li>
+                <li>
+                    <strong>Data points:</strong>
+                    @if (_dataPointsMode == "collectAll")
+                    {
+                        <text>collect all</text>
+                    }
+                    else if (_model.SelectedGroupKeys.Count == 0)
+                    {
+                        <text>Status only (no optional groups selected)</text>
+                    }
+                    else
+                    {
+                        <text>Status + @string.Join(", ", _model.SelectedGroupKeys)</text>
+                    }
+                </li>
+                <li>
+                    @switch (_wiringChoice)
+                    {
+                        case "newRoute":
+                            <strong>Create new route:</strong>
+                            @(string.IsNullOrWhiteSpace(_routeId) ? "(not yet named)" : _routeId)
+                            @if (_selectedSinkIds.Count > 0)
+                            {
+                                <text> · attaching to: @string.Join(", ", _selectedSinkIds)</text>
+                            }
+                            break;
+                        default:
+                            <strong>Routes:</strong>
+                            <span> leave for later — source disabled until wired</span>;
+                            break;
+                    }
+                </li>
+            </ul>
+        </MudPaper>
+    }
+
+    </ChildContent>
+    <Footer>
+        @* ADR-0016 Rule 3 — WizardActions hidden in EmbeddedMode. *@
+        @if (!EmbeddedMode)
+        {
+            <WizardActions OnSave="OnSaveAsync"
+                           OnCancel="OnCancel"
+                           OnTestConnection="BrowseControllerAsync"
+                           SaveLabel="Save changes"
+                           TestConnectionLabel="Browse Controller"
+                           CanSave="@CanSave()"
+                           Busy="@(_busy || _browseBusy)" />
+        }
+    </Footer>
+</WizardShell>
+
+@code {
+    /// <summary>Wizard mode context. Null = Add mode; non-null + IsEdit = Edit mode.</summary>
+    [Parameter] public EditModeContext? EditMode { get; set; }
+
+    /// <summary>Source instance loaded by the router in Edit mode.</summary>
+    [Parameter] public SourceInstanceConfig? HydratedConfig { get; set; }
+
+    /// <summary>ADR-0016 Rule 3 — embedded in Onboarding meta-wizard. Default <c>false</c>.</summary>
+    [Parameter] public bool EmbeddedMode { get; set; }
+
+    /// <summary>ADR-0016 Rule 4 — fires on validity transitions.</summary>
+    [Parameter] public EventCallback<SourceInstanceConfig?> OnInstanceBuilt { get; set; }
+
+    // v2 §0.1 Q1=A — drop readonly so OnParametersSet can reassign.
+    private Focas2SourceWizardModel _model = new();
+    private bool _hydrated;
+    private string? _lastNotifiedSignature;
+
+    private string _dataPointsMode = "collectAll";
+
+    // Routing UI state (Add mode only)
+    private string _wiringChoice = "none";
+    private string _routeId = string.Empty;
+    private string _routeName = string.Empty;
+    private string _bufferMode = "StoreAndForward";
+    private int _bufferMaxDepth = 10_000;
+    private readonly HashSet<string> _selectedSinkIds = new(StringComparer.Ordinal);
+    private bool _routeIdManuallyEdited;
+
+    // Loaded context (Add mode only — Edit hydrates from HydratedConfig)
+    private GatewayConfiguration? _currentConfig;
+    private HashSet<string> _existingSourceIds = new();
+    private List<string> _availableSinks = new();
+    private readonly HashSet<string> _existingFocas2Endpoints = new(StringComparer.Ordinal);
+    private string? _loadError;
+    private bool _loading = true;
+
+    private string? _instanceIdError;
+    private string? _dupIpWarning;
+    private string? _ipAddressError;
+
+    private bool _browseBusy;
+    private Focas2BrowseResultDto? _browseResult;
+
+    private bool _busy;
+    private ConfigVersionMismatchDto? _staleEditMismatch;
+
+    private bool _isEdit => EditMode?.IsEdit == true;
+
+    /// <summary>
+    /// Aggregate current razor-level validation errors into the shape
+    /// the shared <c>WizardValidationBanner</c> expects. M.2d.4 wires
+    /// the banner per ADR-0015 Rule 5; today the dup-instance-id check
+    /// is the only aggregatable error (the dup-IP warning is informational
+    /// and stays as an inline alert). Returns empty list when clean.
+    /// </summary>
+    private IReadOnlyList<WizardValidationMessage> BuildValidationMessages()
+    {
+        var messages = new List<WizardValidationMessage>();
+        if (!_isEdit && !string.IsNullOrEmpty(_instanceIdError))
+        {
+            messages.Add(new WizardValidationMessage(
+                "focas2.instance-id.duplicate",
+                "InstanceId",
+                _instanceIdError,
+                "#field-instance-id"));
+        }
+        return messages;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit)
+        {
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            _currentConfig = await HttpClient.GetFromJsonAsync<GatewayConfiguration>("/api/v1/config");
+            if (_currentConfig is not null)
+            {
+                _existingSourceIds = new HashSet<string>(
+                    _currentConfig.Sources.Select(s => s.InstanceId), StringComparer.Ordinal);
+                _availableSinks = _currentConfig.Sinks.Select(s => s.InstanceId).ToList();
+                CollectExistingFocas2Endpoints();
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_isEdit && HydratedConfig is not null && !_hydrated)
+        {
+            _model = Focas2SourceWizardModel.HydrateFromExisting(HydratedConfig);
+            _dataPointsMode = _model.DataPointsMode == Focas2DataPointSelectionMode.Selective
+                ? "selective"
+                : "collectAll";
+            // Flag a bad stored address on load, so Edit opens already showing
+            // why Save is disabled instead of only reacting once the operator
+            // touches the field.
+            RecomputeIpAddressError();
+            _hydrated = true;
+        }
+    }
+
+    private void CollectExistingFocas2Endpoints()
+    {
+        if (_currentConfig is null) return;
+        foreach (var src in _currentConfig.Sources)
+        {
+            if (!string.Equals(src.ProtocolName, "focas2", StringComparison.Ordinal)) continue;
+            if (src.Connection is not { ValueKind: JsonValueKind.Object } conn) continue;
+            var ip = conn.TryGetProperty("ipAddress", out var ipEl) && ipEl.ValueKind == JsonValueKind.String
+                ? ipEl.GetString()
+                : null;
+            var port = conn.TryGetProperty("port", out var portEl) && portEl.ValueKind == JsonValueKind.Number
+                ? portEl.GetInt32()
+                : 8193;
+            if (!string.IsNullOrWhiteSpace(ip))
+            {
+                _existingFocas2Endpoints.Add($"{ip}:{port}");
+            }
+        }
+    }
+
+    private void OnInstanceIdChanged()
+    {
+        if (_isEdit) return;
+
+        if (string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _instanceIdError = null;
+        }
+        else if (_existingSourceIds.Contains(_model.InstanceId))
+        {
+            _instanceIdError = $"Source '{_model.InstanceId}' already exists. Choose a different instance id.";
+        }
+        else
+        {
+            _instanceIdError = null;
+        }
+
+        if (!_routeIdManuallyEdited && !string.IsNullOrWhiteSpace(_model.InstanceId))
+        {
+            _routeId = $"route-{_model.InstanceId}";
+        }
+    }
+
+    private void OnRouteIdEdited() => _routeIdManuallyEdited = true;
+
+    private void OnConnectionChanged()
+    {
+        // Address validation runs in BOTH modes — an existing source can hold a
+        // bad address (a "1" written before this check existed), and Edit is
+        // exactly where the operator goes to repair it. The duplicate-endpoint
+        // warning below stays Add-only.
+        RecomputeIpAddressError();
+
+        if (_isEdit) return;
+
+        if (string.IsNullOrWhiteSpace(_model.IpAddress))
+        {
+            _dupIpWarning = null;
+            return;
+        }
+        var endpoint = $"{_model.IpAddress}:{_model.Port}";
+        _dupIpWarning = _existingFocas2Endpoints.Contains(endpoint)
+            ? Focas2DupIpWarningCopy.For(endpoint, Options.Focas2FakeMode)
+            : null;
+    }
+
+    /// <summary>
+    /// Refreshes the inline address error. A blank field reports no error — the
+    /// required marker and the disabled Save already say so, and flagging a
+    /// field the operator has not reached yet is noise.
+    /// </summary>
+    private void RecomputeIpAddressError()
+        => _ipAddressError = string.IsNullOrWhiteSpace(_model.IpAddress)
+            ? null
+            : HostAddressValidation.Describe(_model.IpAddress);
+
+    private void ToggleGroup(string key, bool on)
+    {
+        if (on) _model.SelectedGroupKeys.Add(key);
+        else _model.SelectedGroupKeys.Remove(key);
+    }
+
+    private void ToggleSink(string sinkId, bool on)
+    {
+        if (on) _selectedSinkIds.Add(sinkId);
+        else _selectedSinkIds.Remove(sinkId);
+    }
+
+    private bool CanBrowse()
+    {
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        // Browsing dials the controller, so it needs a real address too —
+        // otherwise the operator gets a connect timeout instead of the reason.
+        if (!HostAddressValidation.IsValid(_model.IpAddress)) return false;
+        if (!_isEdit && _instanceIdError is not null) return false;
+        return true;
+    }
+
+    private async Task BrowseControllerAsync()
+    {
+        if (!CanBrowse()) return;
+
+        _browseBusy = true;
+        _browseResult = null;
+        try
+        {
+            _model.DataPointsMode = _dataPointsMode == "selective"
+                ? Focas2DataPointSelectionMode.Selective
+                : Focas2DataPointSelectionMode.CollectAll;
+            var request = _model.BuildSourceInstance();
+
+            var resp = await HttpClient.PostAsJsonAsync("/api/v1/sources/browse/focas2", request);
+            try
+            {
+                _browseResult = await resp.Content.ReadFromJsonAsync<Focas2BrowseResultDto>();
+            }
+            catch
+            {
+                _browseResult = null;
+            }
+
+            if (_browseResult is null)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                // ADR-0016 Rule 3 — Snackbar suppressed in EmbeddedMode.
+                if (!EmbeddedMode) Snackbar.Add($"Browse failed: {raw}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!EmbeddedMode) Snackbar.Add($"Browse failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _browseBusy = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (!_isEdit && _instanceIdError is not null) return false;
+        if (string.IsNullOrWhiteSpace(_model.InstanceId)) return false;
+        // Reject an unusable address here rather than writing it to gateway.json
+        // and letting it fail as a runtime connect error hours later.
+        if (!HostAddressValidation.IsValid(_model.IpAddress)) return false;
+        if (_model.Port < 1 || _model.Port > 65535) return false;
+        if (!_isEdit && _wiringChoice == "newRoute")
+        {
+            if (string.IsNullOrWhiteSpace(_routeId)) return false;
+            if (_selectedSinkIds.Count == 0) return false;
+        }
+        return true;
+    }
+
+    private async Task OnSaveAsync()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Save.
+        if (EmbeddedMode) return;
+        if (_isEdit) await SaveEditAsync();
+        else await SaveAsDraftAsync();
+    }
+
+    /// <summary>ADR-0016 Rule 4 — fire OnInstanceBuilt on validity transitions.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!EmbeddedMode) return;
+        var isValid = CanSave();
+        SourceInstanceConfig? instance = null;
+        if (isValid)
+        {
+            try { instance = _model.BuildSourceInstance(); }
+            catch { instance = null; }
+        }
+        // Dedupe on the CONTENT of the built instance, not on whether CanSave()
+        // flipped. An operator types an address one character at a time and the
+        // form stays valid across those keystrokes, so a validity-flip guard
+        // emitted the first valid prefix and silently dropped every correction
+        // after it — the meta-wizard then applied a half-typed value (an IP of
+        // "1" reached gateway.json this way). ADR-0016 Rule 4 expects this
+        // callback to "fire repeatedly while the operator types"; comparing
+        // content still terminates the render loop that the parent's
+        // StateHasChanged() would otherwise cause.
+        var signature = instance is null ? null : JsonSerializer.Serialize(instance);
+        if (signature == _lastNotifiedSignature) return;
+        _lastNotifiedSignature = signature;
+
+        if (OnInstanceBuilt.HasDelegate)
+        {
+            await OnInstanceBuilt.InvokeAsync(instance);
+        }
+    }
+
+    private void OnCancel()
+    {
+        // ADR-0016 Rule 3 — EmbeddedMode: parent owns Cancel.
+        if (EmbeddedMode) return;
+        Nav.NavigateTo(_isEdit
+            ? $"/sources/{Uri.EscapeDataString(_model.InstanceId)}"
+            : "/sources/new");
+    }
+
+    private void OnReloadAfterStale()
+    {
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanSave() || EditMode?.BaseVersionId is null) return;
+
+        _busy = true;
+        _staleEditMismatch = null;
+        try
+        {
+            _model.DataPointsMode = _dataPointsMode == "selective"
+                ? Focas2DataPointSelectionMode.Selective
+                : Focas2DataPointSelectionMode.CollectAll;
+
+            var updatedSource = _model.BuildSourceInstance();
+            var body = new UpdateSourceRequestDto
+            {
+                SourceConfig = updatedSource,
+                BaseVersionId = EditMode.BaseVersionId,
+            };
+            var resp = await HttpClient.PutAsJsonAsync(
+                $"/api/v1/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}", body);
+
+            if (resp.StatusCode == HttpStatusCode.Conflict)
+            {
+                var raw = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(raw);
+                if (doc.RootElement.TryGetProperty("conflictType", out var ct) &&
+                    ct.ValueKind == JsonValueKind.String &&
+                    ct.GetString() == "VersionMismatch")
+                {
+                    _staleEditMismatch = JsonSerializer.Deserialize<ConfigVersionMismatchDto>(
+                        raw,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return;
+                }
+                Snackbar.Add($"Save rejected at apply time: {raw}", Severity.Error);
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Snackbar.Add($"Save failed: {err}", Severity.Error);
+                return;
+            }
+
+            var apply = await resp.Content.ReadFromJsonAsync<ApplyResultDto>(
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var reloadHint = apply?.Reload?.Status is { Length: > 0 } status
+                ? $" (reload: {status})"
+                : string.Empty;
+            Snackbar.Add(
+                $"Source '{updatedSource.InstanceId}' updated{reloadHint}.",
+                Severity.Success);
+
+            Nav.NavigateTo($"/sources/{Uri.EscapeDataString(updatedSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        if (_currentConfig is null) return;
+        _busy = true;
+        try
+        {
+            _model.DataPointsMode = _dataPointsMode == "selective"
+                ? Focas2DataPointSelectionMode.Selective
+                : Focas2DataPointSelectionMode.CollectAll;
+
+            var newSource = _model.BuildSourceInstance();
+
+            if (_wiringChoice == "none")
+            {
+                newSource = newSource with { Enabled = false };
+            }
+
+            var wiring = _wiringChoice switch
+            {
+                "newRoute" => (RouteWiring)new RouteWiring.NewRoute(
+                    RouteId: _routeId,
+                    Name: string.IsNullOrWhiteSpace(_routeName) ? _routeId : _routeName,
+                    Buffer: new BufferPolicyConfig
+                    {
+                        Mode = _bufferMode == "InMemory" ? BufferMode.InMemory : BufferMode.StoreAndForward,
+                        MaxDepth = _bufferMaxDepth,
+                    },
+                    SinkInstanceIds: _selectedSinkIds.ToList()),
+                _ => RouteWiring.None,
+            };
+
+            GatewayConfiguration newDraft;
+            try
+            {
+                newDraft = WizardConfigMerger.BuildNewSourceDraft(_currentConfig, newSource, wiring);
+            }
+            catch (ArgumentException ex)
+            {
+                Snackbar.Add($"Cannot build draft: {ex.Message}", Severity.Error);
+                return;
+            }
+
+            await WizardDraftApplier.CreateApplyAndNavigateAsync(
+                HttpClient, Nav, Snackbar,
+                new { configuration = newDraft, actor = "system" },
+                entityLabel: $"Source '{newSource.InstanceId}'",
+                successHref: $"/sources/{Uri.EscapeDataString(newSource.InstanceId)}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

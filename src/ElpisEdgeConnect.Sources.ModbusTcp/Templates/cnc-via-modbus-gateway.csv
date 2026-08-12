@@ -1,0 +1,29 @@
+# cnc-via-modbus-gateway.csv
+#
+# Shape: CNC machine exposed via a Modbus TCP gateway (Ethernet-to-serial
+# bridge or a PLC mirroring CNC status onto Modbus). Tag semantics mirror
+# what FOCAS2 / MTConnect produce so EREMOS V2 sees the same machine-level
+# process view regardless of underlying protocol.
+#
+# THIS IS A SHAPE / PROFILE, NOT A GUARANTEED NATIVE CNC MAP.
+# Each CNC integrator wires the physical registers. Copy this file, adjust
+# addresses to match the gateway's mapping document, and import.
+#
+# Addresses are zero-based logical — convert vendor 40001/30001-style
+# notation before importing.
+#
+name,unitId,registerClass,address,datatype,byteOrder,scanRateMs,scale,offset,unit,description
+running,1,Coil,0,bool,,200,,,,In-cycle (INC) flag
+alarm_active,1,Coil,1,bool,,200,,,,Any active alarm
+auto_mode,1,Coil,2,bool,,500,,,,Auto / MEM mode selected
+door_closed,1,DiscreteInput,0,bool,,200,,,,Safety door closed
+tool_present,1,DiscreteInput,1,bool,,500,,,,Tool clamped in spindle
+spindle_rpm,1,HoldingRegister,0,uint16,,200,,,rpm,Actual spindle RPM
+spindle_load,1,HoldingRegister,1,int16,,200,,,%,Spindle load percentage (-100..100)
+feed_rate,1,HoldingRegister,10,float32,ABCD,200,,,mm/min,Actual feed rate
+tool_number,1,HoldingRegister,20,uint16,,500,,,,Current T-code (active tool)
+program_number,1,HoldingRegister,40,string8,,1000,,,,Main program O-number
+operation_mode,1,HoldingRegister,50,string8,,1000,,,,AUTO / MDI / JOG / HANDLE
+parts_count,1,HoldingRegister,60,uint32,CDAB,500,,,,Cumulative parts count
+cycle_time,1,HoldingRegister,62,float32,ABCD,500,,,s,Last cycle time in seconds
+alarm_code,1,HoldingRegister,70,int16,,500,,,,Current alarm number (0 = none)
